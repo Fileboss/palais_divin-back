@@ -1,4 +1,4 @@
-package com.palais_divin.palais_divin_back;
+package com.pgu.palais_divin_back;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

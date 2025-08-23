@@ -1,0 +1,13 @@
+FROM neo4j:5.15
+
+# Installer wget si pas déjà présent et télécharger APOC
+RUN apt-get update && apt-get install -y wget && \
+    wget -O /var/lib/neo4j/plugins/apoc-5.15.0-extended.jar \
+    https://github.com/neo4j-contrib/neo4j-apoc-procedures/releases/download/5.15.0/apoc-5.15.0-extended.jar && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Configuration APOC
+ENV NEO4J_apoc_export_file_enabled=true \
+    NEO4J_apoc_import_file_enabled=true \
+    NEO4J_dbms_security_procedures_unrestricted=apoc.* \
+    NEO4J_dbms_security_procedures_allowlist=apoc.*
