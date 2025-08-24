@@ -10,7 +10,7 @@ import java.util.UUID;
 @Node
 @Data
 public class Restaurant {
-    @Id // L'identifiant reste @Id, mais il est maintenant géré par l'application
+    @Id
     private UUID uuid;
 
     private String name;
@@ -18,10 +18,9 @@ public class Restaurant {
     private List<String> tags;
     private Double averageRating;
     private Integer ratingCount;
-
+    private String photoUrl; // Nouvelle propriété pour l'URL de la photo
 
     public Restaurant() {
         this.uuid = UUID.randomUUID();
     }
-
 }

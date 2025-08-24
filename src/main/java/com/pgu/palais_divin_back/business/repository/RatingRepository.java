@@ -98,8 +98,7 @@ public class RatingRepository {
     }
 
     public void delete(String userUuid, String restaurantUuid) {
-        neo4jClient.query("MATCH (u:User)-[rating:RATED]->(r:Restaurant) " +
-                        "WHERE elementId(u) = $userUuid AND elementId(r) = $restaurantUuid " +
+        neo4jClient.query("MATCH (u:User {uuid: $userUuid})-[rating:RATED]->(r:Restaurant {uuid: $restaurantUuid}) " +
                         "DELETE rating")
                 .bind(userUuid).to("userUuid")
                 .bind(restaurantUuid).to("restaurantUuid")

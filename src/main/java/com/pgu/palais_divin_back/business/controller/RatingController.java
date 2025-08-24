@@ -50,6 +50,4 @@ public class RatingController {
         private String restaurantId;
         private Integer score;
     }
-
-
 }
