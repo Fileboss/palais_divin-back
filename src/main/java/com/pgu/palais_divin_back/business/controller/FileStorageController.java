@@ -1,14 +1,11 @@
 package com.pgu.palais_divin_back.business.controller;
 
 import com.pgu.palais_divin_back.business.service.FileStorageService;
-import lombok.AllArgsConstructor;
-import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
@@ -21,9 +18,6 @@ public class FileStorageController {
 
     private final FileStorageService fileStorageService;
 
-    /**
-     * Obtenir une URL présignée pour accéder à une photo
-     */
     @GetMapping("/presigned-url")
     public ResponseEntity<Map<String, String>> getPresignedUrl(
             @RequestParam String fileName,
@@ -38,9 +32,6 @@ public class FileStorageController {
         }
     }
 
-    /**
-     * Endpoint de test pour l'upload direct
-     */
     @PostMapping("/upload")
     public ResponseEntity<Map<String, String>> uploadFile(
             @RequestParam("file") MultipartFile file,

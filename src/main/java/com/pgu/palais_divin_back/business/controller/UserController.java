@@ -27,9 +27,6 @@ public class UserController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    /**
-     * Retrouver un utilisateur à partir de son mail avec ses restaurants notés
-     */
     @GetMapping("/email/{email}")
     public ResponseEntity<UserWithRatedRestaurantsDto> getUserByEmailWithRatings(@PathVariable String email) {
         return userService.findUserByEmailWithRatedRestaurants(email)
@@ -37,9 +34,6 @@ public class UserController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    /**
-     * Retrouver tous les utilisateurs avec leurs infos de base
-     */
     @GetMapping
     public List<User> getAllUsers() {
         return userService.findAllUsers();

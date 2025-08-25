@@ -14,9 +14,6 @@ public class RatingController {
 
     private final RatingService ratingService;
 
-    /**
-     * Pour un utilisateur, attribuer (ou modifier) la note donnée à un restaurant précis
-     */
     @PostMapping
     public ResponseEntity<RatingDto> rateRestaurant(@RequestBody RatingRequest request) {
         try {
@@ -31,9 +28,6 @@ public class RatingController {
         }
     }
 
-    /**
-     * Supprimer une note d'un utilisateur pour un restaurant
-     */
     @DeleteMapping("/{userId}/{restaurantId}")
     public ResponseEntity<String> deleteRating(@PathVariable String userId, @PathVariable String restaurantId) {
         try {

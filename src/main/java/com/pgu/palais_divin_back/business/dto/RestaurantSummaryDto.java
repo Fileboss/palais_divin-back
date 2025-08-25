@@ -10,7 +10,6 @@ import java.util.UUID;
 public class RestaurantSummaryDto {
     private UUID uuid;
     private String name;
-    private String address;
 
     public String getUuid() {
         return uuid.toString();

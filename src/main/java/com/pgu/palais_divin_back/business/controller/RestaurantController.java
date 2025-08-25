@@ -22,9 +22,6 @@ public class RestaurantController {
         return restaurantService.createRestaurant(restaurant);
     }
 
-    /**
-     * Retrouver un restaurant avec sa note moyenne
-     */
     @GetMapping("/{id}")
     public ResponseEntity<Restaurant> getRestaurantById(@PathVariable String id) {
         return restaurantService.findRestaurantByIdWithRating(id)
@@ -32,25 +29,16 @@ public class RestaurantController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    /**
-     * Retrouver tous les restaurants avec leurs notes moyennes
-     */
     @GetMapping
     public List<Restaurant> getAllRestaurants() {
         return restaurantService.findAllRestaurantsWithRatings();
     }
 
-    /**
-     * Recherche de restaurants par nom
-     */
     @GetMapping("/search")
     public List<Restaurant> searchRestaurants(@RequestParam String name) {
         return restaurantService.searchRestaurantsByName(name);
     }
 
-    /**
-     * Ajouter une photo à un restaurant
-     */
     @PostMapping("/{id}/photo")
     public ResponseEntity<Restaurant> addPhoto(
             @PathVariable String id,
@@ -65,9 +53,6 @@ public class RestaurantController {
         }
     }
 
-    /**
-     * Supprimer la photo d'un restaurant
-     */
     @DeleteMapping("/{id}/photo")
     public ResponseEntity<Restaurant> removePhoto(@PathVariable String id) {
         try {

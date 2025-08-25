@@ -15,6 +15,9 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class RatingRepository {
 
+    public static final String USER_UUID = "userUuid";
+    public static final String RESTAURANT_UUID = "restaurantUuid";
+    public static final String SCORE = "score";
     private final Neo4jClient neo4jClient;
 
     public RatingDto createOrUpdateRating(String userUuid, String restaurantUuid, Integer score) {
@@ -29,22 +32,21 @@ public class RatingRepository {
                 rel.score AS score,
                 rel.createdAt AS createdAt,
                 rel.updatedAt AS updatedAt,
-                r { .name, .address, .uuid } AS restaurant,
+                r { .name, .uuid } AS restaurant,
                 u { .firstName, .lastName, .email, .uuid} AS user
         """)
-                .bindAll(Map.of("userUuid", userUuid, "restaurantUuid", restaurantUuid, "score", score))
+                .bindAll(Map.of(USER_UUID, userUuid, RESTAURANT_UUID, restaurantUuid, SCORE, score))
                 .fetchAs(RatingDto.class)
                 .mappedBy((typeSystem, rec) -> {
                     var dto = new RatingDto();
                     dto.setId(rec.get("id").asString());
-                    dto.setScore(rec.get("score").asInt());
+                    dto.setScore(rec.get(SCORE).asInt());
                     dto.setCreatedAt(rec.get("createdAt").asOffsetDateTime());
                     dto.setUpdatedAt(rec.get("updatedAt").asOffsetDateTime());
                     var restaurant = rec.get("restaurant");
                     dto.setRestaurant(new RestaurantSummaryDto(
                             UUID.fromString(restaurant.get("uuid").asString()),
-                            restaurant.get("name").asString(),
-                            restaurant.get("address").asString()
+                            restaurant.get("name").asString()
                     ));
                     var user = rec.get("user");
                     dto.setUser(new UserSummaryDto(
@@ -71,20 +73,18 @@ public class RatingRepository {
                 r { .name, .address, .uuid } AS restaurant,
                 u { .firstName, .lastName, .email, .uuid} AS user
         """)
-                .bindAll(Map.of("userUuid", userUuid, "restaurantUuid", restaurantUuid))
+                .bindAll(Map.of(USER_UUID, userUuid, RESTAURANT_UUID, restaurantUuid))
                 .fetchAs(RatingDto.class)
                 .mappedBy((typeSystem, rec) -> {
                     var dto = new RatingDto();
                     dto.setId(rec.get("id").asString());
-                    dto.setScore(rec.get("score").asInt());
+                    dto.setScore(rec.get(SCORE).asInt());
                     dto.setCreatedAt(rec.get("createdAt").asOffsetDateTime());
                     dto.setUpdatedAt(rec.get("updatedAt").asOffsetDateTime());
                     var restaurant = rec.get("restaurant");
                     dto.setRestaurant(new RestaurantSummaryDto(
                             UUID.fromString(restaurant.get("uuid").asString()),
-                            restaurant.get("name").asString(),
-                            restaurant.get("address").asString()
-                    ));
+                            restaurant.get("name").asString()));
                     var user = rec.get("user");
                     dto.setUser(new UserSummaryDto(
                             UUID.fromString(user.get("uuid").asString()),
@@ -100,8 +100,8 @@ public class RatingRepository {
     public void delete(String userUuid, String restaurantUuid) {
         neo4jClient.query("MATCH (u:User {uuid: $userUuid})-[rating:RATED]->(r:Restaurant {uuid: $restaurantUuid}) " +
                         "DELETE rating")
-                .bind(userUuid).to("userUuid")
-                .bind(restaurantUuid).to("restaurantUuid")
+                .bind(userUuid).to(USER_UUID)
+                .bind(restaurantUuid).to(RESTAURANT_UUID)
                 .run();
     }
 }

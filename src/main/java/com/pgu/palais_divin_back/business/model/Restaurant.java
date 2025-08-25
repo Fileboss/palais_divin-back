@@ -14,11 +14,17 @@ public class Restaurant {
     private UUID uuid;
 
     private String name;
-    private String address;
+    private String country;
+    private String zipCode;
+    private String city;
+    private String roadAndNumber;
+    private String additionalInformation;
+    private Double latitude;
+    private Double longitude;
     private List<String> tags;
     private Double averageRating;
     private Integer ratingCount;
-    private String photoUrl; // Nouvelle propriété pour l'URL de la photo
+    private String photoUrl;
 
     public Restaurant() {
         this.uuid = UUID.randomUUID();

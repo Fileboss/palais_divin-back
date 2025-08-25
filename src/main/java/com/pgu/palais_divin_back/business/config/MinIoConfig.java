@@ -10,11 +10,10 @@ import org.springframework.context.annotation.Configuration;
 @ConfigurationProperties(prefix = "minio")
 @Data
 public class MinIoConfig {
-
-    private String endpoint = "http://localhost:9000";
-    private String accessKey = "minioadmin";
-    private String secretKey = "minioadmin";
-    private String bucketName = "restaurant-photos";
+    private String endpoint;
+    private String accessKey;
+    private String secretKey;
+    private String bucketName;
 
     @Bean
     public MinioClient minioClient() {

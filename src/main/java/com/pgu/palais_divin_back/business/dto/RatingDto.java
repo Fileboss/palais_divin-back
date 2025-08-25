@@ -4,10 +4,9 @@ import lombok.Data;
 
 import java.time.OffsetDateTime;
 
-// Le DTO renvoyé par l'API
 @Data
 public class RatingDto {
-    private String id;                // elementId(rel)
+    private String id;
     private Integer score;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;

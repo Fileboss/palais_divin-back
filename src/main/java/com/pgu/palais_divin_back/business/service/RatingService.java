@@ -8,7 +8,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -18,22 +17,16 @@ public class RatingService {
     private final RatingRepository ratingRepository;
     private final RestaurantRepository restaurantRepository;
 
-    /**
-     * Noter un restaurant - recalcule automatiquement la moyenne
-     */
     @Transactional
     public RatingDto rateRestaurant(String userUuid, String restaurantUuid, Integer score) {
-        // Validation
         if (score < 1 || score > 10) {
             throw new IllegalArgumentException("La note doit être comprise entre 1 et 10");
         }
 
         log.info("User {} rating restaurant {} with score {}", userUuid, restaurantUuid, score);
 
-        // Créer ou mettre à jour la note
         RatingDto rating = ratingRepository.createOrUpdateRating(userUuid, restaurantUuid, score);
 
-        // Recalculer automatiquement la moyenne
         updateRestaurantRating(restaurantUuid);
 
         return rating;

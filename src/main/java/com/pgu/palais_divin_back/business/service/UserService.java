@@ -26,10 +26,6 @@ public class UserService {
         return userRepository.findById(UUID.fromString(id));
     }
 
-    /**
-     * Retrouver un utilisateur à partir de son mail :
-     * renvoyer ses infos AVEC la liste des restaurants auxquels il a donné une note
-     */
     @Transactional(readOnly = true)
     public Optional<UserWithRatedRestaurantsDto> findUserByEmailWithRatedRestaurants(String email) {
         Optional<User> userOpt = userRepository.findByEmail(email);
@@ -51,9 +47,6 @@ public class UserService {
         return Optional.of(dto);
     }
 
-    /**
-     * Retrouver tous les utilisateurs avec leurs infos de base (sans les notes des restaurants)
-     */
     @Transactional(readOnly = true)
     public List<User> findAllUsers() {
         return userRepository.findAll();
