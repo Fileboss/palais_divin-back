@@ -13,10 +13,12 @@ public interface RestaurantRepository extends Neo4jRepository<Restaurant, UUID> 
     @Query("MATCH (r:Restaurant) WHERE toLower(r.name) CONTAINS toLower($name) RETURN r")
     List<Restaurant> findByNameContainingIgnoreCase(@Param("name") String name);
 
-    @Query("MATCH (r:Restaurant {uuid: $restaurantUuid})  " +
-            "OPTIONAL MATCH (r)<-[rating:RATED]-(u:User) " +
-            "WITH r, AVG(rating.score) as avgRating, COUNT(rating) as ratingCount " +
-            "SET r.averageRating = avgRating, r.ratingCount = ratingCount")
+    @Query("""
+            MATCH (r:Restaurant {uuid: $restaurantUuid})
+            OPTIONAL MATCH (r)<-[rating:RATED]-(u:User)
+            WITH r, AVG(rating.score) as avgRating, COUNT(rating) as ratingCount
+            SET r.averageRating = avgRating, r.ratingCount = ratingCount
+            """)
     void updateRestaurantRating(@Param("restaurantUuid") String restaurantUuid);
 
 }

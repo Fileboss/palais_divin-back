@@ -2,6 +2,7 @@ package com.pgu.palais_divin_back.business.controller;
 
 import com.pgu.palais_divin_back.business.model.Restaurant;
 import com.pgu.palais_divin_back.business.service.RestaurantService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -18,7 +19,7 @@ public class RestaurantController {
     private final RestaurantService restaurantService;
 
     @PostMapping
-    public Restaurant createRestaurant(@RequestBody Restaurant restaurant) {
+    public Restaurant createRestaurant(@Valid @RequestBody Restaurant restaurant) {
         return restaurantService.createRestaurant(restaurant);
     }
 

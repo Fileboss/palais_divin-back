@@ -13,9 +13,11 @@ import java.util.UUID;
 public interface UserRepository extends Neo4jRepository<User, UUID> {
     Optional<User> findByEmail(String email);
 
-    @Query("MATCH (u:User) WHERE u.email = $email " +
-            "OPTIONAL MATCH (u)-[r:RATED]->(restaurant:Restaurant) " +
-            "RETURN restaurant.name as name, restaurant.address as address, restaurant.uuid as uuid")
+    @Query("""
+            MATCH (u:User) WHERE u.email = $email
+            OPTIONAL MATCH (u)-[r:RATED]->(restaurant:Restaurant)
+            RETURN restaurant.name as name, restaurant.address as address, restaurant.uuid as uuid
+            """)
     List<RestaurantSummaryDto> findRatedRestaurantsByEmail(@Param("email") String email);
 
 }
