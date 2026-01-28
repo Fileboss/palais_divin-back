@@ -31,10 +31,11 @@ public class GeocodingServiceImpl implements GeocodingService {
 
             HttpHeaders headers = new HttpHeaders();
             headers.set("User-Agent", "palais-divin-app/1.0 (contact@example.com)");
+
             HttpEntity<String> entity = new HttpEntity<>(headers);
 
-            ResponseEntity<List> responseEntity = restTemplate.exchange(url, HttpMethod.GET, entity, List.class);
-            List<Map<String, Object>> response = responseEntity.getBody();
+            var responseEntity = restTemplate.exchange(url, HttpMethod.GET, entity, List.class);
+            var response = responseEntity.getBody();
 
             Map<String, String> geoInfo = new HashMap<>();
             if (response != null && !response.isEmpty()) {
