@@ -53,7 +53,7 @@ Goal: an HTTP request hits the running app and gets a well-formed response. Walk
 
 Goal: write + read one aggregate end to end. Postgres only, no Neo4j yet, no auth yet (still on `/public` for now).
 
-- [ ] **M2.1 — Flyway baseline + V1 migration** — `db/migration/V1__restaurant.sql`: enable `postgis`, create `restaurant(id uuid pk, name text, address text, location geography(Point,4326), created_at timestamptz)`, GIST index on `location`. README §5.1.
+- [x] **M2.1 — Flyway baseline + V1 migration** — `db/migration/V1__restaurant.sql`: enable `postgis`, create `restaurant(id uuid pk, name text, address text, location geography(Point,4326), created_at timestamptz)`, GIST index on `location`. README §5.1.
   - Done when: `mvn verify -P integration-tests` brings up PostGIS via Testcontainers and Flyway applies cleanly.
 - [ ] **M2.2 — `restaurant/domain` skeleton** — `Restaurant` record (or class), `RestaurantId` VO, `Coordinates` VO, `RestaurantRepositoryPort` in `domain/ports/`. JDK-only imports. Add ArchUnit rule that asserts it.
   - Done when: ArchUnit rule passes; no Spring/Jakarta imports in `domain/`.
