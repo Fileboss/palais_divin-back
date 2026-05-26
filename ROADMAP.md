@@ -21,7 +21,7 @@ Goal: the repo boots, compiles, and the basic dev loop works. No business code y
   - Done when: `git status` on a fresh `mvn verify` shows only intentional changes.
 - [x] **M0.3 — Empty ArchUnit rules class** — `src/test/java/.../architecture/ArchitectureRulesTest.java` with one passing rule (e.g. "no class in `domain/**` imports `org.springframework.*`"). README §8.2.
   - Done when: `mvn test` runs it; rule passes against the (still empty) `domain/` tree.
-- [ ] **M0.4 — Spotless plugin** — wire `com.diffplug.spotless:spotless-maven-plugin` with Google Java Format + import order. README §11.
+- [x] **M0.4 — Spotless plugin** — wire `com.diffplug.spotless:spotless-maven-plugin` with Google Java Format + import order. README §11.
   - Done when: `mvn spotless:check` passes on the existing tree; `spotless:apply` is idempotent.
 - [ ] **M0.5 — README: local dev prerequisites note** — one paragraph: Docker Desktop / OrbStack / Colima must be running before `mvn verify`. Symptom of missing it: `Could not find a valid Docker environment`.
   - Done when: section added to README under "Local dev".

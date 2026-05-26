@@ -108,6 +108,25 @@ Quand `hasNext` est `false`, `nextCursor` est absent. Pas de `totalElements`/`to
     Stockage Local : Gestion sécurisée du cycle de vie des tokens d'authentification.  
 
 4. Stack Applicative & Meilleures Pratiques (Mai 2026)
+
+**Synthèse des bibliothèques structurantes** (détails en §4.x et §10) :
+
+| Bibliothèque | Version | Rôle |
+|---|---|---|
+| **Spring Boot** | 4.0.6 | Cadre applicatif (Spring Framework 7, Jakarta EE 11). |
+| **Spring Security + OAuth2 Resource Server** | Boot BOM | Validation JWT Keycloak, sessions `STATELESS`. |
+| **Spring Data JPA + driver PostgreSQL** | Boot BOM | Source de vérité — agrégats, géospatial (PostGIS), table outbox. |
+| **Spring Data Neo4j** | Boot BOM | Vue dérivée — graphe social, scoring d'affinité (Cypher). |
+| **Flyway** | Boot BOM | Versioning du schéma Postgres. |
+| **MinIO Java SDK** | 8.5.17 | Client S3, génération de presigned URLs (jamais de proxy d'octets). |
+| **Resilience4j** | 2.3.0 | Circuit breaker + retry + timeout + bulkhead sur tous les appels sortants. |
+| **Micrometer Tracing + OpenTelemetry (OTLP)** | Boot BOM | Traces distribuées Tomcat → JPA → Neo4j → MinIO → Keycloak. |
+| **Logstash Logback Encoder** | 8.0 | Logs JSON structurés avec `traceId` / `spanId`. |
+| **JUnit 5 + AssertJ + Mockito** | Boot BOM | Tests unitaires (`domain/`, `application/`) — runner, assertions fluentes, mocks de ports (§8.1). |
+| **ArchUnit** | 1.4.0 | Tests d'architecture — gardiens du découpage hexagonal au build (§8.2). |
+| **Testcontainers + Awaitility** | Boot BOM | Conteneurs éphémères en IT + assertions async sur la projection outbox (§8.3). |
+| **Spotless + Google Java Format** | 2.46.1 / 1.28.0 | Lint et formatage automatiques, échec build sur écart (§9.1). |
+
    4.1. Java 25 (LTS) & Configuration Runtime
 
    Cible LTS courante en 2026. Java 26 (preview, GA prévue Sept. 2026) n'est pas retenu pour la prod.

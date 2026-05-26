@@ -19,7 +19,6 @@ class ArchitectureRulesTest {
           .resideInAPackage("..domain..")
           .should()
           .dependOnClassesThat()
-          .resideInAnyPackage(
-              "org.springframework..", "jakarta..", "org.neo4j..", "io.minio..")
+          .resideInAnyPackage("org.springframework..", "jakarta..", "org.neo4j..", "io.minio..")
           .allowEmptyShould(true);
 }
