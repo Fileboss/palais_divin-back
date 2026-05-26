@@ -23,7 +23,7 @@ Goal: the repo boots, compiles, and the basic dev loop works. No business code y
   - Done when: `mvn test` runs it; rule passes against the (still empty) `domain/` tree.
 - [x] **M0.4 — Spotless plugin** — wire `com.diffplug.spotless:spotless-maven-plugin` with Google Java Format + import order. README §11.
   - Done when: `mvn spotless:check` passes on the existing tree; `spotless:apply` is idempotent.
-- [ ] **M0.5 — README: local dev prerequisites note** — one paragraph: Docker Desktop / OrbStack / Colima must be running before `mvn verify`. Symptom of missing it: `Could not find a valid Docker environment`.
+- [x] **M0.5 — README: local dev prerequisites note** — one paragraph: Docker Desktop / OrbStack / Colima must be running before `mvn verify`. Symptom of missing it: `Could not find a valid Docker environment`.
   - Done when: section added to README under "Local dev".
 
 `MILESTONE M0` — `mvn clean verify -P integration-tests` runs green on a fresh clone (Docker daemon up). No surprises in `git status`.

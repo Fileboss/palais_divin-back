@@ -521,3 +521,9 @@ L'Initializr ne propose pas tout — compléter le `pom.xml` après génération
 ```
 
 Convention : classes `*Test.java` exécutées par Surefire en phase `test`, classes `*IT.java` réservées au profil `integration-tests`.
+
+---
+
+## 11. Développement Local
+
+`mvn verify -P integration-tests` (et tout test `*IT.java`) démarre des conteneurs Testcontainers — PostGIS, Neo4j, MinIO, Keycloak — et requiert donc un **démon Docker actif** sur la machine de dev. Lancer **Docker Desktop**, **OrbStack** (macOS, recommandé pour sa légèreté), ou **Colima** avant de jouer la commande. Symptôme caractéristique d'un démon absent : `Could not find a valid Docker environment`. La phase `mvn test` (unitaires + ArchUnit) ne dépend pas de Docker et tourne sans aucun conteneur.
