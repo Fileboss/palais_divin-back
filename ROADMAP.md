@@ -40,7 +40,7 @@ Goal: an HTTP request hits the running app and gets a well-formed response. Walk
   - Done when: app starts, `curl localhost:8080/api/v1/public/ping` returns 200 with the JSON shape. MockMvc test asserts it.
 - [x] **M1.2 — Global `ProblemDetail` advice** — `@RestControllerAdvice` in `shared/adapters/web/` returning `application/problem+json` per RFC 9457. Handle `MethodArgumentNotValidException`, `NoResourceFoundException`, fallback `Exception`. README §6.
   - Done when: hitting an unknown path returns 404 as ProblemDetail; a controller throwing `IllegalArgumentException` returns 400 ProblemDetail; no stack trace leaks.
-- [ ] **M1.3 — Actuator exposure baseline** — expose `health`, `info`, `metrics`, `prometheus` under `/actuator/**`; lock everything else.
+- [x] **M1.3 — Actuator exposure baseline** — expose `health`, `info`, `metrics`, `prometheus` under `/actuator/**`; lock everything else.
   - Done when: those four endpoints return 200; `/actuator/env` returns 404.
 - [x] **M1.4 — Path-prefix `SecurityFilterChain` skeleton** — public/user/admin chain stubs, all unauthenticated for now (token validation comes in M3). README §7.1.
   - Done when: `/api/v1/public/**` is open, `/user/**` and `/admin/**` return 401 (no token yet expected).

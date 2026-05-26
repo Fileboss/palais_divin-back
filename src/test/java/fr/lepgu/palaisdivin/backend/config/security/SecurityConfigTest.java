@@ -34,4 +34,9 @@ class SecurityConfigTest {
   void unmapped_path_requires_auth() throws Exception {
     mockMvc.perform(get("/random")).andExpect(status().isUnauthorized());
   }
+
+  @Test
+  void actuator_path_is_permitted() throws Exception {
+    mockMvc.perform(get("/actuator/health")).andExpect(status().isNotFound());
+  }
 }
