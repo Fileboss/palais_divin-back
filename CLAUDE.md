@@ -44,7 +44,7 @@ When adding a feature: geospatial → Postgres; friend-of-friend/affinity → Ne
 
 - **Java 25 LTS** (Java 26 is preview). Virtual threads on (`spring.threads.virtual.enabled=true`). Use `ReentrantLock` not `synchronized` around I/O (pinning). `ScopedValue` instead of `ThreadLocal` for request context. `StructuredTaskScope` for parallel fan-outs.
 - **Records for DTOs**, `sealed` interfaces for aggregate states + transverse exceptions, pattern-matching switches.
-- **Spring Boot 3.5+**. Use: `@HttpExchange` HTTP Interface clients (Keycloak Admin API), `@ServiceConnection` (Testcontainers), Docker Compose support in dev, scoped `@EnableJpaRepositories` / `@EnableNeo4jRepositories`.
+- **Spring Boot 4.0.6** (Spring Framework 7, Jakarta EE 11). Use: `@HttpExchange` HTTP Interface clients (Keycloak Admin API), `@ServiceConnection` (Testcontainers), Docker Compose support in dev, scoped `@EnableJpaRepositories` / `@EnableNeo4jRepositories`.
 - **OAuth2 Resource Server**, `STATELESS`. Backend never handles passwords — user creation goes via Keycloak Admin API from `user/adapters/keycloak/`.
 
 ## Cross-cutting

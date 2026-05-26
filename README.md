@@ -120,7 +120,7 @@ Quand `hasNext` est `false`, `nextCursor` est absent. Pas de `totalElements`/`to
 
    **Language features** : Records pour tous les DTOs et value objects, Pattern Matching (`switch` sur types scellés pour les exceptions métier), `sealed` interfaces pour modéliser les états d'un agrégat (`Invitation.Pending | Accepted | Expired`).
 
-4.2. Spring Boot 3.5+ (cible Spring Boot 4.0 à sa GA)
+4.2. Spring Boot 4.0.6 (Spring Framework 7, Jakarta EE 11)
 
     **Spring Security & Keycloak** : Resource Server OAuth2 avec validation JWT (JWKS endpoint cache 10 min). Mapping `realm_access.roles` → `ROLE_*` via `JwtAuthenticationConverter` custom. Aucune session HTTP : `SessionCreationPolicy.STATELESS`.
 
@@ -130,7 +130,7 @@ Quand `hasNext` est `false`, `nextCursor` est absent. Pas de `totalElements`/`to
 
     **Spring Boot Docker Compose support** : `compose.yaml` à la racine démarre Postgres+PostGIS, Neo4J, MinIO, Keycloak automatiquement en `mvn spring-boot:run` (dev only — désactivé en prod via `spring.docker.compose.enabled=false`).
 
-    **`@ServiceConnection` (Spring Boot 3.1+)** : les Testcontainers sont câblés au contexte Spring sans `@DynamicPropertySource`.
+    **`@ServiceConnection`** : les Testcontainers sont câblés au contexte Spring sans `@DynamicPropertySource`.
 
 4.3. Observabilité, Résilience & Configuration
 
@@ -240,7 +240,7 @@ Validation des éditions, gestion des utilisateurs, génération d'invitations.
 
 6.3. Gestion d'Erreurs — RFC 9457 (Problem Details for HTTP APIs)
 
-Toutes les erreurs HTTP renvoient un `application/problem+json` (support natif Spring Boot 3.2+ via `ProblemDetail`). Pas de stack trace, pas de message Java brut côté client.
+Toutes les erreurs HTTP renvoient un `application/problem+json` via `ProblemDetail` (support natif Spring Framework 6+, étendu en Spring 7 / Boot 4). Pas de stack trace, pas de message Java brut côté client.
 
 ```json
 {
@@ -328,7 +328,7 @@ Pour récupérer la page suivante, le client renvoie le `nextCursor` reçu, **sa
 
 ### 8.3. Tests d'Intégration avec Testcontainers (~25% du volume)
 Pour valider les requêtes complexes (SQL PostGIS et Cypher Neo4J), la projection outbox, le flux Keycloak, et la signature S3 MinIO.
-* **Technologie** : **Testcontainers Java** + **`@ServiceConnection`** Spring Boot 3.1+ (zéro `@DynamicPropertySource`).
+* **Technologie** : **Testcontainers Java** + **`@ServiceConnection`** (zéro `@DynamicPropertySource`).
 * **Conteneurs éphémères** : `postgis/postgis:16-3.4`, `neo4j:5.20-enterprise`, `minio/minio`, `quay.io/keycloak/keycloak:latest`.
 * **Optimisation** : **Shared Container** (singleton statique) + **réutilisation** Testcontainers (`testcontainers.reuse.enable=true` en local) pour rester sous 2 min sur le pipeline.
 * **Synchronisation outbox** : assertions via `Awaitility` avec timeout 10s (jamais de `Thread.sleep`).
@@ -367,7 +367,7 @@ Configuration exacte à sélectionner sur [start.spring.io](https://start.spring
 |-------|--------|
 | **Project** | Maven |
 | **Language** | Java |
-| **Spring Boot** | `3.5.x` (dernier patch 3.5 stable ; basculer sur `4.0.x` GA dès disponibilité) |
+| **Spring Boot** | `4.0.6` (Spring Framework 7, Jakarta EE 11) |
 | **Group** | `fr.lepgu` |
 | **Artifact** | `palaisdivin-backend` |
 | **Name** | `palaisdivin-backend` |

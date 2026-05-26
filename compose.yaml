@@ -1,0 +1,50 @@
+services:
+  postgres:
+    image: 'postgis/postgis:16-3.4'
+    environment:
+      POSTGRES_DB: palaisdivin
+      POSTGRES_USER: palaisdivin
+      POSTGRES_PASSWORD: palaisdivin
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  neo4j:
+    image: 'neo4j:5.20-enterprise'
+    environment:
+      NEO4J_AUTH: neo4j/palaisdivin
+      NEO4J_ACCEPT_LICENSE_AGREEMENT: 'yes'
+      NEO4J_PLUGINS: '["apoc"]'
+    ports:
+      - '7474:7474'
+      - '7687:7687'
+    volumes:
+      - neo4j-data:/data
+
+  minio:
+    image: 'minio/minio:latest'
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: palaisdivin
+      MINIO_ROOT_PASSWORD: palaisdivin
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    volumes:
+      - minio-data:/data
+
+  keycloak:
+    image: 'quay.io/keycloak/keycloak:26.0'
+    command: start-dev
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_DB: dev-mem
+    ports:
+      - '8081:8080'
+
+volumes:
+  postgres-data:
+  neo4j-data:
+  minio-data:
