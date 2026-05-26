@@ -42,7 +42,7 @@ Goal: an HTTP request hits the running app and gets a well-formed response. Walk
   - Done when: hitting an unknown path returns 404 as ProblemDetail; a controller throwing `IllegalArgumentException` returns 400 ProblemDetail; no stack trace leaks.
 - [ ] **M1.3 — Actuator exposure baseline** — expose `health`, `info`, `metrics`, `prometheus` under `/actuator/**`; lock everything else.
   - Done when: those four endpoints return 200; `/actuator/env` returns 404.
-- [ ] **M1.4 — Path-prefix `SecurityFilterChain` skeleton** — public/user/admin chain stubs, all unauthenticated for now (token validation comes in M3). README §7.1.
+- [x] **M1.4 — Path-prefix `SecurityFilterChain` skeleton** — public/user/admin chain stubs, all unauthenticated for now (token validation comes in M3). README §7.1.
   - Done when: `/api/v1/public/**` is open, `/user/**` and `/admin/**` return 401 (no token yet expected).
 
 `MILESTONE M1` — App boots, public endpoint returns 200, errors are ProblemDetail, security skeleton is in place. **You can now stand up the frontend** against a stable contract for public endpoints.
