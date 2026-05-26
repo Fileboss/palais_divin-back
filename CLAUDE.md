@@ -4,7 +4,7 @@ Guidance for Claude Code working in this repo. `README.md` is the authoritative 
 
 ## Project state
 
-Greenfield rewrite. Previous `com.pgu.palais_divin_back` code is staged for deletion; no source on disk yet, no `pom.xml`. Target package root: `fr.lepgu.palaisdivin.backend`. Don't invent build commands from the old layout.
+Phases M0 + M1 complete (scaffold + walking skeleton: ping, ProblemDetail, actuator, security stub). `ROADMAP.md` is the source of truth for what comes next and per-task done-when criteria — pick the topmost unchecked task in the earliest unfinished phase. Package root: `fr.lepgu.palaisdivin.backend`.
 
 ## Domain in one paragraph
 
@@ -47,6 +47,14 @@ When adding a feature: geospatial → Postgres; friend-of-friend/affinity → Ne
 - **Spring Boot 4.0.6** (Spring Framework 7, Jakarta EE 11). Use: `@HttpExchange` HTTP Interface clients (Keycloak Admin API), `@ServiceConnection` (Testcontainers), Docker Compose support in dev, scoped `@EnableJpaRepositories` / `@EnableNeo4jRepositories`.
 - **OAuth2 Resource Server**, `STATELESS`. Backend never handles passwords — user creation goes via Keycloak Admin API from `user/adapters/keycloak/`.
 
+## Boot 4 bite-once gotchas
+
+- Web starter is `spring-boot-starter-webmvc` (not `-web`); test slice annotations moved to `org.springframework.boot.webmvc.test.autoconfigure.*` (e.g. `@WebMvcTest`, `@AutoConfigureMockMvc`). `@LocalServerPort` is at `org.springframework.boot.test.web.server.LocalServerPort`.
+- `TestRestTemplate` requires `@AutoConfigureTestRestTemplate` + `spring-boot-restclient` on the test classpath. Prefer `RestClient.create("http://localhost:" + port)` with `@LocalServerPort` for full-HTTP integration tests — no extra deps, no test-client annotations.
+- `@SpringBootTest` substitutes `SimpleMeterRegistry` for the Prometheus registry by default. Metrics-export tests need `@ImportAutoConfiguration(PrometheusMetricsExportAutoConfiguration.class)` + `management.endpoint.prometheus.access=read-only` + `management.prometheus.metrics.export.enabled=true` to mirror prod.
+- A custom `SecurityFilterChain` with no auth mechanism returns **403** (not 401) for unauthenticated requests. Stub chains need `HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)`; M3's `.oauth2ResourceServer()` then replaces it with `BearerTokenAuthenticationEntryPoint`.
+- `spring-boot-docker-compose` auto-detects only vanilla images (`postgres`, `neo4j`, `minio`). Non-vanilla images (`postgis/postgis`) need `org.springframework.boot.service-connection: <type>` labels in `compose.yaml`.
+
 ## Cross-cutting
 
 - **Errors**: RFC 9457 `ProblemDetail` (`application/problem+json`) via a `@RestControllerAdvice` in `shared/adapters/web/`. Never leak stack traces.
@@ -56,7 +64,7 @@ When adding a feature: geospatial → Postgres; friend-of-friend/affinity → Ne
 
 ## API conventions
 
-- Auth-by-prefix: `/api/v1/public/**` (anon), `/user/**` (`ROLE_USER`), `/admin/**` (`ROLE_ADMIN`).
+- Auth-by-prefix: `/api/v1/public/**` (anon), `/api/v1/user/**` (`ROLE_USER`), `/api/v1/admin/**` (`ROLE_ADMIN`).
 - **List endpoints: keyset (cursor) pagination only.** Params: `cursor` (opaque Base64URL), `size` (default 20, max 100, `@Max`-validated), `sort` (server-side enum whitelist). Response envelope: `{ data, page: { size, hasNext, nextCursor } }`. Use Spring Data `Slice<T>` (no `COUNT(*)`). Cursor encodes `{k, id, v}` — `id` tiebreaker is mandatory.
 - Server-side filtering/sorting/geospatial ranking always — frontend just renders.
 - User-endpoint mutations accept `Idempotency-Key` (24h dedup).
