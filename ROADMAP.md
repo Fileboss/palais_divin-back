@@ -38,7 +38,7 @@ Goal: an HTTP request hits the running app and gets a well-formed response. Walk
 
 - [x] **M1.1 — Public health endpoint** — `GET /api/v1/public/ping` returns `{"status":"ok","ts":<iso>}` via a controller in `shared/adapters/web/`.
   - Done when: app starts, `curl localhost:8080/api/v1/public/ping` returns 200 with the JSON shape. MockMvc test asserts it.
-- [ ] **M1.2 — Global `ProblemDetail` advice** — `@RestControllerAdvice` in `shared/adapters/web/` returning `application/problem+json` per RFC 9457. Handle `MethodArgumentNotValidException`, `NoResourceFoundException`, fallback `Exception`. README §6.
+- [x] **M1.2 — Global `ProblemDetail` advice** — `@RestControllerAdvice` in `shared/adapters/web/` returning `application/problem+json` per RFC 9457. Handle `MethodArgumentNotValidException`, `NoResourceFoundException`, fallback `Exception`. README §6.
   - Done when: hitting an unknown path returns 404 as ProblemDetail; a controller throwing `IllegalArgumentException` returns 400 ProblemDetail; no stack trace leaks.
 - [ ] **M1.3 — Actuator exposure baseline** — expose `health`, `info`, `metrics`, `prometheus` under `/actuator/**`; lock everything else.
   - Done when: those four endpoints return 200; `/actuator/env` returns 404.
