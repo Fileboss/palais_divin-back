@@ -95,7 +95,7 @@ Goal: dual-store sync that respects the README's eventual-consistency model.
   - Done when: migration applies; index on `(status, created_at)`.
 - [ ] **M4.2 — `shared/adapters/outbox/OutboxPublisher`** — domain-facing port + JPA-backed adapter. Writes payload in the same tx as the aggregate.
   - Done when: unit test (mocked tx manager) shows aggregate save and outbox row commit atomically.
-- [ ] **M4.3 — `shared/adapters/outbox/OutboxWorker`** — `@Scheduled`, `SELECT ... FOR UPDATE SKIP LOCKED LIMIT N`, dispatches to a `Projector` per `aggregate_type`, marks `PROCESSED`. Bulkhead via Resilience4j.
+- [ ] **M4.3 — `shared/adapters/outbox/OutboxWorker`** — `@Scheduled`, `SELECT ... FOR UPDATE SKIP LOCKED LIMIT N`, dispatches to a `Projector` per `aggregate_type`, marks `PROCESSED`. Concurrency bounded by a fixed-size `ThreadPoolTaskExecutor` if/when fan-out is needed.
   - Done when: concurrent IT with 2 worker beans shows no double-processing.
 - [ ] **M4.4 — `restaurant/adapters/neo4j/RestaurantProjector`** — Cypher `MERGE` of `(:Restaurant {id})` with name/coords. Idempotent.
   - Done when: IT creates a restaurant via REST, polls Neo4j with Awaitility, finds the node.
@@ -110,7 +110,7 @@ Goal: invitation-only signup via Keycloak Admin API. No self-service.
 
 - [ ] **M5.1 — `user/domain`** — `User` aggregate, `InvitationToken` VO (24h ttl, single-use), `UserRepositoryPort`.
 - [ ] **M5.2 — `user/adapters/postgres`** — JPA + V2 migration (`app_user`, `invitation`).
-- [ ] **M5.3 — `user/adapters/keycloak` — `@HttpExchange` client** — Spring 7 HTTP Interface against Keycloak Admin API. Resilience4j circuit breaker + 2s timeout. README §7.2.
+- [ ] **M5.3 — `user/adapters/keycloak` — `@HttpExchange` client** — Spring 7 HTTP Interface against Keycloak Admin API. 2s connect + read timeout configured on the `RestClient.Builder`. README §7.2.
   - Done when: an IT mints a Keycloak user via the client.
 - [ ] **M5.4 — `POST /admin/invitations`** — admin issues a token; returns one-time signup URL.
 - [ ] **M5.5 — `POST /api/v1/public/signup`** — consumes token, creates Postgres `User` + Keycloak user + outbox event for Neo4j projection.
@@ -150,7 +150,7 @@ Goal: recommendations come from the graph, not from aggregates.
 
 Goal: media without proxying bytes through Java. README §5.4.
 
-- [ ] **M8.1 — `config/MinioConfig`** — client bean, Resilience4j wrap.
+- [ ] **M8.1 — `config/MinioConfig`** — client bean; 2s timeout configured on `MinioClient.httpClient(...)`.
 - [ ] **M8.2 — `POST /user/restaurants/{id}/photos/upload-url`** — returns presigned PUT URL.
 - [ ] **M8.3 — `POST /user/restaurants/{id}/photos`** — registers uploaded object key + metadata.
 - [ ] **M8.4 — `GET /user/restaurants/{id}/photos/{key}/download-url`** — returns presigned GET URL.
@@ -164,8 +164,7 @@ Goal: media without proxying bytes through Java. README §5.4.
 - [ ] **M9.1 — JSON logging via `logstash-logback-encoder`** — `logback-spring.xml` with `traceId`/`spanId` MDC.
 - [ ] **M9.2 — OTLP exporter target** — `compose.yaml` adds an OpenTelemetry collector; verify traces arrive.
 - [ ] **M9.3 — Domain metrics** — `Counter`/`Timer` on: ratings created, outbox lag, Neo4j projection latency, presigned URL minting.
-- [ ] **M9.4 — Resilience4j coverage audit** — every outbound call (Keycloak, MinIO, Neo4j) has CB + timeout + retry.
-- [ ] **M9.5 — OWASP Dependency-Check + Trivy** — Maven plugin + GH Action.
+- [ ] **M9.4 — OWASP Dependency-Check + Trivy** — Maven plugin + GH Action.
 
 `MILESTONE M9` — Ready to deploy with someone watching it.
 
@@ -191,6 +190,7 @@ Shared infra lives in **`lepgu_infra`** (the renamed `qui-est-ce_infra` repo, ho
 
 ## Post-launch backlog (unordered, pick when relevant)
 
+- **Resilience4j adoption** (circuit breakers + retry + bulkhead) — add if real evidence demands it: repeated outbound failure storms in production (Keycloak / MinIO / Neo4j), or scaling beyond a single backend instance where cascading-failure containment starts to matter. Native timeouts are already in place; this is the next layer up, not a missing baseline.
 - GraalVM native image investigation (deferred per CLAUDE.md — JPA + Neo4j reflection cost).
 - Geo-search endpoint (`?near=lat,lon&radius=km`) using PostGIS `ST_DWithin`.
 - Bulk invitation CSV import for admins.

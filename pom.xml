@@ -16,10 +16,9 @@
 
 	<properties>
 		<java.version>25</java.version>
-		<resilience4j.version>2.3.0</resilience4j.version>
 		<minio.version>8.5.17</minio.version>
 		<logstash-encoder.version>8.0</logstash-encoder.version>
-		<archunit.version>1.4.0</archunit.version>
+		<archunit.version>1.4.2</archunit.version>
 		<testcontainers-keycloak.version>3.6.0</testcontainers-keycloak.version>
 		<spotless.version>2.46.1</spotless.version>
 		<google-java-format.version>1.28.0</google-java-format.version>
@@ -72,18 +71,6 @@
 			<groupId>io.minio</groupId>
 			<artifactId>minio</artifactId>
 			<version>${minio.version}</version>
-		</dependency>
-
-		<!-- Resilience4j sur tous les appels sortants (Keycloak, MinIO, Neo4J) -->
-		<dependency>
-			<groupId>io.github.resilience4j</groupId>
-			<artifactId>resilience4j-spring-boot3</artifactId>
-			<version>${resilience4j.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>io.github.resilience4j</groupId>
-			<artifactId>resilience4j-reactor</artifactId>
-			<version>${resilience4j.version}</version>
 		</dependency>
 
 		<!-- Ops & observabilité -->

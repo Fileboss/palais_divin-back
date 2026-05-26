@@ -56,7 +56,7 @@ Un simple `@TransactionalEventListener(AFTER_COMMIT)` perd les événements en c
 1.  L'opération métier écrit l'agrégat ET une ligne dans la table `outbox_event` (payload JSON + agrégat + statut `PENDING`) **dans la même transaction Postgres**. Atomicité garantie par la DB.
 2.  Un worker asynchrone (Spring `@Scheduled` + lock pessimiste `SKIP LOCKED`, ou poll-and-publish) draine la table par lots, projette vers Neo4J via les adaptateurs OGM, puis marque l'événement `PROCESSED`.
 3.  Idempotence côté Neo4J via `MERGE` Cypher sur les clés métiers — un événement rejoué ne crée pas de doublon.
-4.  Les événements en erreur passent en `FAILED` après N tentatives (backoff exponentiel via Resilience4j) et sont escaladés via métrique + alerte.
+4.  Les événements en erreur passent en `FAILED` après N tentatives (compteur en colonne sur la ligne outbox + backoff exponentiel borné dans `OutboxWorker`) et sont escaladés via métrique + alerte.
 
 Conséquence pour les développeurs : **Neo4J est eventually consistent** (latence typique < 1s, SLA < 10s). Aucun read-your-writes cross-store dans la même requête HTTP. Les tests d'intégration qui valident la projection doivent attendre via `Awaitility`.
 3. Découpage Responsabilités Front ↔ Back
@@ -119,7 +119,6 @@ Quand `hasNext` est `false`, `nextCursor` est absent. Pas de `totalElements`/`to
 | **Spring Data Neo4j** | Boot BOM | Vue dérivée — graphe social, scoring d'affinité (Cypher). |
 | **Flyway** | Boot BOM | Versioning du schéma Postgres. |
 | **MinIO Java SDK** | 8.5.17 | Client S3, génération de presigned URLs (jamais de proxy d'octets). |
-| **Resilience4j** | 2.3.0 | Circuit breaker + retry + timeout + bulkhead sur tous les appels sortants. |
 | **Micrometer Tracing + OpenTelemetry (OTLP)** | Boot BOM | Traces distribuées Tomcat → JPA → Neo4j → MinIO → Keycloak. |
 | **Logstash Logback Encoder** | 8.0 | Logs JSON structurés avec `traceId` / `spanId`. |
 | **JUnit 5 + AssertJ + Mockito** | Boot BOM | Tests unitaires (`domain/`, `application/`) — runner, assertions fluentes, mocks de ports (§8.1). |
@@ -145,17 +144,17 @@ Quand `hasNext` est `false`, `nextCursor` est absent. Pas de `totalElements`/`to
 
     **Spring Data JPA & Spring Data Neo4j** : coexistence avec `@EnableJpaRepositories(basePackages = "...postgres")` et `@EnableNeo4jRepositories(basePackages = "...neo4j")` scopés pour éviter tout chevauchement.
 
-    **HTTP Interface Clients (Spring 6.x)** : l'appel à l'API Admin Keycloak passe par une interface déclarative `@HttpExchange` (typesafe, testable, intégrée à Resilience4j) — pas de `RestTemplate` ni `WebClient` manuel.
+    **HTTP Interface Clients (Spring 6.x)** : l'appel à l'API Admin Keycloak passe par une interface déclarative `@HttpExchange` (typesafe, testable) — pas de `RestTemplate` ni `WebClient` manuel.
 
     **Spring Boot Docker Compose support** : `compose.yaml` à la racine démarre Postgres+PostGIS, Neo4J, MinIO, Keycloak automatiquement en `mvn spring-boot:run` (dev only — désactivé en prod via `spring.docker.compose.enabled=false`).
 
     **`@ServiceConnection`** : les Testcontainers sont câblés au contexte Spring sans `@DynamicPropertySource`.
 
-4.3. Observabilité, Résilience & Configuration
+4.3. Observabilité, Timeouts & Configuration
 
    **Observabilité** : Spring Boot Actuator + **Micrometer Tracing avec exporter OpenTelemetry (OTLP)**. Traces propagées sur l'ensemble Tomcat → JPA → Neo4J driver → HTTP client Keycloak → S3 client MinIO. Logs en JSON (Logback `LogstashEncoder`) avec `traceId`/`spanId` injectés. Métriques métiers explicites : `invitations.issued`, `reviews.submitted`, `recommendations.served{cache=hit|miss}`.
 
-   **Résilience (Resilience4j)** : circuit breakers + timeouts + retry avec backoff exponentiel sur **tous** les appels sortants (Keycloak Admin, MinIO, driver Neo4J). Bulkhead sémaphore sur le worker outbox pour borner la charge. Aucun appel externe sans timeout — défaut 2s, configurable par adaptateur.
+   **Timeouts** : aucun appel externe sans timeout — défaut 2s, configurable par adaptateur. Configuration sur les clients natifs (`RestClient.Builder` pour Keycloak, `MinioClient.httpClient(...)` pour MinIO, `org.neo4j.driver.Config.builder()` pour Neo4J). Circuit breakers / retry / bulkhead non retenus pour le MVP — voir `ROADMAP.md` backlog post-launch si l'instabilité ou la mise à l'échelle multi-instance les justifient.
 
    **Configuration** : `@ConfigurationProperties` typés et **validés** (`@Validated` + Bean Validation). Aucun `@Value` éparpillé. Secrets injectés via variables d'environnement (Docker secrets en prod), jamais en clair dans `application.yml`. Profils Spring : `dev`, `test`, `prod`.
 
@@ -224,8 +223,7 @@ fr.lepgu.palaisdivin.backend
 │
 └── config/                         # Configuration globale Spring
     ├── SecurityConfig.java         # Resource Server JWT + mapping rôles Keycloak
-    ├── ObservabilityConfig.java    # OpenTelemetry, Micrometer, MDC
-    └── ResilienceConfig.java       # Resilience4j (CB, retry, bulkhead) par adaptateur
+    └── ObservabilityConfig.java    # OpenTelemetry, Micrometer, MDC
 
 **Règles d'isolement (vérifiées par ArchUnit, cf. §8) :**
 - `domain/**` n'importe **rien** de `org.springframework.*`, `jakarta.*`, `org.neo4j.*`, `io.minio.*`. JDK standard uniquement.
@@ -433,13 +431,6 @@ L'Initializr ne propose pas tout — compléter le `pom.xml` après génération
     <version>8.5.17</version>
 </dependency>
 
-<!-- Resilience4j (Circuit Breaker, Retry, Bulkhead, TimeLimiter) -->
-<dependency>
-    <groupId>io.github.resilience4j</groupId>
-    <artifactId>resilience4j-spring-boot3</artifactId>
-    <version>2.3.0</version>
-</dependency>
-
 <!-- Logback JSON encoder (logs structurés avec traceId/spanId) -->
 <dependency>
     <groupId>net.logstash.logback</groupId>
@@ -486,7 +477,7 @@ L'Initializr ne propose pas tout — compléter le `pom.xml` après génération
 </dependency>
 ```
 
-> **Note Keycloak Admin API** : ne pas ajouter `keycloak-admin-client` officiel — préférer un **HTTP Interface Client** déclaratif (`@HttpExchange`) sur la base du `RestClient` Spring, comme spécifié en §4.2. Cela évite une dépendance lourde et coexiste mieux avec Resilience4j.
+> **Note Keycloak Admin API** : ne pas ajouter `keycloak-admin-client` officiel — préférer un **HTTP Interface Client** déclaratif (`@HttpExchange`) sur la base du `RestClient` Spring, comme spécifié en §4.2. Cela évite une dépendance lourde et garde le contrôle des timeouts directement sur le `RestClient.Builder`.
 
 ### 10.4. Profil Maven `integration-tests`
 

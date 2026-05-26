@@ -21,7 +21,7 @@ fr.lepgu.palaisdivin.backend
 ├── shared/
 │   ├── domain/{exception,valueobject}
 │   └── adapters/{outbox,web}           # Transactional Outbox + ProblemDetail handler
-└── config/                             # Security, Observability, Resilience
+└── config/                             # Security, Observability
 ```
 
 Hard rules (ArchUnit-enforced — README §8):
@@ -59,7 +59,7 @@ When adding a feature: geospatial → Postgres; friend-of-friend/affinity → Ne
 
 - **Errors**: RFC 9457 `ProblemDetail` (`application/problem+json`) via a `@RestControllerAdvice` in `shared/adapters/web/`. Never leak stack traces.
 - **Observability**: Micrometer Tracing + OTLP, Logback JSON with `traceId`/`spanId`, domain-specific metrics.
-- **Resilience4j on every outbound call** (Keycloak, MinIO, Neo4J): circuit breaker + 2s timeout + exponential retry. Bulkhead on outbox worker.
+- **Outbound calls** (Keycloak, MinIO, Neo4J): configure connect + read timeouts on the native client (`RestClient.Builder` for Keycloak, `MinioClient.httpClient(...)` for MinIO, `org.neo4j.driver.Config.builder()` for Neo4J). Default 2s. No Resilience4j — see `ROADMAP.md` "Post-launch backlog" if/when CB/retry/bulkhead become evidence-driven needs.
 - **Config**: `@ConfigurationProperties` + `@Validated`, no scattered `@Value`. Secrets via env / Docker secrets only.
 
 ## API conventions
