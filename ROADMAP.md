@@ -17,7 +17,7 @@ Status legend: `[ ]` todo · `[x]` done · `[~]` in progress · `[?]` blocked / 
 Goal: the repo boots, compiles, and the basic dev loop works. No business code yet.
 
 - [x] **M0.1 — Initializr scaffold + manual deps** — `pom.xml`, `compose.yaml`, wrapper, package layout. _(commit 2cb600d)_
-- [ ] **M0.2 — Add `.gitignore`** — Maven/IntelliJ/macOS. Stop `target/`, `.idea/`, `.DS_Store` polluting `git status`.
+- [x] **M0.2 — Add `.gitignore`** — Maven/IntelliJ/macOS. Stop `target/`, `.idea/`, `.DS_Store` polluting `git status`.
   - Done when: `git status` on a fresh `mvn verify` shows only intentional changes.
 - [ ] **M0.3 — Empty ArchUnit rules class** — `src/test/java/.../architecture/ArchitectureRulesTest.java` with one passing rule (e.g. "no class in `domain/**` imports `org.springframework.*`"). README §8.2.
   - Done when: `mvn test` runs it; rule passes against the (still empty) `domain/` tree.
