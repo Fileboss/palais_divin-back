@@ -25,6 +25,8 @@ Goal: the repo boots, compiles, and the basic dev loop works. No business code y
   - Done when: `mvn spotless:check` passes on the existing tree; `spotless:apply` is idempotent.
 - [x] **M0.5 — README: local dev prerequisites note** — one paragraph: Docker Desktop / OrbStack / Colima must be running before `mvn verify`. Symptom of missing it: `Could not find a valid Docker environment`.
   - Done when: section added to README under "Local dev".
+- [x] **M0.6 — Local datasource bootstrap for `spring-boot:run`** — add `org.springframework.boot.service-connection` labels to the `postgres`, `neo4j`, and `minio` services in `compose.yaml` so Spring Boot's docker-compose support auto-injects JDBC/Neo4j/S3 connection details. Without this, `mvn spring-boot:run` fails at startup with `Failed to determine a suitable driver class` (the JPA starter is on the classpath but no DataSource URL is bound — the `postgis/postgis` image isn't in Boot's default-recognized list). Revealed by M1.1 first booting the app.
+  - Done when: `./mvnw spring-boot:run` (with Docker daemon up) reaches `Started PalaisDivinBackendApplication` without errors.
 
 `MILESTONE M0` — `mvn clean verify -P integration-tests` runs green on a fresh clone (Docker daemon up). No surprises in `git status`.
 

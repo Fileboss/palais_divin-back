@@ -1,6 +1,8 @@
 services:
   postgres:
     image: 'postgis/postgis:16-3.4'
+    labels:
+      org.springframework.boot.service-connection: postgres
     environment:
       POSTGRES_DB: palaisdivin
       POSTGRES_USER: palaisdivin
@@ -12,6 +14,8 @@ services:
 
   neo4j:
     image: 'neo4j:5.20-enterprise'
+    labels:
+      org.springframework.boot.service-connection: neo4j
     environment:
       NEO4J_AUTH: neo4j/palaisdivin
       NEO4J_ACCEPT_LICENSE_AGREEMENT: 'yes'
@@ -24,6 +28,8 @@ services:
 
   minio:
     image: 'minio/minio:latest'
+    labels:
+      org.springframework.boot.service-connection: s3
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: palaisdivin
