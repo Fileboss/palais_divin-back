@@ -36,7 +36,7 @@ Goal: the repo boots, compiles, and the basic dev loop works. No business code y
 
 Goal: an HTTP request hits the running app and gets a well-formed response. Walking skeleton — wire, not feature.
 
-- [ ] **M1.1 — Public health endpoint** — `GET /api/v1/public/ping` returns `{"status":"ok","ts":<iso>}` via a controller in `shared/adapters/web/`.
+- [x] **M1.1 — Public health endpoint** — `GET /api/v1/public/ping` returns `{"status":"ok","ts":<iso>}` via a controller in `shared/adapters/web/`.
   - Done when: app starts, `curl localhost:8080/api/v1/public/ping` returns 200 with the JSON shape. MockMvc test asserts it.
 - [ ] **M1.2 — Global `ProblemDetail` advice** — `@RestControllerAdvice` in `shared/adapters/web/` returning `application/problem+json` per RFC 9457. Handle `MethodArgumentNotValidException`, `NoResourceFoundException`, fallback `Exception`. README §6.
   - Done when: hitting an unknown path returns 404 as ProblemDetail; a controller throwing `IllegalArgumentException` returns 400 ProblemDetail; no stack trace leaks.
