@@ -3,13 +3,14 @@ package fr.lepgu.palaisdivin.backend.config.security;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import fr.lepgu.palaisdivin.backend.shared.adapters.web.PingController;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 
-@WebMvcTest
+@WebMvcTest(PingController.class)
 @Import(SecurityConfig.class)
 class SecurityConfigTest {
 

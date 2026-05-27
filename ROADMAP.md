@@ -61,7 +61,7 @@ Goal: write + read one aggregate end to end. Postgres only, no Neo4j yet, no aut
   - Done when: unit tests (mocked port) pass; no Spring context loaded.
 - [x] **M2.4 — `restaurant/adapters/postgres`** — JPA entity + repository implementing the domain port. Mapping `Coordinates` ↔ `geography(Point,4326)`. Also wire `@Service` on `RestaurantService` and add a `Clock` bean in `config/` (both deferred from M2.3 — couldn't ship before the port had an adapter, would break `contextLoads`).
   - Done when: a `@DataJpaTest`-style IT (Testcontainers PostGIS) round-trips a restaurant.
-- [ ] **M2.5 — `restaurant/adapters/rest`** — `POST /api/v1/public/restaurants` (create) + `GET /api/v1/public/restaurants/{id}`. DTOs as records.
+- [x] **M2.5 — `restaurant/adapters/rest`** — `POST /api/v1/public/restaurants` (create) + `GET /api/v1/public/restaurants/{id}`. DTOs as records.
   - Done when: MockMvc test asserts both endpoints; integration test posts then gets the same restaurant.
 - [ ] **M2.6 — Keyset pagination on list endpoint** — `GET /api/v1/public/restaurants?cursor=&size=&sort=`. `Slice<T>` (no `COUNT(*)`). Cursor = Base64URL of `{k, id, v}`. README §7.4.
   - Done when: list returns the envelope `{ data, page: { size, hasNext, nextCursor } }`; a test inserts 50 rows and walks pages by cursor.

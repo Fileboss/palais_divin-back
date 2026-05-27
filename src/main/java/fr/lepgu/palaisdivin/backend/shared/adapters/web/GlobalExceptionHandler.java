@@ -1,5 +1,6 @@
 package fr.lepgu.palaisdivin.backend.shared.adapters.web;
 
+import fr.lepgu.palaisdivin.backend.restaurant.domain.RestaurantNotFoundException;
 import io.micrometer.tracing.Tracer;
 import java.net.URI;
 import java.util.Map;
@@ -62,6 +63,15 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     pd.setTitle("Resource not found");
     addTraceId(pd);
     return new ResponseEntity<>(pd, headers, status);
+  }
+
+  @ExceptionHandler(RestaurantNotFoundException.class)
+  ResponseEntity<ProblemDetail> handleRestaurantNotFound(RestaurantNotFoundException ex) {
+    ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+    pd.setType(PROBLEM_BASE.resolve("not-found"));
+    pd.setTitle("Resource not found");
+    addTraceId(pd);
+    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(pd);
   }
 
   @ExceptionHandler(IllegalArgumentException.class)
