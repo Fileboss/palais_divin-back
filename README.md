@@ -124,6 +124,7 @@ Quand `hasNext` est `false`, `nextCursor` est absent. Pas de `totalElements`/`to
 | **JUnit 5 + AssertJ + Mockito** | Boot BOM | Tests unitaires (`domain/`, `application/`) — runner, assertions fluentes, mocks de ports (§8.1). |
 | **ArchUnit** | 1.4.0 | Tests d'architecture — gardiens du découpage hexagonal au build (§8.2). |
 | **Testcontainers + Awaitility** | Boot BOM | Conteneurs éphémères en IT + assertions async sur la projection outbox (§8.3). |
+| **Maven Surefire** | Boot BOM | Plugin Maven exécutant les tests unitaires (`*Test.java`) en phase `test` ; rapports XML sous `target/surefire-reports/`. Complément de Failsafe (`*IT.java`, profil `integration-tests`, §10.4) — la séparation garantit qu'un IT lent ne pénalise pas la boucle dev `mvn test`. |
 | **Spotless + Google Java Format** | 2.46.1 / 1.28.0 | Lint et formatage automatiques, échec build sur écart (§9.1). |
 
    4.1. Java 25 (LTS) & Configuration Runtime

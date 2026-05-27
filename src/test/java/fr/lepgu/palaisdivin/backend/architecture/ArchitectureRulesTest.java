@@ -1,5 +1,6 @@
 package fr.lepgu.palaisdivin.backend.architecture;
 
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 import com.tngtech.archunit.core.importer.ImportOption;
@@ -20,5 +21,15 @@ class ArchitectureRulesTest {
           .should()
           .dependOnClassesThat()
           .resideInAnyPackage("org.springframework..", "jakarta..", "org.neo4j..", "io.minio..")
+          .allowEmptyShould(true);
+
+  @ArchTest
+  static final ArchRule domainOnlyDependsOnJdkAndDomain =
+      classes()
+          .that()
+          .resideInAPackage("..domain..")
+          .should()
+          .onlyDependOnClassesThat()
+          .resideInAnyPackage("java..", "..domain..")
           .allowEmptyShould(true);
 }
