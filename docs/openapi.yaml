@@ -1,0 +1,162 @@
+openapi: 3.1.0
+info:
+  title: Palais Divin Backend
+  version: 0.0.1-SNAPSHOT
+servers: []
+paths:
+  /api/v1/public/ping:
+    get:
+      operationId: ping
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PingResponse"
+          description: OK
+      tags:
+      - ping-controller
+  /api/v1/public/restaurants:
+    get:
+      operationId: list
+      parameters:
+      - in: query
+        name: cursor
+        required: false
+        schema:
+          type: string
+      - in: query
+        name: size
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+          maximum: 100
+          minimum: 1
+      - in: query
+        name: sort
+        required: false
+        schema:
+          type: string
+          default: CREATED_AT_DESC
+          enum:
+          - CREATED_AT_DESC
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/RestaurantsPageResponse"
+          description: OK
+      tags:
+      - restaurant-rest-controller
+    post:
+      operationId: create
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRestaurantRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/RestaurantResponse"
+          description: OK
+      tags:
+      - restaurant-rest-controller
+  /api/v1/public/restaurants/{id}:
+    get:
+      operationId: get
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/RestaurantResponse"
+          description: OK
+      tags:
+      - restaurant-rest-controller
+components:
+  schemas:
+    CoordinatesDto:
+      type: object
+      properties:
+        latitude:
+          type: number
+          format: double
+          maximum: 90
+          minimum: -90
+        longitude:
+          type: number
+          format: double
+          maximum: 180
+          minimum: -180
+      required:
+      - latitude
+      - longitude
+    CreateRestaurantRequest:
+      type: object
+      properties:
+        address:
+          type: string
+        location:
+          $ref: "#/components/schemas/CoordinatesDto"
+        name:
+          type: string
+          minLength: 1
+      required:
+      - location
+      - name
+    PageMeta:
+      type: object
+      properties:
+        hasNext:
+          type: boolean
+        nextCursor:
+          type: string
+        size:
+          type: integer
+          format: int32
+    PingResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        ts:
+          type: string
+          format: date-time
+    RestaurantResponse:
+      type: object
+      properties:
+        address:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        id:
+          type: string
+          format: uuid
+        location:
+          $ref: "#/components/schemas/CoordinatesDto"
+        name:
+          type: string
+    RestaurantsPageResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/RestaurantResponse"
+        page:
+          $ref: "#/components/schemas/PageMeta"

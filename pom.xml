@@ -22,6 +22,7 @@
 		<testcontainers-keycloak.version>3.6.0</testcontainers-keycloak.version>
 		<spotless.version>2.46.1</spotless.version>
 		<google-java-format.version>1.28.0</google-java-format.version>
+		<springdoc.version>3.0.3</springdoc.version>
 	</properties>
 
 	<dependencies>
@@ -209,6 +210,14 @@
 			<artifactId>awaitility</artifactId>
 			<scope>test</scope>
 		</dependency>
+
+		<!-- OpenAPI spec generation (test-only — pas exposé en prod) -->
+		<dependency>
+			<groupId>org.springdoc</groupId>
+			<artifactId>springdoc-openapi-starter-webmvc-api</artifactId>
+			<version>${springdoc.version}</version>
+			<scope>test</scope>
+		</dependency>
 	</dependencies>
 
 	<build>
@@ -279,6 +288,9 @@
 							<includes>
 								<include>**/*IT.java</include>
 							</includes>
+							<systemPropertyVariables>
+								<project.basedir>${project.basedir}</project.basedir>
+							</systemPropertyVariables>
 						</configuration>
 						<executions>
 							<execution>

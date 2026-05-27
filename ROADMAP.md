@@ -65,8 +65,10 @@ Goal: write + read one aggregate end to end. Postgres only, no Neo4j yet, no aut
   - Done when: MockMvc test asserts both endpoints; integration test posts then gets the same restaurant.
 - [x] **M2.6 — Keyset pagination on list endpoint** — `GET /api/v1/public/restaurants?cursor=&size=&sort=`. `Slice<T>` (no `COUNT(*)`). Cursor = Base64URL of `{k, id, v}`. README §7.4.
   - Done when: list returns the envelope `{ data, page: { size, hasNext, nextCursor } }`; a test inserts 50 rows and walks pages by cursor.
+- [x] **M2.7 — OpenAPI spec generated at build time** — wire springdoc-openapi so `mvn verify` produces a committed `openapi.json` (or `openapi.yaml`) covering all current endpoints. To hand off to the frontend dev between phases.
+  - Done when: a fresh `mvn verify -P integration-tests` writes/refreshes the spec file at a deterministic path; the file contains every controller path currently exposed (ping, restaurant POST/GET/list); CI fails if the committed file is stale relative to the code.
 
-`MILESTONE M2` — One aggregate persisted, queryable, paginated. Frontend can already render a list. Backend is no longer empty.
+`MILESTONE M2` — One aggregate persisted, queryable, paginated, with a published OpenAPI contract. Frontend can already render a list. Backend is no longer empty.
 
 ---
 
