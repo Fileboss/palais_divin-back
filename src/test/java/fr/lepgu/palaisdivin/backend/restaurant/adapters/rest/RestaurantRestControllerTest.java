@@ -19,7 +19,7 @@ import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.CreateRestaurantUseC
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.FindRestaurantUseCase;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.ListRestaurantsUseCase;
 import fr.lepgu.palaisdivin.backend.shared.adapters.web.GlobalExceptionHandler;
-import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.Page;
+import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Base64;
@@ -184,7 +184,7 @@ class RestaurantRestControllerTest {
   void list_noCursor_returnsEnvelope_withoutNextCursorWhenLastPage() throws Exception {
     Restaurant r1 = restaurant("Septime");
     Restaurant r2 = restaurant("Le Train Bleu");
-    when(listRestaurants.list(null, 20)).thenReturn(new Page<>(List.of(r1, r2), false));
+    when(listRestaurants.list(null, 20)).thenReturn(new CursorPage<>(List.of(r1, r2), false));
 
     mockMvc
         .perform(get("/api/v1/public/restaurants"))
@@ -202,7 +202,7 @@ class RestaurantRestControllerTest {
   void list_withMoreAvailable_emitsNextCursor() throws Exception {
     Restaurant r1 = restaurant("Septime");
     Restaurant r2 = restaurant("Le Train Bleu");
-    when(listRestaurants.list(null, 2)).thenReturn(new Page<>(List.of(r1, r2), true));
+    when(listRestaurants.list(null, 2)).thenReturn(new CursorPage<>(List.of(r1, r2), true));
 
     mockMvc
         .perform(get("/api/v1/public/restaurants").param("size", "2"))
@@ -225,7 +225,7 @@ class RestaurantRestControllerTest {
                 ("{\"k\":\"" + lastTs + "\",\"id\":\"" + lastId + "\",\"v\":1}")
                     .getBytes(StandardCharsets.UTF_8));
     when(listRestaurants.list(new RestaurantCursor(lastTs, lastId), 5))
-        .thenReturn(new Page<>(List.of(restaurant("Septime")), false));
+        .thenReturn(new CursorPage<>(List.of(restaurant("Septime")), false));
 
     mockMvc
         .perform(get("/api/v1/public/restaurants").param("cursor", cursor).param("size", "5"))

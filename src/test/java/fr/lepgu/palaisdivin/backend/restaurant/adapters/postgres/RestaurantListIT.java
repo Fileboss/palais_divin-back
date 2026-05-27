@@ -7,7 +7,7 @@ import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Coordinates;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Restaurant;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantCursor;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantId;
-import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.Page;
+import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -44,7 +44,7 @@ class RestaurantListIT {
     RestaurantCursor cursor = null;
     int pages = 0;
     while (true) {
-      Page<Restaurant> page = adapter.findAll(cursor, 10);
+      CursorPage<Restaurant> page = adapter.findAll(cursor, 10);
       collected.addAll(page.data());
       pages++;
       if (!page.hasNext()) {
@@ -84,7 +84,7 @@ class RestaurantListIT {
               new Coordinates(48.8536, 2.3795),
               Instant.parse("2026-05-27T10:00:00Z").plusSeconds(i)));
     }
-    Page<Restaurant> page = adapter.findAll(null, 10);
+    CursorPage<Restaurant> page = adapter.findAll(null, 10);
     assertThat(page.data()).hasSize(3);
     assertThat(page.hasNext()).isFalse();
   }

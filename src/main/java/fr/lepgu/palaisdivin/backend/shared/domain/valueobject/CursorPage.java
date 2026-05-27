@@ -3,8 +3,8 @@ package fr.lepgu.palaisdivin.backend.shared.domain.valueobject;
 import java.util.List;
 import java.util.Objects;
 
-public record Page<T>(List<T> data, boolean hasNext) {
-  public Page {
+public record CursorPage<T>(List<T> data, boolean hasNext) {
+  public CursorPage {
     Objects.requireNonNull(data, "data");
     data = List.copyOf(data);
   }

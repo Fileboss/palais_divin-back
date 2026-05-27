@@ -8,7 +8,7 @@ import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.CreateRestaurantUseC
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.FindRestaurantUseCase;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.ListRestaurantsUseCase;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.RestaurantRepositoryPort;
-import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.Page;
+import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Optional;
@@ -39,7 +39,7 @@ public class RestaurantService
   }
 
   @Override
-  public Page<Restaurant> list(RestaurantCursor cursor, int size) {
+  public CursorPage<Restaurant> list(RestaurantCursor cursor, int size) {
     return repository.findAll(cursor, size);
   }
 }
