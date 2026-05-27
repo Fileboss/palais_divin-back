@@ -9,7 +9,9 @@ import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.RestaurantRepository
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Optional;
+import org.springframework.stereotype.Service;
 
+@Service
 public class RestaurantService implements CreateRestaurantUseCase, FindRestaurantUseCase {
 
   private final RestaurantRepositoryPort repository;
