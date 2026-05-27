@@ -63,7 +63,7 @@ Goal: write + read one aggregate end to end. Postgres only, no Neo4j yet, no aut
   - Done when: a `@DataJpaTest`-style IT (Testcontainers PostGIS) round-trips a restaurant.
 - [x] **M2.5 — `restaurant/adapters/rest`** — `POST /api/v1/public/restaurants` (create) + `GET /api/v1/public/restaurants/{id}`. DTOs as records.
   - Done when: MockMvc test asserts both endpoints; integration test posts then gets the same restaurant.
-- [ ] **M2.6 — Keyset pagination on list endpoint** — `GET /api/v1/public/restaurants?cursor=&size=&sort=`. `Slice<T>` (no `COUNT(*)`). Cursor = Base64URL of `{k, id, v}`. README §7.4.
+- [x] **M2.6 — Keyset pagination on list endpoint** — `GET /api/v1/public/restaurants?cursor=&size=&sort=`. `Slice<T>` (no `COUNT(*)`). Cursor = Base64URL of `{k, id, v}`. README §7.4.
   - Done when: list returns the envelope `{ data, page: { size, hasNext, nextCursor } }`; a test inserts 50 rows and walks pages by cursor.
 
 `MILESTONE M2` — One aggregate persisted, queryable, paginated. Frontend can already render a list. Backend is no longer empty.

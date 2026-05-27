@@ -5,11 +5,17 @@ import static org.assertj.core.api.Assertions.within;
 
 import fr.lepgu.palaisdivin.backend.TestcontainersConfiguration;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -61,5 +67,71 @@ class RestaurantRestIT {
     assertThat(fetched.address()).isEqualTo(created.address());
     assertThat(fetched.location()).isEqualTo(created.location());
     assertThat(fetched.createdAt()).isCloseTo(created.createdAt(), within(1, ChronoUnit.MILLIS));
+  }
+
+  @Test
+  void listWalksAllPagesByCursor() {
+    RestClient client = RestClient.create("http://localhost:" + port);
+
+    Set<UUID> postedIds = new HashSet<>();
+    for (int i = 0; i < 25; i++) {
+      CreateRestaurantRequest req =
+          new CreateRestaurantRequest("r-" + i, null, new CoordinatesDto(48.8536, 2.3795));
+      RestaurantResponse created =
+          client
+              .post()
+              .uri("/api/v1/public/restaurants")
+              .contentType(MediaType.APPLICATION_JSON)
+              .body(req)
+              .retrieve()
+              .body(RestaurantResponse.class);
+      postedIds.add(created.id());
+    }
+
+    List<UUID> collected = new ArrayList<>();
+    String cursor = null;
+    int pages = 0;
+    while (true) {
+      String path =
+          cursor == null
+              ? "/api/v1/public/restaurants?size=10"
+              : "/api/v1/public/restaurants?size=10&cursor=" + cursor;
+      RestaurantsPageResponse body =
+          client.get().uri(path).retrieve().body(RestaurantsPageResponse.class);
+      assertThat(body).isNotNull();
+      assertThat(body.page().size()).isEqualTo(10);
+      body.data().forEach(r -> collected.add(r.id()));
+      pages++;
+      if (!body.page().hasNext()) {
+        assertThat(body.page().nextCursor()).isNull();
+        break;
+      }
+      cursor = body.page().nextCursor();
+      assertThat(cursor).isNotBlank();
+      if (pages > 10) {
+        throw new AssertionError("paging did not terminate");
+      }
+    }
+
+    assertThat(collected).doesNotHaveDuplicates();
+    assertThat(new HashSet<>(collected)).containsAll(postedIds);
+  }
+
+  @Test
+  void list_invalidCursor_returns400ProblemDetail() {
+    RestClient client = RestClient.create("http://localhost:" + port);
+
+    ResponseEntity<String> resp =
+        client
+            .get()
+            .uri("/api/v1/public/restaurants?cursor=not!base64!!")
+            .retrieve()
+            .onStatus(s -> s.is4xxClientError(), (req, res) -> {})
+            .toEntity(new ParameterizedTypeReference<String>() {});
+
+    assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(resp.getHeaders().getContentType().toString())
+        .startsWith("application/problem+json");
+    assertThat(resp.getBody()).contains("/problems/invalid-cursor");
   }
 }

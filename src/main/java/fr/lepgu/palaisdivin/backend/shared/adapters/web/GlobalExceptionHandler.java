@@ -1,11 +1,14 @@
 package fr.lepgu.palaisdivin.backend.shared.adapters.web;
 
+import fr.lepgu.palaisdivin.backend.restaurant.adapters.rest.InvalidCursorException;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.RestaurantNotFoundException;
 import io.micrometer.tracing.Tracer;
+import jakarta.validation.ConstraintViolationException;
 import java.net.URI;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.TypeMismatchException;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -16,6 +19,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
@@ -81,6 +85,56 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     pd.setTitle("Bad request");
     addTraceId(pd);
     return ResponseEntity.badRequest().body(pd);
+  }
+
+  @ExceptionHandler(ConstraintViolationException.class)
+  ResponseEntity<ProblemDetail> handleConstraintViolation(ConstraintViolationException ex) {
+    ProblemDetail pd = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+    pd.setType(PROBLEM_BASE.resolve("validation"));
+    pd.setTitle("Validation failed");
+    pd.setProperty(
+        "errors",
+        ex.getConstraintViolations().stream()
+            .map(
+                v ->
+                    Map.of(
+                        "field", v.getPropertyPath().toString(),
+                        "message", String.valueOf(v.getMessage())))
+            .toList());
+    addTraceId(pd);
+    return ResponseEntity.badRequest().body(pd);
+  }
+
+  @ExceptionHandler(InvalidCursorException.class)
+  ResponseEntity<ProblemDetail> handleInvalidCursor(InvalidCursorException ex) {
+    ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+    pd.setType(PROBLEM_BASE.resolve("invalid-cursor"));
+    pd.setTitle("Invalid cursor");
+    addTraceId(pd);
+    return ResponseEntity.badRequest().body(pd);
+  }
+
+  @Override
+  protected ResponseEntity<Object> handleHandlerMethodValidationException(
+      HandlerMethodValidationException ex,
+      HttpHeaders headers,
+      HttpStatusCode status,
+      WebRequest request) {
+    ProblemDetail pd = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+    pd.setType(PROBLEM_BASE.resolve("validation"));
+    pd.setTitle("Validation failed");
+    addTraceId(pd);
+    return new ResponseEntity<>(pd, headers, HttpStatus.BAD_REQUEST);
+  }
+
+  @Override
+  protected ResponseEntity<Object> handleTypeMismatch(
+      TypeMismatchException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+    ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+    pd.setType(PROBLEM_BASE.resolve("bad-request"));
+    pd.setTitle("Bad request");
+    addTraceId(pd);
+    return new ResponseEntity<>(pd, headers, HttpStatus.BAD_REQUEST);
   }
 
   @ExceptionHandler(Exception.class)

@@ -2,17 +2,21 @@ package fr.lepgu.palaisdivin.backend.restaurant.application;
 
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Coordinates;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Restaurant;
+import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantCursor;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantId;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.CreateRestaurantUseCase;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.FindRestaurantUseCase;
+import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.ListRestaurantsUseCase;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.RestaurantRepositoryPort;
+import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.Page;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
 
 @Service
-public class RestaurantService implements CreateRestaurantUseCase, FindRestaurantUseCase {
+public class RestaurantService
+    implements CreateRestaurantUseCase, FindRestaurantUseCase, ListRestaurantsUseCase {
 
   private final RestaurantRepositoryPort repository;
   private final Clock clock;
@@ -32,5 +36,10 @@ public class RestaurantService implements CreateRestaurantUseCase, FindRestauran
   @Override
   public Optional<Restaurant> findById(RestaurantId id) {
     return repository.findById(id);
+  }
+
+  @Override
+  public Page<Restaurant> list(RestaurantCursor cursor, int size) {
+    return repository.findAll(cursor, size);
   }
 }

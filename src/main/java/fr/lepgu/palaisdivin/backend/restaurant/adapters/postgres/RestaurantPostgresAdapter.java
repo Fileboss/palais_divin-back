@@ -2,13 +2,17 @@ package fr.lepgu.palaisdivin.backend.restaurant.adapters.postgres;
 
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Coordinates;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Restaurant;
+import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantCursor;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantId;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.RestaurantRepositoryPort;
+import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.Page;
 import java.util.Optional;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.PrecisionModel;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -32,6 +36,18 @@ public class RestaurantPostgresAdapter implements RestaurantRepositoryPort {
   @Override
   public Optional<Restaurant> findById(RestaurantId id) {
     return jpa.findById(id.value()).map(RestaurantPostgresAdapter::toDomain);
+  }
+
+  @Override
+  public Page<Restaurant> findAll(RestaurantCursor cursor, int size) {
+    PageRequest pageable = PageRequest.of(0, size);
+    Slice<RestaurantEntity> slice =
+        cursor == null
+            ? jpa.findFirstPage(pageable)
+            : jpa.findAfter(cursor.createdAt(), cursor.id(), pageable);
+    return new Page<>(
+        slice.getContent().stream().map(RestaurantPostgresAdapter::toDomain).toList(),
+        slice.hasNext());
   }
 
   private static RestaurantEntity toEntity(Restaurant r) {
