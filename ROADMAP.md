@@ -57,9 +57,9 @@ Goal: write + read one aggregate end to end. Postgres only, no Neo4j yet, no aut
   - Done when: `mvn verify -P integration-tests` brings up PostGIS via Testcontainers and Flyway applies cleanly.
 - [x] **M2.2 — `restaurant/domain` skeleton** — `Restaurant` record (or class), `RestaurantId` VO, `Coordinates` VO, `RestaurantRepositoryPort` in `domain/ports/`. JDK-only imports. Add ArchUnit rule that asserts it.
   - Done when: ArchUnit rule passes; no Spring/Jakarta imports in `domain/`.
-- [ ] **M2.3 — `restaurant/application/RestaurantService`** — `create(...)`, `findById(...)`. Implements a `CreateRestaurantUseCase` / `FindRestaurantUseCase` interface defined in `domain/ports/`.
+- [x] **M2.3 — `restaurant/application/RestaurantService`** — `create(...)`, `findById(...)`. Implements a `CreateRestaurantUseCase` / `FindRestaurantUseCase` interface defined in `domain/ports/`.
   - Done when: unit tests (mocked port) pass; no Spring context loaded.
-- [ ] **M2.4 — `restaurant/adapters/postgres`** — JPA entity + repository implementing the domain port. Mapping `Coordinates` ↔ `geography(Point,4326)`.
+- [ ] **M2.4 — `restaurant/adapters/postgres`** — JPA entity + repository implementing the domain port. Mapping `Coordinates` ↔ `geography(Point,4326)`. Also wire `@Service` on `RestaurantService` and add a `Clock` bean in `config/` (both deferred from M2.3 — couldn't ship before the port had an adapter, would break `contextLoads`).
   - Done when: a `@DataJpaTest`-style IT (Testcontainers PostGIS) round-trips a restaurant.
 - [ ] **M2.5 — `restaurant/adapters/rest`** — `POST /api/v1/public/restaurants` (create) + `GET /api/v1/public/restaurants/{id}`. DTOs as records.
   - Done when: MockMvc test asserts both endpoints; integration test posts then gets the same restaurant.

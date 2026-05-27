@@ -32,4 +32,14 @@ class ArchitectureRulesTest {
           .onlyDependOnClassesThat()
           .resideInAnyPackage("java..", "..domain..")
           .allowEmptyShould(true);
+
+  @ArchTest
+  static final ArchRule applicationShouldNotDependOnAdapters =
+      noClasses()
+          .that()
+          .resideInAPackage("..application..")
+          .should()
+          .dependOnClassesThat()
+          .resideInAPackage("..adapters..")
+          .allowEmptyShould(true);
 }
