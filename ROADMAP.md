@@ -80,7 +80,7 @@ Goal: real auth. Public stays public; user-scoped endpoints require a valid JWT.
 
 - [x] **M3.1 — `config/security` — OAuth2 Resource Server, STATELESS** — `application.yml` issuer-uri, JWT decoder, role mapping (`realm_access.roles` → `ROLE_*`). README §7.1.
   - Done when: an unsigned request to `/user/**` returns 401 ProblemDetail; a valid Keycloak-issued token returns 200.
-- [ ] **M3.2 — `compose.yaml` realm bootstrap** — import a `palaisdivin` realm JSON with one test client + one test user at container start. Keep in `compose/keycloak/realm-palaisdivin.json`.
+- [x] **M3.2 — `compose.yaml` realm bootstrap** — import a `palaisdivin` realm JSON with one test client + one test user at container start. Keep in `compose/keycloak/realm-palaisdivin.json`.
   - Done when: `docker compose up` produces a usable realm; manual token fetch works.
 - [ ] **M3.3 — Move `Restaurant` GETs under `/api/v1/user/restaurants`** — keep `/public` only for ping and obvious anon endpoints.
   - Done when: existing tests updated; auth required for the list/detail.
