@@ -84,7 +84,7 @@ Goal: real auth. Public stays public; user-scoped endpoints require a valid JWT.
   - Done when: `docker compose up` produces a usable realm; manual token fetch works.
 - [x] **M3.3 — Move `Restaurant` GETs under `/api/v1/user/restaurants`** — keep `/public` only for ping and obvious anon endpoints.
   - Done when: existing tests updated; auth required for the list/detail.
-- [ ] **M3.4 — Integration test with `testcontainers-keycloak`** — boot Keycloak in IT, mint a token, hit `/user/restaurants`.
+- [x] **M3.4 — Integration test with `testcontainers-keycloak`** — boot Keycloak in IT, mint a token, hit `/user/restaurants`.
   - Done when: green on `mvn verify -P integration-tests`.
 
 `MILESTONE M3` — End-to-end **secure** vertical. **Frontend integrates the Keycloak login flow now.** This is the first "demo-able" state.

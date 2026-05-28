@@ -9,6 +9,8 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import dasniko.testcontainers.keycloak.KeycloakContainer;
+import fr.lepgu.palaisdivin.backend.TestKeycloakTokens;
 import fr.lepgu.palaisdivin.backend.TestcontainersConfiguration;
 import fr.lepgu.palaisdivin.backend.restaurant.adapters.geocoding.BanApiClient;
 import fr.lepgu.palaisdivin.backend.restaurant.adapters.geocoding.BanResponse;
@@ -20,6 +22,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.web.server.LocalServerPort;
@@ -38,7 +41,11 @@ class RestaurantRestIT {
 
   @LocalServerPort int port;
 
+  @Autowired KeycloakContainer keycloak;
+
   @MockitoBean BanApiClient banApiClient;
+
+  private String userToken;
 
   @BeforeEach
   void stubBanApiClient() {
@@ -219,9 +226,14 @@ class RestaurantRestIT {
   }
 
   private RestClient authedClient() {
+    if (userToken == null) {
+      userToken =
+          TestKeycloakTokens.passwordGrant(
+              keycloak, "palaisdivin", "palais-divin-frontend", "testuser", "testpassword");
+    }
     return RestClient.builder()
         .baseUrl("http://localhost:" + port)
-        .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer test-user")
+        .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + userToken)
         .build();
   }
 }

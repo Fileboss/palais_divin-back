@@ -39,7 +39,10 @@ public class SecurityConfig {
                     .anyRequest()
                     .authenticated())
         .oauth2ResourceServer(
-            oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter)))
+            oauth2 ->
+                oauth2
+                    .authenticationEntryPoint(problemDetailEntryPoint)
+                    .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter)))
         .exceptionHandling(
             e ->
                 e.authenticationEntryPoint(problemDetailEntryPoint)
