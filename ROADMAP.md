@@ -95,7 +95,7 @@ Goal: real auth. Public stays public; user-scoped endpoints require a valid JWT.
 
 Goal: dual-store sync that respects the README's eventual-consistency model.
 
-- [ ] **M4.1 — `outbox_event` table** — Flyway migration: `id`, `aggregate_type`, `aggregate_id`, `event_type`, `payload jsonb`, `status`, `created_at`, `processed_at`. README §5.3.
+- [x] **M4.1 — `outbox_event` table** — Flyway migration: `id`, `aggregate_type`, `aggregate_id`, `event_type`, `payload jsonb`, `status`, `created_at`, `processed_at`. README §5.3.
   - Done when: migration applies; index on `(status, created_at)`.
 - [ ] **M4.2 — `shared/adapters/outbox/OutboxPublisher`** — domain-facing port + JPA-backed adapter. Writes payload in the same tx as the aggregate.
   - Done when: unit test (mocked tx manager) shows aggregate save and outbox row commit atomically.
