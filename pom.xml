@@ -311,6 +311,29 @@
 							</execution>
 						</executions>
 					</plugin>
+					<!-- Sync the regenerated OpenAPI spec to the sibling frontend repo so it's
+					     never out of date. No-op when palais_divin-front/ isn't cloned alongside. -->
+					<plugin>
+						<artifactId>maven-antrun-plugin</artifactId>
+						<executions>
+							<execution>
+								<id>sync-openapi-to-frontend</id>
+								<phase>post-integration-test</phase>
+								<goals>
+									<goal>run</goal>
+								</goals>
+								<configuration>
+									<target>
+										<copy file="${project.basedir}/docs/openapi.yaml"
+										      tofile="${project.basedir}/../palais_divin-front/doc/openapi.yaml"
+										      overwrite="true"
+										      failonerror="false"
+										      quiet="true"/>
+									</target>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
 				</plugins>
 			</build>
 		</profile>
