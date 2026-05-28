@@ -25,6 +25,7 @@ import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Import;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -52,14 +53,14 @@ class RestaurantRestIT {
 
   @Test
   void postThenGetReturnsTheSameRestaurant() {
-    RestClient client = RestClient.create("http://localhost:" + port);
+    RestClient client = authedClient();
 
     CreateRestaurantRequest req = new CreateRestaurantRequest("Septime", "80 Rue de Charonne");
 
     ResponseEntity<RestaurantResponse> postResp =
         client
             .post()
-            .uri("/api/v1/public/restaurants")
+            .uri("/api/v1/user/restaurants")
             .contentType(MediaType.APPLICATION_JSON)
             .body(req)
             .retrieve()
@@ -95,14 +96,14 @@ class RestaurantRestIT {
     when(banApiClient.search(eq("zzzz unknown address zzzz"), eq(1)))
         .thenReturn(new BanResponse(List.of()));
 
-    RestClient client = RestClient.create("http://localhost:" + port);
+    RestClient client = authedClient();
     CreateRestaurantRequest req =
         new CreateRestaurantRequest("Septime", "zzzz unknown address zzzz");
 
     ResponseEntity<String> resp =
         client
             .post()
-            .uri("/api/v1/public/restaurants")
+            .uri("/api/v1/user/restaurants")
             .contentType(MediaType.APPLICATION_JSON)
             .body(req)
             .retrieve()
@@ -117,7 +118,7 @@ class RestaurantRestIT {
 
   @Test
   void listWalksAllPagesByCursor() {
-    RestClient client = RestClient.create("http://localhost:" + port);
+    RestClient client = authedClient();
 
     Set<UUID> postedIds = new HashSet<>();
     for (int i = 0; i < 25; i++) {
@@ -125,7 +126,7 @@ class RestaurantRestIT {
       RestaurantResponse created =
           client
               .post()
-              .uri("/api/v1/public/restaurants")
+              .uri("/api/v1/user/restaurants")
               .contentType(MediaType.APPLICATION_JSON)
               .body(req)
               .retrieve()
@@ -139,8 +140,8 @@ class RestaurantRestIT {
     while (true) {
       String path =
           cursor == null
-              ? "/api/v1/public/restaurants?size=10"
-              : "/api/v1/public/restaurants?size=10&cursor=" + cursor;
+              ? "/api/v1/user/restaurants?size=10"
+              : "/api/v1/user/restaurants?size=10&cursor=" + cursor;
       RestaurantsPageResponse body =
           client.get().uri(path).retrieve().body(RestaurantsPageResponse.class);
       assertThat(body).isNotNull();
@@ -164,14 +165,14 @@ class RestaurantRestIT {
 
   @Test
   void repeatedAddressIsServedFromCacheAndHitsBanOnlyOnce() {
-    RestClient client = RestClient.create("http://localhost:" + port);
+    RestClient client = authedClient();
     String address = "cache-hit address " + UUID.randomUUID();
     CreateRestaurantRequest req = new CreateRestaurantRequest("Cache Test", address);
 
     for (int i = 0; i < 3; i++) {
       client
           .post()
-          .uri("/api/v1/public/restaurants")
+          .uri("/api/v1/user/restaurants")
           .contentType(MediaType.APPLICATION_JSON)
           .body(req)
           .retrieve()
@@ -183,12 +184,12 @@ class RestaurantRestIT {
 
   @Test
   void list_invalidCursor_returns400ProblemDetail() {
-    RestClient client = RestClient.create("http://localhost:" + port);
+    RestClient client = authedClient();
 
     ResponseEntity<String> resp =
         client
             .get()
-            .uri("/api/v1/public/restaurants?cursor=not!base64!!")
+            .uri("/api/v1/user/restaurants?cursor=not!base64!!")
             .retrieve()
             .onStatus(s -> s.is4xxClientError(), (req, res) -> {})
             .toEntity(new ParameterizedTypeReference<String>() {});
@@ -197,5 +198,30 @@ class RestaurantRestIT {
     assertThat(resp.getHeaders().getContentType().toString())
         .startsWith("application/problem+json");
     assertThat(resp.getBody()).contains("/problems/invalid-cursor");
+  }
+
+  @Test
+  void unauthenticated_request_returns_401_problem_detail() {
+    RestClient unauthed = RestClient.create("http://localhost:" + port);
+
+    ResponseEntity<String> resp =
+        unauthed
+            .get()
+            .uri("/api/v1/user/restaurants")
+            .retrieve()
+            .onStatus(s -> s.is4xxClientError(), (req, res) -> {})
+            .toEntity(String.class);
+
+    assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    assertThat(resp.getHeaders().getContentType().toString())
+        .startsWith("application/problem+json");
+    assertThat(resp.getBody()).contains("/problems/unauthorized");
+  }
+
+  private RestClient authedClient() {
+    return RestClient.builder()
+        .baseUrl("http://localhost:" + port)
+        .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer test-user")
+        .build();
   }
 }

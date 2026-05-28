@@ -2,6 +2,7 @@ package fr.lepgu.palaisdivin.backend.restaurant.adapters.rest;
 
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -32,8 +33,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 @WebMvcTest(RestaurantRestController.class)
 @Import({SecurityConfig.class, GlobalExceptionHandler.class})
@@ -46,6 +50,11 @@ class RestaurantRestControllerTest {
   @MockitoBean CreateRestaurantUseCase createRestaurant;
   @MockitoBean FindRestaurantUseCase findRestaurant;
   @MockitoBean ListRestaurantsUseCase listRestaurants;
+  @MockitoBean JwtDecoder jwtDecoder;
+
+  private static RequestPostProcessor userJwt() {
+    return jwt().authorities(new SimpleGrantedAuthority("ROLE_USER"));
+  }
 
   @Test
   void post_validPayload_returns_201_with_location_and_body() throws Exception {
@@ -61,7 +70,8 @@ class RestaurantRestControllerTest {
 
     mockMvc
         .perform(
-            post("/api/v1/public/restaurants")
+            post("/api/v1/user/restaurants")
+                .with(userJwt())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     """
@@ -73,7 +83,7 @@ class RestaurantRestControllerTest {
         .andExpect(status().isCreated())
         .andExpect(
             header()
-                .string("Location", Matchers.endsWith("/api/v1/public/restaurants/" + id.value())))
+                .string("Location", Matchers.endsWith("/api/v1/user/restaurants/" + id.value())))
         .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$.id").value(id.value().toString()))
         .andExpect(jsonPath("$.name").value("Septime"))
@@ -87,7 +97,8 @@ class RestaurantRestControllerTest {
   void post_blankName_returns_400_problem_detail() throws Exception {
     mockMvc
         .perform(
-            post("/api/v1/public/restaurants")
+            post("/api/v1/user/restaurants")
+                .with(userJwt())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     """
@@ -107,7 +118,8 @@ class RestaurantRestControllerTest {
   void post_blankAddress_returns_400_problem_detail() throws Exception {
     mockMvc
         .perform(
-            post("/api/v1/public/restaurants")
+            post("/api/v1/user/restaurants")
+                .with(userJwt())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     """
@@ -129,7 +141,8 @@ class RestaurantRestControllerTest {
 
     mockMvc
         .perform(
-            post("/api/v1/public/restaurants")
+            post("/api/v1/user/restaurants")
+                .with(userJwt())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     """
@@ -160,7 +173,7 @@ class RestaurantRestControllerTest {
     when(findRestaurant.findById(id)).thenReturn(Optional.of(found));
 
     mockMvc
-        .perform(get("/api/v1/public/restaurants/{id}", id.value()))
+        .perform(get("/api/v1/user/restaurants/{id}", id.value()).with(userJwt()))
         .andExpect(status().isOk())
         .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$.id").value(id.value().toString()))
@@ -175,7 +188,7 @@ class RestaurantRestControllerTest {
     when(findRestaurant.findById(new RestaurantId(id))).thenReturn(Optional.empty());
 
     mockMvc
-        .perform(get("/api/v1/public/restaurants/{id}", id))
+        .perform(get("/api/v1/user/restaurants/{id}", id).with(userJwt()))
         .andExpect(status().isNotFound())
         .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
         .andExpect(jsonPath("$.status").value(404))
@@ -191,7 +204,7 @@ class RestaurantRestControllerTest {
     when(listRestaurants.list(null, 20)).thenReturn(new CursorPage<>(List.of(r1, r2), false));
 
     mockMvc
-        .perform(get("/api/v1/public/restaurants"))
+        .perform(get("/api/v1/user/restaurants").with(userJwt()))
         .andExpect(status().isOk())
         .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$.data.length()").value(2))
@@ -209,7 +222,7 @@ class RestaurantRestControllerTest {
     when(listRestaurants.list(null, 2)).thenReturn(new CursorPage<>(List.of(r1, r2), true));
 
     mockMvc
-        .perform(get("/api/v1/public/restaurants").param("size", "2"))
+        .perform(get("/api/v1/user/restaurants").param("size", "2").with(userJwt()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.data.length()").value(2))
         .andExpect(jsonPath("$.page.size").value(2))
@@ -232,7 +245,11 @@ class RestaurantRestControllerTest {
         .thenReturn(new CursorPage<>(List.of(restaurant("Septime")), false));
 
     mockMvc
-        .perform(get("/api/v1/public/restaurants").param("cursor", cursor).param("size", "5"))
+        .perform(
+            get("/api/v1/user/restaurants")
+                .param("cursor", cursor)
+                .param("size", "5")
+                .with(userJwt()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.data.length()").value(1));
   }
@@ -240,7 +257,7 @@ class RestaurantRestControllerTest {
   @Test
   void list_invalidCursor_returns400_problemDetail() throws Exception {
     mockMvc
-        .perform(get("/api/v1/public/restaurants").param("cursor", "not!base64!!"))
+        .perform(get("/api/v1/user/restaurants").param("cursor", "not!base64!!").with(userJwt()))
         .andExpect(status().isBadRequest())
         .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
         .andExpect(jsonPath("$.type").value("https://palaisdivin.lepgu.fr/problems/invalid-cursor"))
@@ -250,21 +267,21 @@ class RestaurantRestControllerTest {
   @Test
   void list_sizeOverMax_returns400() throws Exception {
     mockMvc
-        .perform(get("/api/v1/public/restaurants").param("size", "101"))
+        .perform(get("/api/v1/user/restaurants").param("size", "101").with(userJwt()))
         .andExpect(status().isBadRequest());
   }
 
   @Test
   void list_sizeBelowMin_returns400() throws Exception {
     mockMvc
-        .perform(get("/api/v1/public/restaurants").param("size", "0"))
+        .perform(get("/api/v1/user/restaurants").param("size", "0").with(userJwt()))
         .andExpect(status().isBadRequest());
   }
 
   @Test
   void list_unknownSortValue_returns400() throws Exception {
     mockMvc
-        .perform(get("/api/v1/public/restaurants").param("sort", "BOGUS"))
+        .perform(get("/api/v1/user/restaurants").param("sort", "BOGUS").with(userJwt()))
         .andExpect(status().isBadRequest());
   }
 

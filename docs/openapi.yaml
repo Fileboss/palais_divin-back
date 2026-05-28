@@ -16,7 +16,7 @@ paths:
           description: OK
       tags:
       - ping-controller
-  /api/v1/public/restaurants:
+  /api/v1/user/restaurants:
     get:
       operationId: list
       parameters:
@@ -68,7 +68,7 @@ paths:
           description: OK
       tags:
       - restaurant-rest-controller
-  /api/v1/public/restaurants/{id}:
+  /api/v1/user/restaurants/{id}:
     get:
       operationId: get
       parameters:

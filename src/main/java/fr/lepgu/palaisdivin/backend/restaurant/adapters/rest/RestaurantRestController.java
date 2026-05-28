@@ -27,7 +27,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 @RestController
 @Validated
-@RequestMapping("/api/v1/public/restaurants")
+@RequestMapping("/api/v1/user/restaurants")
 class RestaurantRestController {
 
   private final CreateRestaurantUseCase createRestaurant;
