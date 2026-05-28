@@ -97,7 +97,7 @@ Goal: dual-store sync that respects the README's eventual-consistency model.
 
 - [x] **M4.1 — `outbox_event` table** — Flyway migration: `id`, `aggregate_type`, `aggregate_id`, `event_type`, `payload jsonb`, `status`, `created_at`, `processed_at`. README §5.3.
   - Done when: migration applies; index on `(status, created_at)`.
-- [ ] **M4.2 — `shared/adapters/outbox/OutboxPublisher`** — domain-facing port + JPA-backed adapter. Writes payload in the same tx as the aggregate.
+- [x] **M4.2 — `shared/adapters/outbox/OutboxPublisher`** — domain-facing port + JPA-backed adapter. Writes payload in the same tx as the aggregate.
   - Done when: unit test (mocked tx manager) shows aggregate save and outbox row commit atomically.
 - [ ] **M4.3 — `shared/adapters/outbox/OutboxWorker`** — `@Scheduled`, `SELECT ... FOR UPDATE SKIP LOCKED LIMIT N`, dispatches to a `Projector` per `aggregate_type`, marks `PROCESSED`. Concurrency bounded by a fixed-size `ThreadPoolTaskExecutor` if/when fan-out is needed.
   - Done when: concurrent IT with 2 worker beans shows no double-processing.
