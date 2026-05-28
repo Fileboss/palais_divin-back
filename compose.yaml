@@ -46,13 +46,15 @@ services:
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
-      KC_DB: dev-mem
+      KC_DB: dev-file
     ports:
       - '8081:8080'
     volumes:
+      - keycloak-data:/opt/keycloak/data
       - ./compose/keycloak/realm-palaisdivin.json:/opt/keycloak/data/import/realm-palaisdivin.json:ro
 
 volumes:
   postgres-data:
   neo4j-data:
   minio-data:
+  keycloak-data:
