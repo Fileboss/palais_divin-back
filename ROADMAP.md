@@ -99,7 +99,7 @@ Goal: dual-store sync that respects the README's eventual-consistency model.
   - Done when: migration applies; index on `(status, created_at)`.
 - [x] **M4.2 — `shared/adapters/outbox/OutboxPublisher`** — domain-facing port + JPA-backed adapter. Writes payload in the same tx as the aggregate.
   - Done when: unit test (mocked tx manager) shows aggregate save and outbox row commit atomically.
-- [ ] **M4.3 — `shared/adapters/outbox/OutboxWorker`** — `@Scheduled`, `SELECT ... FOR UPDATE SKIP LOCKED LIMIT N`, dispatches to a `Projector` per `aggregate_type`, marks `PROCESSED`. Concurrency bounded by a fixed-size `ThreadPoolTaskExecutor` if/when fan-out is needed.
+- [x] **M4.3 — `shared/adapters/outbox/OutboxWorker`** — `@Scheduled`, `SELECT ... FOR UPDATE SKIP LOCKED LIMIT N`, dispatches to a `Projector` per `aggregate_type`, marks `PROCESSED`. Concurrency bounded by a fixed-size `ThreadPoolTaskExecutor` if/when fan-out is needed.
   - Done when: concurrent IT with 2 worker beans shows no double-processing.
 - [ ] **M4.4 — `restaurant/adapters/neo4j/RestaurantProjector`** — Cypher `MERGE` of `(:Restaurant {id})` with name/coords. Idempotent.
   - Done when: IT creates a restaurant via REST, polls Neo4j with Awaitility, finds the node.

@@ -104,4 +104,23 @@ class OutboxEventEntity {
   Instant getProcessedAt() {
     return processedAt;
   }
+
+  void markProcessed(Instant when) {
+    this.status = "PROCESSED";
+    this.processedAt = when;
+    this.lastError = null;
+  }
+
+  void markFailed(String error) {
+    this.status = "FAILED";
+    this.lastError = error;
+  }
+
+  void incrementRetry() {
+    this.retryCount++;
+  }
+
+  void recordError(String error) {
+    this.lastError = error;
+  }
 }
