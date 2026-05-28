@@ -16,6 +16,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -115,6 +117,26 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     pd.setProperty("address", ex.address());
     addTraceId(pd);
     return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(pd);
+  }
+
+  @ExceptionHandler(AuthenticationException.class)
+  ResponseEntity<ProblemDetail> handleAuthenticationException(AuthenticationException ex) {
+    ProblemDetail pd = ProblemDetail.forStatus(HttpStatus.UNAUTHORIZED);
+    pd.setType(PROBLEM_BASE.resolve("unauthorized"));
+    pd.setTitle("Unauthorized");
+    pd.setDetail("Authentication is required to access this resource.");
+    addTraceId(pd);
+    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(pd);
+  }
+
+  @ExceptionHandler(AccessDeniedException.class)
+  ResponseEntity<ProblemDetail> handleAccessDenied(AccessDeniedException ex) {
+    ProblemDetail pd = ProblemDetail.forStatus(HttpStatus.FORBIDDEN);
+    pd.setType(PROBLEM_BASE.resolve("forbidden"));
+    pd.setTitle("Forbidden");
+    pd.setDetail("You do not have permission to access this resource.");
+    addTraceId(pd);
+    return ResponseEntity.status(HttpStatus.FORBIDDEN).body(pd);
   }
 
   @ExceptionHandler(InvalidCursorException.class)

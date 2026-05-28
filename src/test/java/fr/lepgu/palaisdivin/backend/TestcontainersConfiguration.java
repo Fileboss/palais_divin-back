@@ -3,6 +3,8 @@ package fr.lepgu.palaisdivin.backend;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Bean;
+import org.springframework.security.oauth2.jwt.BadJwtException;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.testcontainers.neo4j.Neo4jContainer;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
@@ -22,5 +24,12 @@ public class TestcontainersConfiguration {
   PostgreSQLContainer postgresContainer() {
     return new PostgreSQLContainer(
         DockerImageName.parse("postgis/postgis:16-3.4").asCompatibleSubstituteFor("postgres"));
+  }
+
+  @Bean
+  JwtDecoder stubJwtDecoder() {
+    return token -> {
+      throw new BadJwtException("Stub JwtDecoder — no real Keycloak in this IT");
+    };
   }
 }

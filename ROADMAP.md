@@ -78,7 +78,7 @@ Goal: write + read one aggregate end to end. Postgres only, no Neo4j yet, no aut
 
 Goal: real auth. Public stays public; user-scoped endpoints require a valid JWT.
 
-- [ ] **M3.1 — `config/security` — OAuth2 Resource Server, STATELESS** — `application.yml` issuer-uri, JWT decoder, role mapping (`realm_access.roles` → `ROLE_*`). README §7.1.
+- [x] **M3.1 — `config/security` — OAuth2 Resource Server, STATELESS** — `application.yml` issuer-uri, JWT decoder, role mapping (`realm_access.roles` → `ROLE_*`). README §7.1.
   - Done when: an unsigned request to `/user/**` returns 401 ProblemDetail; a valid Keycloak-issued token returns 200.
 - [ ] **M3.2 — `compose.yaml` realm bootstrap** — import a `palaisdivin` realm JSON with one test client + one test user at container start. Keep in `compose/keycloak/realm-palaisdivin.json`.
   - Done when: `docker compose up` produces a usable realm; manual token fetch works.
