@@ -67,8 +67,10 @@ Goal: write + read one aggregate end to end. Postgres only, no Neo4j yet, no aut
   - Done when: list returns the envelope `{ data, page: { size, hasNext, nextCursor } }`; a test inserts 50 rows and walks pages by cursor.
 - [x] **M2.7 — OpenAPI spec generated at build time** — wire springdoc-openapi so `mvn verify` produces a committed `openapi.json` (or `openapi.yaml`) covering all current endpoints. To hand off to the frontend dev between phases.
   - Done when: a fresh `mvn verify -P integration-tests` writes/refreshes the spec file at a deterministic path; the file contains every controller path currently exposed (ping, restaurant POST/GET/list); CI fails if the committed file is stale relative to the code.
+- [x] **M2.8 — Server-side address geocoding (Base Adresse Nationale)** — replace the `coordinates` input on `POST /api/v1/public/restaurants` with an `address` field; resolve to `Coordinates` server-side via BAN (`https://api-adresse.data.gouv.fr/search/?q=…&limit=1`) using an `@HttpExchange` client with 2s connect+read timeout (README §7.2). Persist both the submitted address string and the resolved point. In-memory Caffeine cache (24h TTL) keyed by normalized address to avoid re-querying BAN for the same input. (Added post-M2 shipping — needed before the frontend builds its create-restaurant form so it never has to compute lat/lon. See M0.6 for the same retroactive-fix pattern.)
+  - Done when: `POST` with `{ "name": "...", "address": "..." }` returns 201 with persisted coordinates; an IT verifies a known Paris address resolves within ~50m of the expected point; an unresolvable address returns 422 ProblemDetail; the BAN client is stubbed in tests (no live HTTP from CI); OpenAPI spec from M2.7 reflects the new request shape.
 
-`MILESTONE M2` — One aggregate persisted, queryable, paginated, with a published OpenAPI contract. Frontend can already render a list. Backend is no longer empty.
+`MILESTONE M2` — One aggregate persisted, queryable, paginated, submitted by address (server-geocoded), with a published OpenAPI contract. Frontend can already render a list and a create form. Backend is no longer empty.
 
 ---
 

@@ -1,13 +1,17 @@
 package fr.lepgu.palaisdivin.backend.restaurant.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import fr.lepgu.palaisdivin.backend.restaurant.domain.UnresolvableAddressException;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Coordinates;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Restaurant;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantId;
+import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.GeocoderPort;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.RestaurantRepositoryPort;
 import java.time.Clock;
 import java.time.Instant;
@@ -27,20 +31,22 @@ class RestaurantServiceTest {
   private static final Coordinates LOCATION = new Coordinates(48.8566, 2.3522);
 
   @Mock private RestaurantRepositoryPort repository;
+  @Mock private GeocoderPort geocoder;
 
   private RestaurantService service;
 
   @BeforeEach
   void setUp() {
     Clock fixedClock = Clock.fixed(FIXED_NOW, ZoneOffset.UTC);
-    service = new RestaurantService(repository, fixedClock);
+    service = new RestaurantService(repository, geocoder, fixedClock);
   }
 
   @Test
-  void createPersistsRestaurantWithGeneratedIdAndClockTimestamp() {
+  void createGeocodesAddressThenPersistsWithGeneratedIdAndClockTimestamp() {
+    when(geocoder.geocode("80 Rue de Charonne")).thenReturn(LOCATION);
     when(repository.save(any(Restaurant.class))).thenAnswer(inv -> inv.getArgument(0));
 
-    Restaurant created = service.create("Septime", "80 Rue de Charonne", LOCATION);
+    Restaurant created = service.create("Septime", "80 Rue de Charonne");
 
     ArgumentCaptor<Restaurant> captor = ArgumentCaptor.forClass(Restaurant.class);
     verify(repository).save(captor.capture());
@@ -57,13 +63,24 @@ class RestaurantServiceTest {
 
   @Test
   void createReturnsWhateverRepositorySaveReturns() {
+    when(geocoder.geocode("80 Rue de Charonne")).thenReturn(LOCATION);
     Restaurant fromStore =
-        new Restaurant(RestaurantId.newId(), "Septime", null, LOCATION, FIXED_NOW);
+        new Restaurant(RestaurantId.newId(), "Septime", "80 Rue de Charonne", LOCATION, FIXED_NOW);
     when(repository.save(any(Restaurant.class))).thenReturn(fromStore);
 
-    Restaurant returned = service.create("Septime", null, LOCATION);
+    Restaurant returned = service.create("Septime", "80 Rue de Charonne");
 
     assertThat(returned).isSameAs(fromStore);
+  }
+
+  @Test
+  void createPropagatesGeocoderFailureAndDoesNotPersist() {
+    when(geocoder.geocode("nope")).thenThrow(new UnresolvableAddressException("nope"));
+
+    assertThatThrownBy(() -> service.create("Septime", "nope"))
+        .isInstanceOf(UnresolvableAddressException.class);
+
+    verifyNoInteractions(repository);
   }
 
   @Test

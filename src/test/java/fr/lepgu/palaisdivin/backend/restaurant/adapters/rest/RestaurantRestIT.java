@@ -2,14 +2,23 @@ package fr.lepgu.palaisdivin.backend.restaurant.adapters.rest;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import fr.lepgu.palaisdivin.backend.TestcontainersConfiguration;
+import fr.lepgu.palaisdivin.backend.restaurant.adapters.geocoding.BanApiClient;
+import fr.lepgu.palaisdivin.backend.restaurant.adapters.geocoding.BanResponse;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
@@ -19,6 +28,7 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.web.client.RestClient;
 
 @SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
@@ -27,13 +37,24 @@ class RestaurantRestIT {
 
   @LocalServerPort int port;
 
+  @MockitoBean BanApiClient banApiClient;
+
+  @BeforeEach
+  void stubBanApiClient() {
+    BanResponse canned =
+        new BanResponse(
+            List.of(
+                new BanResponse.Feature(
+                    new BanResponse.Geometry(List.of(2.3795, 48.8536)),
+                    new BanResponse.Properties(0.96, "80 Rue de Charonne 75011 Paris"))));
+    when(banApiClient.search(anyString(), anyInt())).thenReturn(canned);
+  }
+
   @Test
   void postThenGetReturnsTheSameRestaurant() {
     RestClient client = RestClient.create("http://localhost:" + port);
 
-    CreateRestaurantRequest req =
-        new CreateRestaurantRequest(
-            "Septime", "80 Rue de Charonne", new CoordinatesDto(48.8536, 2.3795));
+    CreateRestaurantRequest req = new CreateRestaurantRequest("Septime", "80 Rue de Charonne");
 
     ResponseEntity<RestaurantResponse> postResp =
         client
@@ -70,13 +91,37 @@ class RestaurantRestIT {
   }
 
   @Test
+  void postUnresolvableAddressReturns422ProblemDetail() {
+    when(banApiClient.search(eq("zzzz unknown address zzzz"), eq(1)))
+        .thenReturn(new BanResponse(List.of()));
+
+    RestClient client = RestClient.create("http://localhost:" + port);
+    CreateRestaurantRequest req =
+        new CreateRestaurantRequest("Septime", "zzzz unknown address zzzz");
+
+    ResponseEntity<String> resp =
+        client
+            .post()
+            .uri("/api/v1/public/restaurants")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(req)
+            .retrieve()
+            .onStatus(s -> s.is4xxClientError(), (r, res) -> {})
+            .toEntity(String.class);
+
+    assertThat(resp.getStatusCode().value()).isEqualTo(422);
+    assertThat(resp.getHeaders().getContentType().toString())
+        .startsWith("application/problem+json");
+    assertThat(resp.getBody()).contains("/problems/unresolvable-address");
+  }
+
+  @Test
   void listWalksAllPagesByCursor() {
     RestClient client = RestClient.create("http://localhost:" + port);
 
     Set<UUID> postedIds = new HashSet<>();
     for (int i = 0; i < 25; i++) {
-      CreateRestaurantRequest req =
-          new CreateRestaurantRequest("r-" + i, null, new CoordinatesDto(48.8536, 2.3795));
+      CreateRestaurantRequest req = new CreateRestaurantRequest("r-" + i, "address-for-r-" + i);
       RestaurantResponse created =
           client
               .post()
@@ -115,6 +160,25 @@ class RestaurantRestIT {
 
     assertThat(collected).doesNotHaveDuplicates();
     assertThat(new HashSet<>(collected)).containsAll(postedIds);
+  }
+
+  @Test
+  void repeatedAddressIsServedFromCacheAndHitsBanOnlyOnce() {
+    RestClient client = RestClient.create("http://localhost:" + port);
+    String address = "cache-hit address " + UUID.randomUUID();
+    CreateRestaurantRequest req = new CreateRestaurantRequest("Cache Test", address);
+
+    for (int i = 0; i < 3; i++) {
+      client
+          .post()
+          .uri("/api/v1/public/restaurants")
+          .contentType(MediaType.APPLICATION_JSON)
+          .body(req)
+          .retrieve()
+          .body(RestaurantResponse.class);
+    }
+
+    verify(banApiClient, times(1)).search(eq(address.toLowerCase()), eq(1));
   }
 
   @Test

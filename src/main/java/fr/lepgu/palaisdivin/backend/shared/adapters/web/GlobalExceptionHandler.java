@@ -2,6 +2,7 @@ package fr.lepgu.palaisdivin.backend.shared.adapters.web;
 
 import fr.lepgu.palaisdivin.backend.restaurant.adapters.rest.InvalidCursorException;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.RestaurantNotFoundException;
+import fr.lepgu.palaisdivin.backend.restaurant.domain.UnresolvableAddressException;
 import io.micrometer.tracing.Tracer;
 import jakarta.validation.ConstraintViolationException;
 import java.net.URI;
@@ -103,6 +104,17 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
             .toList());
     addTraceId(pd);
     return ResponseEntity.badRequest().body(pd);
+  }
+
+  @ExceptionHandler(UnresolvableAddressException.class)
+  ResponseEntity<ProblemDetail> handleUnresolvableAddress(UnresolvableAddressException ex) {
+    ProblemDetail pd =
+        ProblemDetail.forStatusAndDetail(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
+    pd.setType(PROBLEM_BASE.resolve("unresolvable-address"));
+    pd.setTitle("Address could not be resolved");
+    pd.setProperty("address", ex.address());
+    addTraceId(pd);
+    return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(pd);
   }
 
   @ExceptionHandler(InvalidCursorException.class)

@@ -29,10 +29,10 @@ class OpenApiGenerationIT {
             .body(String.class);
 
     assertThat(yaml)
-            .isNotBlank()
-            .contains("/api/v1/public/ping")
-            .contains("/api/v1/public/restaurants")
-            .contains("/api/v1/public/restaurants/{id}");
+        .isNotBlank()
+        .contains("/api/v1/public/ping")
+        .contains("/api/v1/public/restaurants")
+        .contains("/api/v1/public/restaurants/{id}");
 
     String baseDir = System.getProperty("project.basedir", System.getProperty("user.dir"));
     Path output = Path.of(baseDir, "docs", "openapi.yaml");

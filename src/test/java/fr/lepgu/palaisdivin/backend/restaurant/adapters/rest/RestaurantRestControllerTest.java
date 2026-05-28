@@ -1,6 +1,5 @@
 package fr.lepgu.palaisdivin.backend.restaurant.adapters.rest;
 
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -11,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import fr.lepgu.palaisdivin.backend.config.security.SecurityConfig;
+import fr.lepgu.palaisdivin.backend.restaurant.domain.UnresolvableAddressException;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Coordinates;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Restaurant;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantCursor;
@@ -57,8 +57,7 @@ class RestaurantRestControllerTest {
             "80 Rue de Charonne",
             new Coordinates(48.8536, 2.3795),
             FIXED_CREATED_AT);
-    when(createRestaurant.create(eq("Septime"), eq("80 Rue de Charonne"), any(Coordinates.class)))
-        .thenReturn(created);
+    when(createRestaurant.create(eq("Septime"), eq("80 Rue de Charonne"))).thenReturn(created);
 
     mockMvc
         .perform(
@@ -68,8 +67,7 @@ class RestaurantRestControllerTest {
                     """
                     {
                       "name": "Septime",
-                      "address": "80 Rue de Charonne",
-                      "location": { "latitude": 48.8536, "longitude": 2.3795 }
+                      "address": "80 Rue de Charonne"
                     }
                     """))
         .andExpect(status().isCreated())
@@ -95,8 +93,7 @@ class RestaurantRestControllerTest {
                     """
                     {
                       "name": "",
-                      "address": "x",
-                      "location": { "latitude": 1.0, "longitude": 2.0 }
+                      "address": "80 Rue de Charonne"
                     }
                     """))
         .andExpect(status().isBadRequest())
@@ -107,7 +104,7 @@ class RestaurantRestControllerTest {
   }
 
   @Test
-  void post_latitudeOutOfRange_returns_400_problem_detail() throws Exception {
+  void post_blankAddress_returns_400_problem_detail() throws Exception {
     mockMvc
         .perform(
             post("/api/v1/public/restaurants")
@@ -116,17 +113,20 @@ class RestaurantRestControllerTest {
                     """
                     {
                       "name": "Septime",
-                      "address": "x",
-                      "location": { "latitude": 91.0, "longitude": 2.0 }
+                      "address": ""
                     }
                     """))
         .andExpect(status().isBadRequest())
+        .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
         .andExpect(jsonPath("$.type").value("https://palaisdivin.lepgu.fr/problems/validation"))
-        .andExpect(jsonPath("$.errors[?(@.field == 'location.latitude')]").exists());
+        .andExpect(jsonPath("$.errors[?(@.field == 'address')]").exists());
   }
 
   @Test
-  void post_missingLocation_returns_400_problem_detail() throws Exception {
+  void post_unresolvableAddress_returns_422_problem_detail() throws Exception {
+    when(createRestaurant.create(eq("Septime"), eq("nope nope nope")))
+        .thenThrow(new UnresolvableAddressException("nope nope nope"));
+
     mockMvc
         .perform(
             post("/api/v1/public/restaurants")
@@ -135,12 +135,16 @@ class RestaurantRestControllerTest {
                     """
                     {
                       "name": "Septime",
-                      "address": "x"
+                      "address": "nope nope nope"
                     }
                     """))
-        .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.type").value("https://palaisdivin.lepgu.fr/problems/validation"))
-        .andExpect(jsonPath("$.errors[?(@.field == 'location')]").exists());
+        .andExpect(status().isUnprocessableEntity())
+        .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+        .andExpect(jsonPath("$.status").value(422))
+        .andExpect(jsonPath("$.title").value("Address could not be resolved"))
+        .andExpect(
+            jsonPath("$.type").value("https://palaisdivin.lepgu.fr/problems/unresolvable-address"))
+        .andExpect(jsonPath("$.address").value("nope nope nope"));
   }
 
   @Test

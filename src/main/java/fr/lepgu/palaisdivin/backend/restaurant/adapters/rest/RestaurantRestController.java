@@ -1,7 +1,6 @@
 package fr.lepgu.palaisdivin.backend.restaurant.adapters.rest;
 
 import fr.lepgu.palaisdivin.backend.restaurant.domain.RestaurantNotFoundException;
-import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Coordinates;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Restaurant;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantCursor;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantId;
@@ -46,11 +45,7 @@ class RestaurantRestController {
 
   @PostMapping
   ResponseEntity<RestaurantResponse> create(@Valid @RequestBody CreateRestaurantRequest req) {
-    Restaurant created =
-        createRestaurant.create(
-            req.name(),
-            req.address(),
-            new Coordinates(req.location().latitude(), req.location().longitude()));
+    Restaurant created = createRestaurant.create(req.name(), req.address());
     URI location =
         ServletUriComponentsBuilder.fromCurrentRequest()
             .path("/{id}")

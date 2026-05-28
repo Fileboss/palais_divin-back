@@ -110,13 +110,12 @@ components:
       properties:
         address:
           type: string
-        location:
-          $ref: "#/components/schemas/CoordinatesDto"
+          minLength: 1
         name:
           type: string
           minLength: 1
       required:
-      - location
+      - address
       - name
     PageMeta:
       type: object

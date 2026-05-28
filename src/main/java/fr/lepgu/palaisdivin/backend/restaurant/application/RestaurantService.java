@@ -6,6 +6,7 @@ import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantCursor;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantId;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.CreateRestaurantUseCase;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.FindRestaurantUseCase;
+import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.GeocoderPort;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.ListRestaurantsUseCase;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.RestaurantRepositoryPort;
 import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;
@@ -19,15 +20,19 @@ public class RestaurantService
     implements CreateRestaurantUseCase, FindRestaurantUseCase, ListRestaurantsUseCase {
 
   private final RestaurantRepositoryPort repository;
+  private final GeocoderPort geocoder;
   private final Clock clock;
 
-  public RestaurantService(RestaurantRepositoryPort repository, Clock clock) {
+  public RestaurantService(
+      RestaurantRepositoryPort repository, GeocoderPort geocoder, Clock clock) {
     this.repository = repository;
+    this.geocoder = geocoder;
     this.clock = clock;
   }
 
   @Override
-  public Restaurant create(String name, String address, Coordinates location) {
+  public Restaurant create(String name, String address) {
+    Coordinates location = geocoder.geocode(address);
     Restaurant restaurant =
         new Restaurant(RestaurantId.newId(), name, address, location, Instant.now(clock));
     return repository.save(restaurant);
