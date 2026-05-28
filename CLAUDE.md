@@ -4,7 +4,7 @@ Guidance for Claude Code working in this repo. `README.md` is the authoritative 
 
 ## Project state
 
-Phases M0 + M1 complete (scaffold + walking skeleton: ping, ProblemDetail, actuator, security stub). `ROADMAP.md` is the source of truth for what comes next and per-task done-when criteria — pick the topmost unchecked task in the earliest unfinished phase. Package root: `fr.lepgu.palaisdivin.backend`.
+Phases M0–M3 complete: scaffold, walking skeleton, `Restaurant` aggregate (persisted on Postgres + PostGIS, keyset-paginated, BAN-geocoded), and OAuth2 Resource Server end-to-end (Keycloak realm, JWT validation, IT against real Keycloak via testcontainers-keycloak). `ROADMAP.md` is the source of truth for what comes next and per-task done-when criteria — pick the topmost unchecked task in the earliest unfinished phase. Package root: `fr.lepgu.palaisdivin.backend`.
 
 ## Domain in one paragraph
 
@@ -52,7 +52,10 @@ When adding a feature: geospatial → Postgres; friend-of-friend/affinity → Ne
 - Web starter is `spring-boot-starter-webmvc` (not `-web`); test slice annotations moved to `org.springframework.boot.webmvc.test.autoconfigure.*` (e.g. `@WebMvcTest`, `@AutoConfigureMockMvc`). `@LocalServerPort` is at `org.springframework.boot.test.web.server.LocalServerPort`.
 - `TestRestTemplate` requires `@AutoConfigureTestRestTemplate` + `spring-boot-restclient` on the test classpath. Prefer `RestClient.create("http://localhost:" + port)` with `@LocalServerPort` for full-HTTP integration tests — no extra deps, no test-client annotations.
 - `@SpringBootTest` substitutes `SimpleMeterRegistry` for the Prometheus registry by default. Metrics-export tests need `@ImportAutoConfiguration(PrometheusMetricsExportAutoConfiguration.class)` + `management.endpoint.prometheus.access=read-only` + `management.prometheus.metrics.export.enabled=true` to mirror prod.
-- A custom `SecurityFilterChain` with no auth mechanism returns **403** (not 401) for unauthenticated requests. Stub chains need `HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)`; M3's `.oauth2ResourceServer()` then replaces it with `BearerTokenAuthenticationEntryPoint`.
+- A custom `SecurityFilterChain` with no auth mechanism returns **403** (not 401) for unauthenticated requests — stub chains need `HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)`.
+- **OAuth2 Resource Server entry point splits in two.** `.exceptionHandling().authenticationEntryPoint(...)` only catches the "no Bearer token" path; **invalid-token 401s use the inner `BearerTokenAuthenticationEntryPoint` and skip your delegating entry point**, returning a bare 401 + `WWW-Authenticate` with no body. Wire the delegating entry point on BOTH `.exceptionHandling()` AND `.oauth2ResourceServer()` so every 401 becomes a ProblemDetail.
+- **`DynamicPropertyRegistry` is NOT autowirable into `@Bean` factory params** (despite Spring 6.2+ docs implying otherwise in this Boot version). Spring's `DynamicPropertyRegistrarBeanInitializer` only sees beans implementing `DynamicPropertyRegistrar`. To register dynamic properties from a container, expose a `DynamicPropertyRegistrar` bean that takes the container as a dependency.
+- **`dasniko/testcontainers-keycloak`'s `KeycloakContainer` forbids `.withCommand(...)`** (throws "You are trying to set custom container commands"). Use `.withRealmImportFile("/realm.json")` which loads the realm from the test classpath and auto-adds `--import-realm` to the start command — `MountableFile.forHostPath(...)` + `.withCommand(...)` is a dead end.
 - `spring-boot-docker-compose` auto-detects only vanilla images (`postgres`, `neo4j`, `minio`). Non-vanilla images (`postgis/postgis`) need `org.springframework.boot.service-connection: <type>` labels in `compose.yaml`.
 
 ## Cross-cutting
@@ -74,7 +77,7 @@ When adding a feature: geospatial → Postgres; friend-of-friend/affinity → Ne
 
 - **Unit (~70%)**: `domain/` + `application/` (mocked ports). JUnit 5 + AssertJ + Mockito, no Spring context, <10ms per test.
 - **ArchUnit (~5%)**: enforce isolation rules at build time.
-- **Integration (~25%)**: Testcontainers + `@ServiceConnection`, shared-container pattern, `testcontainers.reuse.enable=true` locally. Containers: `postgis/postgis:16-3.4`, `neo4j:5.20-enterprise`, `minio/minio`, Keycloak.
+- **Integration (~25%)**: Testcontainers + `@ServiceConnection` where supported, shared-container pattern, `testcontainers.reuse.enable=true` locally. Containers: `postgis/postgis:16-3.4`, `neo4j:5.20-enterprise`, `minio/minio`, Keycloak via `dasniko/testcontainers-keycloak` (not `@ServiceConnection`-compatible — see gotchas).
 - Gated: unit + ArchUnit on `mvn clean test`; integration on `mvn verify -P integration-tests`.
 
 ## CI / deploy
