@@ -112,7 +112,7 @@ Goal: dual-store sync that respects the README's eventual-consistency model.
 
 Goal: invitation-only signup via Keycloak Admin API. No self-service.
 
-- [ ] **M5.1 — `user/domain`** — `User` aggregate, `InvitationToken` VO (24h ttl, single-use), `UserRepositoryPort`.
+- [x] **M5.1 — `user/domain`** — `User` aggregate (`id`, `subject`, `email`, `displayName`, `createdAt`), `InvitationToken` VO (opaque value — TTL & single-use deferred to the M5.2 `Invitation` aggregate), `UserRepositoryPort` (`save`, `findById`, `findBySubject`), `UserNotFoundException`. Pure JDK; ArchUnit's `domainStaysFrameworkFree` / `domainOnlyDependsOnJdkAndDomain` now also cover `user/domain/**`.
 - [ ] **M5.2 — `user/adapters/postgres`** — JPA + V2 migration (`app_user`, `invitation`).
 - [ ] **M5.3 — `user/adapters/keycloak` — `@HttpExchange` client** — Spring 7 HTTP Interface against Keycloak Admin API. 2s connect + read timeout configured on the `RestClient.Builder`. README §7.2.
   - Done when: an IT mints a Keycloak user via the client.
