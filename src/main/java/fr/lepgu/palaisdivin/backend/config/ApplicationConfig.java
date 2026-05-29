@@ -9,7 +9,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @Configuration
 @EnableScheduling
-@EnableConfigurationProperties(OutboxWorkerProperties.class)
+@EnableConfigurationProperties({OutboxWorkerProperties.class, InvitationProperties.class})
 public class ApplicationConfig {
 
   @Bean

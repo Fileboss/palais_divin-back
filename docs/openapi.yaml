@@ -4,6 +4,18 @@ info:
   version: 0.0.1-SNAPSHOT
 servers: []
 paths:
+  /api/v1/admin/invitations:
+    post:
+      operationId: issue
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/InvitationResponse"
+          description: OK
+      tags:
+      - invitation-rest-controller
   /api/v1/public/ping:
     get:
       operationId: ping
@@ -117,6 +129,17 @@ components:
       required:
       - address
       - name
+    InvitationResponse:
+      type: object
+      properties:
+        expiresAt:
+          type: string
+          format: date-time
+        id:
+          type: string
+          format: uuid
+        signupUrl:
+          type: string
     PageMeta:
       type: object
       properties:
