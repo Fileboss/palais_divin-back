@@ -15,14 +15,11 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
-import org.springframework.test.context.DynamicPropertyRegistrar;
 import org.springframework.web.client.RestClient;
 
 @SpringBootTest
-@Import({TestcontainersConfiguration.class, KeycloakAdminAdapterIT.KeycloakAdminTestConfig.class})
+@Import(TestcontainersConfiguration.class)
 class KeycloakAdminAdapterIT {
 
   private static final String REALM = "palaisdivin";
@@ -120,18 +117,4 @@ class KeycloakAdminAdapterIT {
 
   @JsonIgnoreProperties(ignoreUnknown = true)
   record RoleRepresentation(String name) {}
-
-  @TestConfiguration(proxyBeanMethods = false)
-  static class KeycloakAdminTestConfig {
-
-    @Bean
-    DynamicPropertyRegistrar keycloakAdminPropsRegistrar(KeycloakContainer keycloak) {
-      return registry -> {
-        registry.add("app.keycloak.base-url", keycloak::getAuthServerUrl);
-        registry.add("app.keycloak.realm", () -> REALM);
-        registry.add("app.keycloak.client-id", () -> "palais-divin-backend");
-        registry.add("app.keycloak.client-secret", () -> "test-backend-secret");
-      };
-    }
-  }
 }

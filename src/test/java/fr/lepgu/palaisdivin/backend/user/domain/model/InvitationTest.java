@@ -2,9 +2,12 @@ package fr.lepgu.palaisdivin.backend.user.domain.model;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
 import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import org.junit.jupiter.api.Test;
 
 class InvitationTest {
@@ -76,5 +79,70 @@ class InvitationTest {
     assertThatIllegalArgumentException()
         .isThrownBy(() -> new Invitation(ID, TOKEN, before, null, CREATED_AT))
         .withMessageContaining("must be after");
+  }
+
+  @Test
+  void isExpiredFalseWhenNowBeforeExpiresAt() {
+    Invitation i = new Invitation(ID, TOKEN, EXPIRES_AT, null, CREATED_AT);
+    Clock before = Clock.fixed(EXPIRES_AT.minusSeconds(1), ZoneOffset.UTC);
+
+    assertThat(i.isExpired(before)).isFalse();
+  }
+
+  @Test
+  void isExpiredTrueWhenNowEqualsExpiresAt() {
+    Invitation i = new Invitation(ID, TOKEN, EXPIRES_AT, null, CREATED_AT);
+    Clock atBoundary = Clock.fixed(EXPIRES_AT, ZoneOffset.UTC);
+
+    assertThat(i.isExpired(atBoundary)).isTrue();
+  }
+
+  @Test
+  void isExpiredTrueWhenNowAfterExpiresAt() {
+    Invitation i = new Invitation(ID, TOKEN, EXPIRES_AT, null, CREATED_AT);
+    Clock after = Clock.fixed(EXPIRES_AT.plusSeconds(1), ZoneOffset.UTC);
+
+    assertThat(i.isExpired(after)).isTrue();
+  }
+
+  @Test
+  void isConsumedReflectsConsumedAtField() {
+    Invitation fresh = new Invitation(ID, TOKEN, EXPIRES_AT, null, CREATED_AT);
+    Invitation used = new Invitation(ID, TOKEN, EXPIRES_AT, CREATED_AT.plusSeconds(60), CREATED_AT);
+
+    assertThat(fresh.isConsumed()).isFalse();
+    assertThat(used.isConsumed()).isTrue();
+  }
+
+  @Test
+  void consumeReturnsNewInstanceWithConsumedAtSet() {
+    Invitation original = new Invitation(ID, TOKEN, EXPIRES_AT, null, CREATED_AT);
+    Instant at = CREATED_AT.plusSeconds(60);
+
+    Invitation consumed = original.consume(at);
+
+    assertThat(consumed.consumedAt()).isEqualTo(at);
+    assertThat(consumed.id()).isEqualTo(original.id());
+    assertThat(consumed.token()).isEqualTo(original.token());
+    assertThat(consumed.expiresAt()).isEqualTo(original.expiresAt());
+    assertThat(consumed.createdAt()).isEqualTo(original.createdAt());
+    assertThat(original.consumedAt()).isNull();
+  }
+
+  @Test
+  void consumeRejectsNullInstant() {
+    Invitation i = new Invitation(ID, TOKEN, EXPIRES_AT, null, CREATED_AT);
+
+    assertThatNullPointerException().isThrownBy(() -> i.consume(null)).withMessage("at");
+  }
+
+  @Test
+  void consumeTwiceThrowsIllegalStateException() {
+    Invitation original = new Invitation(ID, TOKEN, EXPIRES_AT, null, CREATED_AT);
+    Invitation consumed = original.consume(CREATED_AT.plusSeconds(60));
+
+    assertThatIllegalStateException()
+        .isThrownBy(() -> consumed.consume(CREATED_AT.plusSeconds(120)))
+        .withMessageContaining("already consumed");
   }
 }

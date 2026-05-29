@@ -66,13 +66,14 @@ class KeycloakAdminAdapterTest {
     assertThat(sent.username()).isEqualTo("kc-user");
     assertThat(sent.email()).isEqualTo("kc-user@example.com");
     assertThat(sent.firstName()).isEqualTo("Kc User");
+    assertThat(sent.lastName()).isEqualTo("Kc User");
     assertThat(sent.enabled()).isTrue();
     assertThat(sent.emailVerified()).isTrue();
     assertThat(sent.credentials()).hasSize(1);
     KeycloakUserRepresentation.Credential credential = sent.credentials().get(0);
     assertThat(credential.type()).isEqualTo("password");
     assertThat(credential.value()).isEqualTo("temp-pass");
-    assertThat(credential.temporary()).isTrue();
+    assertThat(credential.temporary()).isFalse();
   }
 
   @Test

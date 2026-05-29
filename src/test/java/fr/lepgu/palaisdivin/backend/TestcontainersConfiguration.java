@@ -38,4 +38,14 @@ public class TestcontainersConfiguration {
             "spring.security.oauth2.resourceserver.jwt.issuer-uri",
             () -> keycloak.getAuthServerUrl() + "/realms/palaisdivin");
   }
+
+  @Bean
+  DynamicPropertyRegistrar keycloakAdminPropsRegistrar(KeycloakContainer keycloak) {
+    return registry -> {
+      registry.add("app.keycloak.base-url", keycloak::getAuthServerUrl);
+      registry.add("app.keycloak.realm", () -> "palaisdivin");
+      registry.add("app.keycloak.client-id", () -> "palais-divin-backend");
+      registry.add("app.keycloak.client-secret", () -> "test-backend-secret");
+    };
+  }
 }

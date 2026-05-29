@@ -3,6 +3,9 @@ package fr.lepgu.palaisdivin.backend.shared.adapters.web;
 import fr.lepgu.palaisdivin.backend.restaurant.adapters.rest.InvalidCursorException;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.RestaurantNotFoundException;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.UnresolvableAddressException;
+import fr.lepgu.palaisdivin.backend.user.domain.InvitationNotFoundException;
+import fr.lepgu.palaisdivin.backend.user.domain.InvitationNotUsableException;
+import fr.lepgu.palaisdivin.backend.user.domain.KeycloakOperationException;
 import io.micrometer.tracing.Tracer;
 import jakarta.validation.ConstraintViolationException;
 import java.net.URI;
@@ -11,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.TypeMismatchException;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -146,6 +150,58 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     pd.setTitle("Invalid cursor");
     addTraceId(pd);
     return ResponseEntity.badRequest().body(pd);
+  }
+
+  @ExceptionHandler(InvitationNotFoundException.class)
+  ResponseEntity<ProblemDetail> handleInvitationNotFound(InvitationNotFoundException ex) {
+    ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+    pd.setType(PROBLEM_BASE.resolve("not-found"));
+    pd.setTitle("Resource not found");
+    addTraceId(pd);
+    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(pd);
+  }
+
+  @ExceptionHandler(InvitationNotUsableException.class)
+  ResponseEntity<ProblemDetail> handleInvitationNotUsable(InvitationNotUsableException ex) {
+    ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.GONE, ex.getMessage());
+    pd.setType(PROBLEM_BASE.resolve("invitation-not-usable"));
+    pd.setTitle("Invitation not usable");
+    pd.setProperty("reason", ex.reason().name());
+    addTraceId(pd);
+    return ResponseEntity.status(HttpStatus.GONE).body(pd);
+  }
+
+  @ExceptionHandler(DataIntegrityViolationException.class)
+  ResponseEntity<ProblemDetail> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
+    log.warn("Data integrity violation surfaced as 409 conflict", ex);
+    ProblemDetail pd =
+        ProblemDetail.forStatusAndDetail(
+            HttpStatus.CONFLICT, "An account with this email already exists.");
+    pd.setType(PROBLEM_BASE.resolve("conflict"));
+    pd.setTitle("Conflict");
+    addTraceId(pd);
+    return ResponseEntity.status(HttpStatus.CONFLICT).body(pd);
+  }
+
+  @ExceptionHandler(KeycloakOperationException.class)
+  ResponseEntity<ProblemDetail> handleKeycloakOperation(KeycloakOperationException ex) {
+    Integer status = ex.statusCode();
+    if (status != null && status == HttpStatus.CONFLICT.value()) {
+      ProblemDetail pd =
+          ProblemDetail.forStatusAndDetail(
+              HttpStatus.CONFLICT, "An account with this email already exists.");
+      pd.setType(PROBLEM_BASE.resolve("conflict"));
+      pd.setTitle("Conflict");
+      addTraceId(pd);
+      return ResponseEntity.status(HttpStatus.CONFLICT).body(pd);
+    }
+    log.error("Keycloak operation failure", ex);
+    ProblemDetail pd = ProblemDetail.forStatus(HttpStatus.BAD_GATEWAY);
+    pd.setType(PROBLEM_BASE.resolve("upstream-failure"));
+    pd.setTitle("Upstream failure");
+    pd.setDetail("Identity provider request failed.");
+    addTraceId(pd);
+    return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(pd);
   }
 
   @Override

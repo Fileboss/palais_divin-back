@@ -28,6 +28,24 @@ paths:
           description: OK
       tags:
       - ping-controller
+  /api/v1/public/signup:
+    post:
+      operationId: signup
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SignupRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/SignupResponse"
+          description: OK
+      tags:
+      - signup-rest-controller
   /api/v1/user/restaurants:
     get:
       operationId: list
@@ -182,3 +200,37 @@ components:
             $ref: "#/components/schemas/RestaurantResponse"
         page:
           $ref: "#/components/schemas/PageMeta"
+    SignupRequest:
+      type: object
+      properties:
+        displayName:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          format: email
+          minLength: 1
+        password:
+          type: string
+          minLength: 1
+        token:
+          type: string
+          minLength: 1
+      required:
+      - displayName
+      - email
+      - password
+      - token
+    SignupResponse:
+      type: object
+      properties:
+        createdAt:
+          type: string
+          format: date-time
+        displayName:
+          type: string
+        email:
+          type: string
+        id:
+          type: string
+          format: uuid

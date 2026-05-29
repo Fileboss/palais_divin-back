@@ -38,7 +38,9 @@ public class KeycloakAdminAdapter implements KeycloakAdminPort {
       response = client.createUser(bearer, rep);
     } catch (RestClientResponseException ex) {
       throw new KeycloakOperationException(
-          "Keycloak createUser failed with status " + ex.getStatusCode().value(), ex);
+          "Keycloak createUser failed with status " + ex.getStatusCode().value(),
+          ex.getStatusCode().value(),
+          ex);
     } catch (RestClientException ex) {
       throw new KeycloakOperationException("Keycloak createUser transport failure", ex);
     }
@@ -85,14 +87,16 @@ public class KeycloakAdminAdapter implements KeycloakAdminPort {
   }
 
   private static KeycloakUserRepresentation toRepresentation(NewKeycloakUser u) {
+    // Keycloak's declarative user profile (24+) requires firstName + lastName; populate both from
+    // displayName since the API has no first/last split.
     return new KeycloakUserRepresentation(
         u.username(),
         u.email(),
         true,
         true,
         u.displayName(),
-        "",
+        u.displayName(),
         List.of(
-            new KeycloakUserRepresentation.Credential("password", u.temporaryPassword(), true)));
+            new KeycloakUserRepresentation.Credential("password", u.temporaryPassword(), false)));
   }
 }
