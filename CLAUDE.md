@@ -4,7 +4,7 @@ Guidance for Claude Code working in this repo. `README.md` is the authoritative 
 
 ## Project state
 
-Phases M0–M3 complete: scaffold, walking skeleton, `Restaurant` aggregate (persisted on Postgres + PostGIS, keyset-paginated, BAN-geocoded), and OAuth2 Resource Server end-to-end (Keycloak realm, JWT validation, IT against real Keycloak via testcontainers-keycloak). `ROADMAP.md` is the source of truth for what comes next and per-task done-when criteria — pick the topmost unchecked task in the earliest unfinished phase. Package root: `fr.lepgu.palaisdivin.backend`.
+Phases M0–M4 complete: scaffold, walking skeleton, `Restaurant` aggregate (persisted on Postgres + PostGIS, keyset-paginated, BAN-geocoded), OAuth2 Resource Server end-to-end (Keycloak realm, JWT validation, IT against real Keycloak via testcontainers-keycloak), and **Transactional Outbox + Neo4j projection** (publisher writes outbox row in same tx as aggregate; `OutboxWorker` `@Scheduled` + `FOR UPDATE SKIP LOCKED` drains with linear retry; `RestaurantProjector` MERGEs `(:Restaurant)` nodes from `RestaurantCreated`). `ROADMAP.md` is the source of truth for what comes next and per-task done-when criteria — pick the topmost unchecked task in the earliest unfinished phase. Package root: `fr.lepgu.palaisdivin.backend`.
 
 ## Domain in one paragraph
 
@@ -57,6 +57,8 @@ When adding a feature: geospatial → Postgres; friend-of-friend/affinity → Ne
 - **`DynamicPropertyRegistry` is NOT autowirable into `@Bean` factory params** (despite Spring 6.2+ docs implying otherwise in this Boot version). Spring's `DynamicPropertyRegistrarBeanInitializer` only sees beans implementing `DynamicPropertyRegistrar`. To register dynamic properties from a container, expose a `DynamicPropertyRegistrar` bean that takes the container as a dependency.
 - **`dasniko/testcontainers-keycloak`'s `KeycloakContainer` forbids `.withCommand(...)`** (throws "You are trying to set custom container commands"). Use `.withRealmImportFile("/realm.json")` which loads the realm from the test classpath and auto-adds `--import-realm` to the start command — `MountableFile.forHostPath(...)` + `.withCommand(...)` is a dead end.
 - `spring-boot-docker-compose` auto-detects only vanilla images (`postgres`, `neo4j`, `minio`). Non-vanilla images (`postgis/postgis`) need `org.springframework.boot.service-connection: <type>` labels in `compose.yaml`.
+- **Spring Data `Slice<T>` + `Pageable` is incompatible with `FOR UPDATE SKIP LOCKED` queue draining.** `Slice<>` fetches `size+1` rows internally to populate `hasNext()` — the speculative extra row interferes with the SKIP LOCKED race when multiple workers drain in parallel (rows leak between candidate sets, causing double-processing). For queue patterns use `List<T>` + Spring Data 3.2+ `Limit` instead. `Slice<T>` remains correct for the keyset-pagination request layer; only queue draining is affected.
+- **Adding the first `Projector` `@Component` flips `OutboxWorker` from inert (`@ConditionalOnBean`) to active in every `@SpringBootTest`.** Tests asserting `outbox_event.status='PENDING'` then race the worker — add `spring.task.scheduling.enabled=false` to those tests. Additionally, test-side `Projector` impls must NOT claim the same `aggregateType()` as any prod projector, or Spring's `List<Projector>` autowire fails with `IllegalStateException: Duplicate key` inside the worker's `Collectors.toUnmodifiableMap`.
 
 ## Cross-cutting
 

@@ -59,7 +59,7 @@ class OutboxWorkerIT {
 
   @Test
   void twoConcurrentWorkersEachProcessRowsExactlyOnceUnderSkipLocked() throws Exception {
-    insertPendingRestaurantRows(10);
+    insertPendingBlockingRows(10);
 
     List<Projector> projectors = List.of(blockingProjector, failingProjector);
     OutboxWorker w1 = new OutboxWorker(repo, projectors, props, clock);
@@ -180,9 +180,9 @@ class OutboxWorkerIT {
     tx.executeWithoutResult(s -> worker.drainBatch());
   }
 
-  private void insertPendingRestaurantRows(int count) {
+  private void insertPendingBlockingRows(int count) {
     for (int i = 0; i < count; i++) {
-      insertPendingRow(UUID.randomUUID(), "Restaurant", "RestaurantCreated");
+      insertPendingRow(UUID.randomUUID(), "BlockingAgg", "BlockingEvent");
     }
   }
 
@@ -223,7 +223,7 @@ class OutboxWorkerIT {
 
     @Override
     public String aggregateType() {
-      return "Restaurant";
+      return "BlockingAgg";
     }
 
     @Override

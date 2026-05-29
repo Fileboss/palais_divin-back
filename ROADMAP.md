@@ -101,7 +101,7 @@ Goal: dual-store sync that respects the README's eventual-consistency model.
   - Done when: unit test (mocked tx manager) shows aggregate save and outbox row commit atomically.
 - [x] **M4.3 — `shared/adapters/outbox/OutboxWorker`** — `@Scheduled`, `SELECT ... FOR UPDATE SKIP LOCKED LIMIT N`, dispatches to a `Projector` per `aggregate_type`, marks `PROCESSED`. Concurrency bounded by a fixed-size `ThreadPoolTaskExecutor` if/when fan-out is needed.
   - Done when: concurrent IT with 2 worker beans shows no double-processing.
-- [ ] **M4.4 — `restaurant/adapters/neo4j/RestaurantProjector`** — Cypher `MERGE` of `(:Restaurant {id})` with name/coords. Idempotent.
+- [x] **M4.4 — `restaurant/adapters/neo4j/RestaurantProjector`** — Cypher `MERGE` of `(:Restaurant {id})` with name/coords. Idempotent.
   - Done when: IT creates a restaurant via REST, polls Neo4j with Awaitility, finds the node.
 
 `MILESTONE M4` — Dual store is wired and provably idempotent. From here on, anything cross-component goes through the outbox by default.
