@@ -30,6 +30,16 @@
         "pkce.code.challenge.method": "S256",
         "post.logout.redirect.uris": "+"
       }
+    },
+    {
+      "clientId": "palais-divin-backend",
+      "enabled": true,
+      "publicClient": false,
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "test-backend-secret"
     }
   ],
   "users": [
@@ -56,6 +66,14 @@
         { "type": "password", "value": "testadmin", "temporary": false }
       ],
       "realmRoles": ["ADMIN"]
+    },
+    {
+      "username": "service-account-palais-divin-backend",
+      "enabled": true,
+      "serviceAccountClientId": "palais-divin-backend",
+      "clientRoles": {
+        "realm-management": ["realm-admin"]
+      }
     }
   ]
 }
