@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import dasniko.testcontainers.keycloak.KeycloakContainer;
-import fr.lepgu.palaisdivin.backend.TestcontainersConfiguration;
+import fr.lepgu.palaisdivin.backend.AbstractIntegrationTest;
 import fr.lepgu.palaisdivin.backend.user.domain.KeycloakOperationException;
 import fr.lepgu.palaisdivin.backend.user.domain.model.KeycloakUserId;
 import fr.lepgu.palaisdivin.backend.user.domain.model.NewKeycloakUser;
@@ -14,13 +14,9 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.web.client.RestClient;
 
-@SpringBootTest
-@Import(TestcontainersConfiguration.class)
-class KeycloakAdminAdapterIT {
+class KeycloakAdminAdapterIT extends AbstractIntegrationTest {
 
   private static final String REALM = "palaisdivin";
 

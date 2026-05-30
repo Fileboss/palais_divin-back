@@ -15,7 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @ConditionalOnBean(Projector.class)
-class OutboxWorker {
+public class OutboxWorker {
 
   private static final Logger log = LoggerFactory.getLogger(OutboxWorker.class);
   private static final int MAX_ERROR_LENGTH = 1000;
@@ -25,7 +25,7 @@ class OutboxWorker {
   private final OutboxWorkerProperties props;
   private final Clock clock;
 
-  OutboxWorker(
+  public OutboxWorker(
       OutboxEventJpaRepository repo,
       List<Projector> projectors,
       OutboxWorkerProperties props,

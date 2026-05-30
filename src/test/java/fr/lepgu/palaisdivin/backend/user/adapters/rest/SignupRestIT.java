@@ -3,8 +3,9 @@ package fr.lepgu.palaisdivin.backend.user.adapters.rest;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dasniko.testcontainers.keycloak.KeycloakContainer;
+import fr.lepgu.palaisdivin.backend.AbstractIntegrationTest;
 import fr.lepgu.palaisdivin.backend.TestKeycloakTokens;
-import fr.lepgu.palaisdivin.backend.TestcontainersConfiguration;
+import fr.lepgu.palaisdivin.backend.shared.adapters.outbox.OutboxWorker;
 import fr.lepgu.palaisdivin.backend.user.domain.model.Invitation;
 import fr.lepgu.palaisdivin.backend.user.domain.model.InvitationId;
 import fr.lepgu.palaisdivin.backend.user.domain.model.InvitationToken;
@@ -12,28 +13,25 @@ import fr.lepgu.palaisdivin.backend.user.domain.model.User;
 import fr.lepgu.palaisdivin.backend.user.domain.ports.InvitationRepositoryPort;
 import fr.lepgu.palaisdivin.backend.user.domain.ports.UserRepositoryPort;
 import java.net.URI;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import org.awaitility.Awaitility;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.context.annotation.Import;
 import org.springframework.data.neo4j.core.Neo4jClient;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.RestClient;
 
-@SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
-@Import(TestcontainersConfiguration.class)
-class SignupRestIT {
+class SignupRestIT extends AbstractIntegrationTest {
 
   private static final String REALM = "palaisdivin";
   private static final String FRONTEND_CLIENT = "palais-divin-frontend";
@@ -44,6 +42,18 @@ class SignupRestIT {
   @Autowired InvitationRepositoryPort invitations;
   @Autowired UserRepositoryPort users;
   @Autowired Neo4jClient neo4jClient;
+  @Autowired OutboxWorker worker;
+  @Autowired PlatformTransactionManager txManager;
+  @Autowired JdbcClient jdbcClient;
+
+  @BeforeEach
+  void cleanState() {
+    jdbcClient.sql("DELETE FROM outbox_event").update();
+    jdbcClient.sql("DELETE FROM app_user").update();
+    jdbcClient.sql("DELETE FROM invitation").update();
+    jdbcClient.sql("DELETE FROM restaurant").update();
+    neo4jClient.query("MATCH (n) DETACH DELETE n").run();
+  }
 
   @Test
   void endToEnd_adminInvites_userSignsUp_canLogIn_andProjectsToNeo4j() {
@@ -91,10 +101,9 @@ class SignupRestIT {
             .toEntity(String.class);
     assertThat(listResp.getStatusCode()).isEqualTo(HttpStatus.OK);
 
-    UUID userId = signed.id();
-    Awaitility.await()
-        .atMost(Duration.ofSeconds(10))
-        .untilAsserted(() -> assertThat(countUserNodes(userId)).isEqualTo(1L));
+    new TransactionTemplate(txManager).executeWithoutResult(s -> worker.drainBatch());
+
+    assertThat(countUserNodes(signed.id())).isEqualTo(1L);
   }
 
   @Test

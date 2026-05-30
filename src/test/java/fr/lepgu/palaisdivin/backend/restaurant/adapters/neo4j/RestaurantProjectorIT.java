@@ -2,42 +2,32 @@ package fr.lepgu.palaisdivin.backend.restaurant.adapters.neo4j;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dasniko.testcontainers.keycloak.KeycloakContainer;
+import fr.lepgu.palaisdivin.backend.AbstractIntegrationTest;
+import fr.lepgu.palaisdivin.backend.SharedTestStubs.BanApiClientStub;
 import fr.lepgu.palaisdivin.backend.TestKeycloakTokens;
-import fr.lepgu.palaisdivin.backend.TestcontainersConfiguration;
-import fr.lepgu.palaisdivin.backend.restaurant.adapters.geocoding.BanApiClient;
-import fr.lepgu.palaisdivin.backend.restaurant.adapters.geocoding.BanResponse;
 import fr.lepgu.palaisdivin.backend.restaurant.adapters.rest.CreateRestaurantRequest;
 import fr.lepgu.palaisdivin.backend.restaurant.adapters.rest.RestaurantResponse;
+import fr.lepgu.palaisdivin.backend.shared.adapters.outbox.OutboxWorker;
 import java.time.Duration;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.context.annotation.Import;
 import org.springframework.data.neo4j.core.Neo4jClient;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.RestClient;
 
-@SpringBootTest(
-    webEnvironment = WebEnvironment.RANDOM_PORT,
-    properties = "palaisdivin.outbox.poll-delay-ms=200")
-@Import(TestcontainersConfiguration.class)
-class RestaurantProjectorIT {
+class RestaurantProjectorIT extends AbstractIntegrationTest {
 
   @LocalServerPort int port;
 
@@ -45,20 +35,15 @@ class RestaurantProjectorIT {
   @Autowired Neo4jClient neo4jClient;
   @Autowired JdbcClient jdbcClient;
   @Autowired RestaurantProjector projector;
-
-  @MockitoBean BanApiClient banApiClient;
+  @Autowired OutboxWorker worker;
+  @Autowired PlatformTransactionManager txManager;
+  @Autowired BanApiClientStub banApiClient;
 
   private String userToken;
 
   @BeforeEach
   void setUp() {
-    BanResponse canned =
-        new BanResponse(
-            List.of(
-                new BanResponse.Feature(
-                    new BanResponse.Geometry(List.of(2.3795, 48.8536)),
-                    new BanResponse.Properties(0.96, "80 Rue de Charonne 75011 Paris"))));
-    when(banApiClient.search(anyString(), anyInt())).thenReturn(canned);
+    banApiClient.reset();
 
     userToken =
         TestKeycloakTokens.passwordGrant(
@@ -70,7 +55,7 @@ class RestaurantProjectorIT {
   }
 
   @Test
-  void postingARestaurantProjectsItIntoNeo4jWithinPollDelay() {
+  void postingARestaurantProjectsItIntoNeo4jAfterWorkerDrain() {
     RestClient client =
         RestClient.builder()
             .baseUrl("http://localhost:" + port)
@@ -88,9 +73,11 @@ class RestaurantProjectorIT {
 
     assertThat(created).isNotNull();
 
+    new TransactionTemplate(txManager).executeWithoutResult(s -> worker.drainBatch());
+
     await()
-        .atMost(Duration.ofSeconds(5))
-        .pollInterval(Duration.ofMillis(100))
+        .atMost(Duration.ofSeconds(2))
+        .pollInterval(Duration.ofMillis(50))
         .untilAsserted(
             () -> {
               Map<String, Object> node =

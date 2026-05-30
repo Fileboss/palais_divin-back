@@ -2,17 +2,11 @@ package fr.lepgu.palaisdivin.backend.restaurant.adapters.rest;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 import dasniko.testcontainers.keycloak.KeycloakContainer;
+import fr.lepgu.palaisdivin.backend.AbstractIntegrationTest;
+import fr.lepgu.palaisdivin.backend.SharedTestStubs.BanApiClientStub;
 import fr.lepgu.palaisdivin.backend.TestKeycloakTokens;
-import fr.lepgu.palaisdivin.backend.TestcontainersConfiguration;
-import fr.lepgu.palaisdivin.backend.restaurant.adapters.geocoding.BanApiClient;
 import fr.lepgu.palaisdivin.backend.restaurant.adapters.geocoding.BanResponse;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -23,39 +17,27 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.context.annotation.Import;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.web.client.RestClient;
 
-@SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
-@Import(TestcontainersConfiguration.class)
-class RestaurantRestIT {
+class RestaurantRestIT extends AbstractIntegrationTest {
 
   @LocalServerPort int port;
 
   @Autowired KeycloakContainer keycloak;
 
-  @MockitoBean BanApiClient banApiClient;
+  @Autowired BanApiClientStub banApiClient;
 
   private String userToken;
 
   @BeforeEach
-  void stubBanApiClient() {
-    BanResponse canned =
-        new BanResponse(
-            List.of(
-                new BanResponse.Feature(
-                    new BanResponse.Geometry(List.of(2.3795, 48.8536)),
-                    new BanResponse.Properties(0.96, "80 Rue de Charonne 75011 Paris"))));
-    when(banApiClient.search(anyString(), anyInt())).thenReturn(canned);
+  void resetBanStub() {
+    banApiClient.reset();
   }
 
   @Test
@@ -100,8 +82,7 @@ class RestaurantRestIT {
 
   @Test
   void postUnresolvableAddressReturns422ProblemDetail() {
-    when(banApiClient.search(eq("zzzz unknown address zzzz"), eq(1)))
-        .thenReturn(new BanResponse(List.of()));
+    banApiClient.setResponseFor("zzzz unknown address zzzz", new BanResponse(List.of()));
 
     RestClient client = authedClient();
     CreateRestaurantRequest req =
@@ -186,7 +167,7 @@ class RestaurantRestIT {
           .body(RestaurantResponse.class);
     }
 
-    verify(banApiClient, times(1)).search(eq(address.toLowerCase()), eq(1));
+    assertThat(banApiClient.callCountFor(address.toLowerCase())).isEqualTo(1);
   }
 
   @Test

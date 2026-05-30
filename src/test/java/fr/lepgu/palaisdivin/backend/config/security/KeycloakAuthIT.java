@@ -3,22 +3,17 @@ package fr.lepgu.palaisdivin.backend.config.security;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dasniko.testcontainers.keycloak.KeycloakContainer;
+import fr.lepgu.palaisdivin.backend.AbstractIntegrationTest;
 import fr.lepgu.palaisdivin.backend.TestKeycloakTokens;
-import fr.lepgu.palaisdivin.backend.TestcontainersConfiguration;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestClient;
 
-@SpringBootTest(webEnvironment = WebEnvironment.RANDOM_PORT)
-@Import(TestcontainersConfiguration.class)
-class KeycloakAuthIT {
+class KeycloakAuthIT extends AbstractIntegrationTest {
 
   private static final String REALM = "palaisdivin";
   private static final String CLIENT_ID = "palais-divin-frontend";

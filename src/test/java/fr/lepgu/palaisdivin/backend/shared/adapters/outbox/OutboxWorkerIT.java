@@ -2,14 +2,13 @@ package fr.lepgu.palaisdivin.backend.shared.adapters.outbox;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import fr.lepgu.palaisdivin.backend.TestcontainersConfiguration;
+import fr.lepgu.palaisdivin.backend.AbstractIntegrationTest;
+import fr.lepgu.palaisdivin.backend.SharedTestStubs.AlwaysFailingProjector;
+import fr.lepgu.palaisdivin.backend.SharedTestStubs.BlockingProjector;
 import java.time.Clock;
 import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -18,24 +17,11 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
-@SpringBootTest(
-    properties = {
-      "spring.task.scheduling.enabled=false",
-      "palaisdivin.outbox.batch-size=5",
-      "palaisdivin.outbox.max-retries=3"
-    })
-@Import({TestcontainersConfiguration.class, OutboxWorkerIT.TestProjectors.class})
-class OutboxWorkerIT {
-
-  private static final ObjectMapper MAPPER = new ObjectMapper();
+class OutboxWorkerIT extends AbstractIntegrationTest {
 
   @Autowired OutboxEventJpaRepository repo;
   @Autowired OutboxWorkerProperties props;
@@ -201,65 +187,5 @@ class OutboxWorkerIT {
         .param(eventType)
         .param(payload)
         .update();
-  }
-
-  @TestConfiguration
-  static class TestProjectors {
-
-    @Bean
-    BlockingProjector blockingProjector() {
-      return new BlockingProjector();
-    }
-
-    @Bean
-    AlwaysFailingProjector alwaysFailingProjector() {
-      return new AlwaysFailingProjector();
-    }
-  }
-
-  static final class BlockingProjector implements Projector {
-    final ConcurrentLinkedQueue<String> projectedIds = new ConcurrentLinkedQueue<>();
-    final ConcurrentLinkedQueue<String> projectingThreads = new ConcurrentLinkedQueue<>();
-
-    @Override
-    public String aggregateType() {
-      return "BlockingAgg";
-    }
-
-    @Override
-    public void project(String eventType, JsonNode payload) {
-      projectingThreads.add(Thread.currentThread().getName());
-      projectedIds.add(payload.get("id").asText());
-      try {
-        Thread.sleep(100);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-      }
-    }
-
-    void reset() {
-      projectedIds.clear();
-      projectingThreads.clear();
-    }
-  }
-
-  static final class AlwaysFailingProjector implements Projector {
-    final java.util.concurrent.atomic.AtomicInteger callCount =
-        new java.util.concurrent.atomic.AtomicInteger();
-
-    @Override
-    public String aggregateType() {
-      return "FailingAgg";
-    }
-
-    @Override
-    public void project(String eventType, JsonNode payload) {
-      callCount.incrementAndGet();
-      throw new RuntimeException("boom");
-    }
-
-    void reset() {
-      callCount.set(0);
-    }
   }
 }
