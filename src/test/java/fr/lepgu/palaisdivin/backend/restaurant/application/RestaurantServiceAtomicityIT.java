@@ -10,6 +10,7 @@ import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Coordinates;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Restaurant;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.GeocoderPort;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -30,6 +31,12 @@ class RestaurantServiceAtomicityIT {
   @Autowired PlatformTransactionManager txManager;
 
   @MockitoBean GeocoderPort geocoder;
+
+  @BeforeEach
+  void cleanState() {
+    jdbcClient.sql("DELETE FROM outbox_event").update();
+    jdbcClient.sql("DELETE FROM restaurant").update();
+  }
 
   @AfterEach
   void cleanup() {
