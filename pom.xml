@@ -44,6 +44,14 @@
 			<artifactId>spring-boot-starter-validation</artifactId>
 		</dependency>
 
+		<!-- Jackson JSR-310 — required at runtime for Instant serialization in
+		     OutboxPublisherAdapter (Boot 4's spring-boot-starter-jackson only
+		     pulls jsr310 in test scope; the outbox runs in prod). -->
+		<dependency>
+			<groupId>com.fasterxml.jackson.datatype</groupId>
+			<artifactId>jackson-datatype-jsr310</artifactId>
+		</dependency>
+
 		<!-- Cache (Caffeine local, TTL court) — utilisé pour mémoïser le géocodage BAN -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

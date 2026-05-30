@@ -2,6 +2,7 @@ package fr.lepgu.palaisdivin.backend.shared.adapters.outbox;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import fr.lepgu.palaisdivin.backend.shared.domain.ports.OutboxPublisher;
 import java.time.Clock;
 import java.time.Instant;
@@ -13,7 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Repository
 class OutboxPublisherAdapter implements OutboxPublisher {
 
-  private static final ObjectMapper MAPPER = new ObjectMapper().findAndRegisterModules();
+  private static final ObjectMapper MAPPER = new ObjectMapper().registerModule(new JavaTimeModule());
 
   private final OutboxEventJpaRepository jpa;
   private final Clock clock;
