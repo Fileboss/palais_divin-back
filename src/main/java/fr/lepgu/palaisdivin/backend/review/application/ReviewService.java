@@ -3,11 +3,13 @@ package fr.lepgu.palaisdivin.backend.review.application;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.RestaurantNotFoundException;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantId;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.RestaurantRepositoryPort;
+import fr.lepgu.palaisdivin.backend.review.domain.events.ReviewCreated;
 import fr.lepgu.palaisdivin.backend.review.domain.model.Review;
 import fr.lepgu.palaisdivin.backend.review.domain.model.ReviewId;
 import fr.lepgu.palaisdivin.backend.review.domain.ports.CreateReviewUseCase;
 import fr.lepgu.palaisdivin.backend.review.domain.ports.ReviewRepositoryPort;
 import fr.lepgu.palaisdivin.backend.shared.domain.ports.IdempotencyKeyPort;
+import fr.lepgu.palaisdivin.backend.shared.domain.ports.OutboxPublisher;
 import fr.lepgu.palaisdivin.backend.user.domain.model.User;
 import fr.lepgu.palaisdivin.backend.user.domain.model.UserId;
 import fr.lepgu.palaisdivin.backend.user.domain.ports.UserRepositoryPort;
@@ -29,6 +31,7 @@ public class ReviewService implements CreateReviewUseCase {
   private final UserRepositoryPort users;
   private final RestaurantRepositoryPort restaurants;
   private final IdempotencyKeyPort idempotency;
+  private final OutboxPublisher outbox;
   private final Clock clock;
 
   public ReviewService(
@@ -36,11 +39,13 @@ public class ReviewService implements CreateReviewUseCase {
       UserRepositoryPort users,
       RestaurantRepositoryPort restaurants,
       IdempotencyKeyPort idempotency,
+      OutboxPublisher outbox,
       Clock clock) {
     this.reviews = reviews;
     this.users = users;
     this.restaurants = restaurants;
     this.idempotency = idempotency;
+    this.outbox = outbox;
     this.clock = clock;
   }
 
@@ -80,6 +85,18 @@ public class ReviewService implements CreateReviewUseCase {
     Review review =
         new Review(ReviewId.newId(), restaurantId, authorId, rating, comment, clock.instant());
     Review saved = reviews.save(review);
+
+    outbox.publish(
+        AGGREGATE_TYPE,
+        saved.id().value(),
+        "ReviewCreated",
+        new ReviewCreated(
+            saved.id().value(),
+            saved.restaurantId().value(),
+            saved.authorId().value(),
+            saved.rating(),
+            saved.comment(),
+            saved.createdAt()));
 
     idempotencyKey.ifPresent(
         key -> idempotency.record(key, authorId, AGGREGATE_TYPE, saved.id().value()));

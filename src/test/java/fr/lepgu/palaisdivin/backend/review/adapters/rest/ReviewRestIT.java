@@ -1,26 +1,33 @@
 package fr.lepgu.palaisdivin.backend.review.adapters.rest;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 
 import dasniko.testcontainers.keycloak.KeycloakContainer;
 import fr.lepgu.palaisdivin.backend.AbstractIntegrationTest;
 import fr.lepgu.palaisdivin.backend.TestKeycloakTokens;
 import fr.lepgu.palaisdivin.backend.restaurant.adapters.rest.CreateRestaurantRequest;
 import fr.lepgu.palaisdivin.backend.restaurant.adapters.rest.RestaurantResponse;
+import fr.lepgu.palaisdivin.backend.shared.adapters.outbox.OutboxWorker;
 import fr.lepgu.palaisdivin.backend.user.domain.model.User;
 import fr.lepgu.palaisdivin.backend.user.domain.model.UserId;
 import fr.lepgu.palaisdivin.backend.user.domain.ports.UserRepositoryPort;
+import java.time.Duration;
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.data.neo4j.core.Neo4jClient;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.RestClient;
 
 class ReviewRestIT extends AbstractIntegrationTest {
@@ -34,6 +41,9 @@ class ReviewRestIT extends AbstractIntegrationTest {
   @Autowired KeycloakContainer keycloak;
   @Autowired UserRepositoryPort users;
   @Autowired JdbcClient jdbcClient;
+  @Autowired Neo4jClient neo4jClient;
+  @Autowired OutboxWorker worker;
+  @Autowired PlatformTransactionManager txManager;
 
   private String userToken;
   private UUID restaurantId;
@@ -44,6 +54,7 @@ class ReviewRestIT extends AbstractIntegrationTest {
     jdbcClient.sql("DELETE FROM review").update();
     jdbcClient.sql("DELETE FROM outbox_event").update();
     jdbcClient.sql("DELETE FROM restaurant").update();
+    neo4jClient.query("MATCH (n) DETACH DELETE n").run();
 
     userToken =
         TestKeycloakTokens.passwordGrant(keycloak, REALM, FRONTEND_CLIENT, USERNAME, PASSWORD);
@@ -190,6 +201,35 @@ class ReviewRestIT extends AbstractIntegrationTest {
     assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     assertThat(resp.getBody()).contains("/problems/not-found");
     assertThat(resp.getBody()).contains(missing.toString());
+  }
+
+  @Test
+  void postedReviewIsProjectedAsRatedEdgeInNeo4j() {
+    ReviewResponse review =
+        authedClient()
+            .post()
+            .uri("/api/v1/user/restaurants/{rid}/reviews", restaurantId)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new CreateReviewRequest(5, "Stellar"))
+            .retrieve()
+            .body(ReviewResponse.class);
+
+    new TransactionTemplate(txManager).executeWithoutResult(s -> worker.drainBatch());
+
+    await()
+        .atMost(Duration.ofSeconds(2))
+        .pollInterval(Duration.ofMillis(50))
+        .untilAsserted(
+            () -> {
+              Long edgeCount =
+                  neo4jClient
+                      .query("MATCH ()-[r:RATED]->() WHERE r.reviewId = $id RETURN count(r) AS c")
+                      .bindAll(Map.of("id", review.id().toString()))
+                      .fetchAs(Long.class)
+                      .one()
+                      .orElse(0L);
+              assertThat(edgeCount).isEqualTo(1L);
+            });
   }
 
   @Test

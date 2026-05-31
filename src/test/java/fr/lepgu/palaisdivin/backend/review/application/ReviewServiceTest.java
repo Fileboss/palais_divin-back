@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import fr.lepgu.palaisdivin.backend.restaurant.domain.RestaurantNotFoundException;
@@ -13,10 +14,12 @@ import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Coordinates;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Restaurant;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantId;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.RestaurantRepositoryPort;
+import fr.lepgu.palaisdivin.backend.review.domain.events.ReviewCreated;
 import fr.lepgu.palaisdivin.backend.review.domain.model.Review;
 import fr.lepgu.palaisdivin.backend.review.domain.model.ReviewId;
 import fr.lepgu.palaisdivin.backend.review.domain.ports.ReviewRepositoryPort;
 import fr.lepgu.palaisdivin.backend.shared.domain.ports.IdempotencyKeyPort;
+import fr.lepgu.palaisdivin.backend.shared.domain.ports.OutboxPublisher;
 import fr.lepgu.palaisdivin.backend.user.domain.model.User;
 import fr.lepgu.palaisdivin.backend.user.domain.model.UserId;
 import fr.lepgu.palaisdivin.backend.user.domain.ports.UserRepositoryPort;
@@ -42,6 +45,7 @@ class ReviewServiceTest {
   @Mock UserRepositoryPort users;
   @Mock RestaurantRepositoryPort restaurants;
   @Mock IdempotencyKeyPort idempotency;
+  @Mock OutboxPublisher outbox;
 
   ReviewService service;
 
@@ -53,7 +57,7 @@ class ReviewServiceTest {
   @BeforeEach
   void setUp() {
     Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
-    service = new ReviewService(reviews, users, restaurants, idempotency, clock);
+    service = new ReviewService(reviews, users, restaurants, idempotency, outbox, clock);
 
     restaurantId = RestaurantId.newId();
     authorId = UserId.newId();
@@ -77,6 +81,17 @@ class ReviewServiceTest {
     assertThat(result.comment()).isEqualTo("Great");
     assertThat(result.createdAt()).isEqualTo(NOW);
     verify(idempotency, never()).record(any(), any(), any(), any());
+
+    ArgumentCaptor<ReviewCreated> event = ArgumentCaptor.forClass(ReviewCreated.class);
+    verify(outbox)
+        .publish(eq("Review"), eq(result.id().value()), eq("ReviewCreated"), event.capture());
+    ReviewCreated published = event.getValue();
+    assertThat(published.id()).isEqualTo(result.id().value());
+    assertThat(published.restaurantId()).isEqualTo(restaurantId.value());
+    assertThat(published.authorId()).isEqualTo(authorId.value());
+    assertThat(published.rating()).isEqualTo(4);
+    assertThat(published.comment()).isEqualTo("Great");
+    assertThat(published.createdAt()).isEqualTo(NOW);
   }
 
   @Test
@@ -95,6 +110,7 @@ class ReviewServiceTest {
     verify(reviews, never()).save(any());
     verify(restaurants, never()).findById(any());
     verify(idempotency, never()).record(any(), any(), any(), any());
+    verifyNoInteractions(outbox);
   }
 
   @Test
@@ -110,6 +126,9 @@ class ReviewServiceTest {
     ArgumentCaptor<java.util.UUID> aggId = ArgumentCaptor.forClass(java.util.UUID.class);
     verify(idempotency).record(eq("KEY-2"), eq(authorId), eq("Review"), aggId.capture());
     assertThat(aggId.getValue()).isEqualTo(result.id().value());
+    verify(outbox)
+        .publish(
+            eq("Review"), eq(result.id().value()), eq("ReviewCreated"), any(ReviewCreated.class));
   }
 
   @Test
@@ -121,6 +140,7 @@ class ReviewServiceTest {
         .isInstanceOf(RestaurantNotFoundException.class);
 
     verify(reviews, never()).save(any());
+    verifyNoInteractions(outbox);
   }
 
   @Test
@@ -133,5 +153,6 @@ class ReviewServiceTest {
 
     verify(reviews, never()).save(any());
     verify(restaurants, never()).findById(any());
+    verifyNoInteractions(outbox);
   }
 }
