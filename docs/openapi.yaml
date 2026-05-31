@@ -171,6 +171,36 @@ paths:
           description: OK
       tags:
       - restaurant-rest-controller
+  /api/v1/user/restaurants/{restaurantId}/reviews:
+    post:
+      operationId: create_1
+      parameters:
+      - in: path
+        name: restaurantId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: header
+        name: Idempotency-Key
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateReviewRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ReviewResponse"
+          description: OK
+      tags:
+      - review-rest-controller
 components:
   schemas:
     CoordinatesDto:
@@ -201,6 +231,18 @@ components:
       required:
       - address
       - name
+    CreateReviewRequest:
+      type: object
+      properties:
+        comment:
+          type: string
+          maxLength: 1000
+          minLength: 0
+        rating:
+          type: integer
+          format: int32
+          maximum: 5
+          minimum: 1
     InvitationResponse:
       type: object
       properties:
@@ -254,6 +296,26 @@ components:
             $ref: "#/components/schemas/RestaurantResponse"
         page:
           $ref: "#/components/schemas/PageMeta"
+    ReviewResponse:
+      type: object
+      properties:
+        authorId:
+          type: string
+          format: uuid
+        comment:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        id:
+          type: string
+          format: uuid
+        rating:
+          type: integer
+          format: int32
+        restaurantId:
+          type: string
+          format: uuid
     SignupRequest:
       type: object
       properties:

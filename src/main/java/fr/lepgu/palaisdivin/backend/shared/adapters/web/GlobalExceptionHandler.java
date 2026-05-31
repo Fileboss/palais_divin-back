@@ -176,7 +176,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     log.warn("Data integrity violation surfaced as 409 conflict", ex);
     ProblemDetail pd =
         ProblemDetail.forStatusAndDetail(
-            HttpStatus.CONFLICT, "An account with this email already exists.");
+            HttpStatus.CONFLICT, "The request conflicts with the current state of the resource.");
     pd.setType(PROBLEM_BASE.resolve("conflict"));
     pd.setTitle("Conflict");
     addTraceId(pd);

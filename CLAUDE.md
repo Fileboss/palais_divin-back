@@ -4,7 +4,7 @@ Guidance for Claude Code working in this repo. `README.md` is the authoritative 
 
 ## Project state
 
-Phases M0–M4 complete: scaffold, walking skeleton, `Restaurant` aggregate (persisted on Postgres + PostGIS, keyset-paginated, BAN-geocoded), OAuth2 Resource Server end-to-end (Keycloak realm, JWT validation, IT against real Keycloak via testcontainers-keycloak), and **Transactional Outbox + Neo4j projection** (publisher writes outbox row in same tx as aggregate; `OutboxWorker` `@Scheduled` + `FOR UPDATE SKIP LOCKED` drains with linear retry; `RestaurantProjector` MERGEs `(:Restaurant)` nodes from `RestaurantCreated`). `ROADMAP.md` is the source of truth for what comes next and per-task done-when criteria — pick the topmost unchecked task in the earliest unfinished phase. Package root: `fr.lepgu.palaisdivin.backend`.
+`ROADMAP.md` is the source of truth for phase status and per-task done-when criteria — pick the topmost unchecked task in the earliest unfinished phase. Package root: `fr.lepgu.palaisdivin.backend`.
 
 ## Domain in one paragraph
 
@@ -70,6 +70,7 @@ When adding a feature: geospatial → Postgres; friend-of-friend/affinity → Ne
 ## API conventions
 
 - Auth-by-prefix: `/api/v1/public/**` (anon), `/api/v1/user/**` (`ROLE_USER`), `/api/v1/admin/**` (`ROLE_ADMIN`).
+- **Default catalog reads to `/public/**`.** Anything that doesn't leak per-user data — restaurant list/detail, future tags, search results — belongs there so anonymous visitors can browse without login. Move under `/user/**` only when the response is user-scoped (own profile, own ratings, friend graph) or when it mutates state. Writes are always authenticated; admin operations live under `/admin/**`.
 - **List endpoints: keyset (cursor) pagination only.** Params: `cursor` (opaque Base64URL), `size` (default 20, max 100, `@Max`-validated), `sort` (server-side enum whitelist). Response envelope: `{ data, page: { size, hasNext, nextCursor } }`. Use Spring Data `Slice<T>` (no `COUNT(*)`). Cursor encodes `{k, id, v}` — `id` tiebreaker is mandatory.
 - Server-side filtering/sorting/geospatial ranking always — frontend just renders.
 - User-endpoint mutations accept `Idempotency-Key` (24h dedup).
