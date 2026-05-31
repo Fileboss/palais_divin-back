@@ -31,6 +31,8 @@ class OpenApiGenerationIT {
     assertThat(yaml)
         .isNotBlank()
         .contains("/api/v1/public/ping")
+        .contains("/api/v1/public/restaurants")
+        .contains("/api/v1/public/restaurants/{id}")
         .contains("/api/v1/user/restaurants")
         .contains("/api/v1/user/restaurants/{id}");
 

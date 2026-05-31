@@ -14,7 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Repository
 class OutboxPublisherAdapter implements OutboxPublisher {
 
-  private static final ObjectMapper MAPPER = new ObjectMapper().registerModule(new JavaTimeModule());
+  private static final ObjectMapper MAPPER =
+      new ObjectMapper().registerModule(new JavaTimeModule());
 
   private final OutboxEventJpaRepository jpa;
   private final Clock clock;
