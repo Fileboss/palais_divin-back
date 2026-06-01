@@ -33,7 +33,6 @@ class UserConnectionPostgresAdapterIT {
 
   private static final UserId SOURCE_ID = new UserId(SOURCE_UUID);
   private static final UserId TARGET_ID = new UserId(TARGET_UUID);
-  private static final UserId OTHER_ID = new UserId(OTHER_UUID);
 
   @Autowired UserConnectionPostgresAdapter adapter;
   @PersistenceContext EntityManager em;

@@ -93,8 +93,8 @@ class RestaurantProjectorIT extends AbstractIntegrationTest {
                       .one()
                       .orElse(null);
               assertThat(node).isNotNull();
-              assertThat(node.get("name")).isEqualTo("Septime");
-              assertThat(node.get("address")).isEqualTo("80 Rue de Charonne");
+              assertThat(node).containsEntry("name", "Septime");
+              assertThat(node).containsEntry("address", "80 Rue de Charonne");
               assertThat((Double) node.get("latitude")).isEqualTo(48.8536);
               assertThat((Double) node.get("longitude")).isEqualTo(2.3795);
             });

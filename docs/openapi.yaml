@@ -30,7 +30,7 @@ paths:
       - ping-controller
   /api/v1/public/restaurants:
     get:
-      operationId: list_1
+      operationId: list_2
       parameters:
       - in: query
         name: cursor
@@ -84,7 +84,7 @@ paths:
       - public-restaurant-rest-controller
   /api/v1/public/restaurants/{restaurantId}/reviews:
     get:
-      operationId: list_2
+      operationId: list_3
       parameters:
       - in: path
         name: restaurantId
@@ -160,6 +160,41 @@ paths:
           description: OK
       tags:
       - connection-rest-controller
+  /api/v1/user/recommendations:
+    get:
+      operationId: list_1
+      parameters:
+      - in: query
+        name: cursor
+        required: false
+        schema:
+          type: string
+      - in: query
+        name: size
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+          maximum: 100
+          minimum: 1
+      - in: query
+        name: sort
+        required: false
+        schema:
+          type: string
+          default: AFFINITY_DESC
+          enum:
+          - AFFINITY_DESC
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/RecommendationsPageResponse"
+          description: OK
+      tags:
+      - recommendation-rest-controller
   /api/v1/user/restaurants:
     get:
       operationId: list
@@ -347,6 +382,37 @@ components:
         ts:
           type: string
           format: date-time
+    RecommendationResponse:
+      type: object
+      properties:
+        address:
+          type: string
+        affinity:
+          type: number
+          format: double
+        id:
+          type: string
+          format: uuid
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
+        name:
+          type: string
+        recommenderCount:
+          type: integer
+          format: int32
+    RecommendationsPageResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecommendationResponse"
+        page:
+          $ref: "#/components/schemas/PageMeta"
     RestaurantResponse:
       type: object
       properties:

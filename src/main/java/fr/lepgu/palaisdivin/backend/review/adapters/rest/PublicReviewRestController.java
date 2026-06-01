@@ -4,6 +4,7 @@ import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantId;
 import fr.lepgu.palaisdivin.backend.review.domain.model.Review;
 import fr.lepgu.palaisdivin.backend.review.domain.model.ReviewCursor;
 import fr.lepgu.palaisdivin.backend.review.domain.ports.ListReviewsUseCase;
+import fr.lepgu.palaisdivin.backend.shared.adapters.web.PageMeta;
 import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
