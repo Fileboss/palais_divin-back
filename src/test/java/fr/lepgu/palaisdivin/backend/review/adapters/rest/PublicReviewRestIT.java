@@ -44,6 +44,7 @@ class PublicReviewRestIT extends AbstractIntegrationTest {
     jdbcClient.sql("DELETE FROM review").update();
     jdbcClient.sql("DELETE FROM outbox_event").update();
     jdbcClient.sql("DELETE FROM restaurant").update();
+    jdbcClient.sql("DELETE FROM user_connection").update();
     jdbcClient.sql("DELETE FROM app_user").update();
 
     Restaurant r =

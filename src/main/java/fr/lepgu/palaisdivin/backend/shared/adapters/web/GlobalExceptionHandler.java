@@ -5,6 +5,8 @@ import fr.lepgu.palaisdivin.backend.restaurant.domain.UnresolvableAddressExcepti
 import fr.lepgu.palaisdivin.backend.user.domain.InvitationNotFoundException;
 import fr.lepgu.palaisdivin.backend.user.domain.InvitationNotUsableException;
 import fr.lepgu.palaisdivin.backend.user.domain.KeycloakOperationException;
+import fr.lepgu.palaisdivin.backend.user.domain.SelfConnectionException;
+import fr.lepgu.palaisdivin.backend.user.domain.UserNotFoundException;
 import io.micrometer.tracing.Tracer;
 import jakarta.validation.ConstraintViolationException;
 import java.net.URI;
@@ -73,6 +75,25 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     pd.setTitle("Resource not found");
     addTraceId(pd);
     return new ResponseEntity<>(pd, headers, status);
+  }
+
+  @ExceptionHandler(UserNotFoundException.class)
+  ResponseEntity<ProblemDetail> handleUserNotFound(UserNotFoundException ex) {
+    ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+    pd.setType(PROBLEM_BASE.resolve("not-found"));
+    pd.setTitle("Resource not found");
+    addTraceId(pd);
+    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(pd);
+  }
+
+  @ExceptionHandler(SelfConnectionException.class)
+  ResponseEntity<ProblemDetail> handleSelfConnection(SelfConnectionException ex) {
+    ProblemDetail pd =
+        ProblemDetail.forStatusAndDetail(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage());
+    pd.setType(PROBLEM_BASE.resolve("self-connection"));
+    pd.setTitle("Self-connection not allowed");
+    addTraceId(pd);
+    return ResponseEntity.status(HttpStatus.UNPROCESSABLE_CONTENT).body(pd);
   }
 
   @ExceptionHandler(RestaurantNotFoundException.class)

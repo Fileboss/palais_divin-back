@@ -48,7 +48,10 @@ class SignupRestIT extends AbstractIntegrationTest {
 
   @BeforeEach
   void cleanState() {
+    jdbcClient.sql("DELETE FROM idempotency_key").update();
+    jdbcClient.sql("DELETE FROM review").update();
     jdbcClient.sql("DELETE FROM outbox_event").update();
+    jdbcClient.sql("DELETE FROM user_connection").update();
     jdbcClient.sql("DELETE FROM app_user").update();
     jdbcClient.sql("DELETE FROM invitation").update();
     jdbcClient.sql("DELETE FROM restaurant").update();

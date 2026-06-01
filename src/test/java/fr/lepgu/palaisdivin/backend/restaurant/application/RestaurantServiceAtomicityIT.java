@@ -23,6 +23,8 @@ class RestaurantServiceAtomicityIT extends AbstractIntegrationTest {
 
   @BeforeEach
   void cleanState() {
+    jdbcClient.sql("DELETE FROM idempotency_key").update();
+    jdbcClient.sql("DELETE FROM review").update();
     jdbcClient.sql("DELETE FROM outbox_event").update();
     jdbcClient.sql("DELETE FROM restaurant").update();
     banApiClient.reset();
@@ -30,6 +32,8 @@ class RestaurantServiceAtomicityIT extends AbstractIntegrationTest {
 
   @AfterEach
   void cleanup() {
+    jdbcClient.sql("DELETE FROM idempotency_key").update();
+    jdbcClient.sql("DELETE FROM review").update();
     jdbcClient.sql("DELETE FROM outbox_event").update();
     jdbcClient.sql("DELETE FROM restaurant").update();
   }

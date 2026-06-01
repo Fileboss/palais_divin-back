@@ -141,6 +141,25 @@ paths:
           description: OK
       tags:
       - signup-rest-controller
+  /api/v1/user/connections/{targetId}:
+    post:
+      operationId: connect
+      parameters:
+      - in: path
+        name: targetId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ConnectionResponse"
+          description: OK
+      tags:
+      - connection-rest-controller
   /api/v1/user/restaurants:
     get:
       operationId: list
@@ -244,6 +263,21 @@ paths:
       - review-rest-controller
 components:
   schemas:
+    ConnectionResponse:
+      type: object
+      properties:
+        createdAt:
+          type: string
+          format: date-time
+        id:
+          type: string
+          format: uuid
+        sourceUserId:
+          type: string
+          format: uuid
+        targetUserId:
+          type: string
+          format: uuid
     CoordinatesDto:
       type: object
       properties:

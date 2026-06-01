@@ -49,6 +49,8 @@ class RestaurantProjectorIT extends AbstractIntegrationTest {
         TestKeycloakTokens.passwordGrant(
             keycloak, "palaisdivin", "palais-divin-frontend", "testuser", "testpassword");
 
+    jdbcClient.sql("DELETE FROM idempotency_key").update();
+    jdbcClient.sql("DELETE FROM review").update();
     jdbcClient.sql("DELETE FROM outbox_event").update();
     jdbcClient.sql("DELETE FROM restaurant").update();
     neo4jClient.query("MATCH (r:Restaurant) DETACH DELETE r").run();
