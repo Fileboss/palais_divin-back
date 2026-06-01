@@ -65,7 +65,7 @@ paths:
       - public-restaurant-rest-controller
   /api/v1/public/restaurants/{id}:
     get:
-      operationId: get_1
+      operationId: get_2
       parameters:
       - in: path
         name: id
@@ -266,6 +266,25 @@ paths:
           description: OK
       tags:
       - restaurant-rest-controller
+  /api/v1/user/restaurants/{id}/affinity:
+    get:
+      operationId: get_1
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/RestaurantAffinityResponse"
+          description: OK
+      tags:
+      - restaurant-affinity-rest-controller
   /api/v1/user/restaurants/{restaurantId}/reviews:
     post:
       operationId: create_1
@@ -413,6 +432,18 @@ components:
             $ref: "#/components/schemas/RecommendationResponse"
         page:
           $ref: "#/components/schemas/PageMeta"
+    RestaurantAffinityResponse:
+      type: object
+      properties:
+        affinity:
+          type: number
+          format: double
+        recommenderCount:
+          type: integer
+          format: int32
+        restaurantId:
+          type: string
+          format: uuid
     RestaurantResponse:
       type: object
       properties:

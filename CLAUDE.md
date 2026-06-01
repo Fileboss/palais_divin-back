@@ -86,3 +86,7 @@ Real session-costs — recognise the symptoms when you see them.
 ## CI / deploy
 
 Pipeline: Spotless → unit + ArchUnit → integration (profiled) → OWASP Dependency-Check + Trivy → multi-stage Docker on **Distroless Java 25** → registry push. GraalVM native image deferred (JPA + Neo4j reflection cost). Caddy terminates TLS — the JVM does not. Infra deploys are GitOps from `lepgu_infra` (separate repo, shared with `qui-est-ce`).
+
+## Documentation hygiene
+
+**ROADMAP tick-offs and commit messages stay short.** A few sentences — what shipped, the load-bearing design call, deferred follow-ups. The git diff carries the rest. Don't enumerate every file, constructor parameter, or test class. Past entries (e.g. M7.2) blew past 1000 words and stopped being scannable — do not mirror them.

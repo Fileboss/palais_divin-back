@@ -4,6 +4,7 @@ import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantId;
 import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;
 import fr.lepgu.palaisdivin.backend.user.domain.model.Recommendation;
 import fr.lepgu.palaisdivin.backend.user.domain.model.RecommendationCursor;
+import fr.lepgu.palaisdivin.backend.user.domain.model.RestaurantAffinity;
 import fr.lepgu.palaisdivin.backend.user.domain.model.UserId;
 import fr.lepgu.palaisdivin.backend.user.domain.ports.RecommendationGraphPort;
 import java.util.ArrayList;
@@ -56,6 +57,16 @@ class RecommendationNeo4jAdapter implements RecommendationGraphPort {
       LIMIT $limit
       """;
 
+  private static final String AFFINITY_CYPHER =
+      """
+      MATCH (me:User {id: $userId})-[:KNOWS*1..2]->(rater:User)
+            -[r:RATED]->(rest:Restaurant {id: $restaurantId})
+      WHERE rater.id <> $userId
+      WITH DISTINCT rater, r.score AS score
+      WITH sum(score) AS affinity, count(rater) AS recommenderCount
+      RETURN affinity, recommenderCount
+      """;
+
   private final Neo4jClient neo4jClient;
 
   RecommendationNeo4jAdapter(Neo4jClient neo4jClient) {
@@ -92,6 +103,29 @@ class RecommendationNeo4jAdapter implements RecommendationGraphPort {
       mapped = mapped.subList(0, size);
     }
     return new CursorPage<>(mapped, hasNext);
+  }
+
+  @Override
+  public RestaurantAffinity findAffinityFor(UserId requester, RestaurantId restaurant) {
+    // Cypher aggregations on an empty path still produce one row with sum=0, count=0 —
+    // unreachable friend networks naturally surface as a zero-affinity record here.
+    Collection<Map<String, Object>> rows =
+        neo4jClient
+            .query(AFFINITY_CYPHER)
+            .bindAll(
+                Map.of(
+                    "userId", requester.value().toString(),
+                    "restaurantId", restaurant.value().toString()))
+            .fetch()
+            .all();
+    if (rows.isEmpty()) {
+      return new RestaurantAffinity(restaurant, 0.0, 0);
+    }
+    Map<String, Object> row = rows.iterator().next();
+    return new RestaurantAffinity(
+        restaurant,
+        ((Number) row.get("affinity")).doubleValue(),
+        ((Number) row.get("recommenderCount")).intValue());
   }
 
   private static Recommendation toDomain(Map<String, Object> row) {

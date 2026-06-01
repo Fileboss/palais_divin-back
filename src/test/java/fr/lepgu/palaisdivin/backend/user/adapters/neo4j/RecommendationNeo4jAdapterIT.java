@@ -7,6 +7,7 @@ import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantId;
 import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;
 import fr.lepgu.palaisdivin.backend.user.domain.model.Recommendation;
 import fr.lepgu.palaisdivin.backend.user.domain.model.RecommendationCursor;
+import fr.lepgu.palaisdivin.backend.user.domain.model.RestaurantAffinity;
 import fr.lepgu.palaisdivin.backend.user.domain.model.UserId;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -166,6 +167,101 @@ class RecommendationNeo4jAdapterIT extends AbstractIntegrationTest {
     assertThat(page3.data()).hasSize(1);
     assertThat(page3.hasNext()).isFalse();
     assertThat(page3.data().getFirst().affinity()).isEqualTo(1.0);
+  }
+
+  // --- affinity (M7.3) ---------------------------------------------------
+
+  @Test
+  void affinity_restaurantNotInGraph_returnsZero() {
+    RestaurantId rest = RestaurantId.newId();
+
+    RestaurantAffinity result = adapter.findAffinityFor(me, rest);
+
+    assertThat(result.restaurantId()).isEqualTo(rest);
+    assertThat(result.affinity()).isZero();
+    assertThat(result.recommenderCount()).isZero();
+  }
+
+  @Test
+  void affinity_noFriends_returnsZero() {
+    RestaurantId rest = RestaurantId.newId();
+    mergeRestaurant(rest, "Septime", "80 Rue de Charonne", 48.852, 2.380);
+
+    RestaurantAffinity result = adapter.findAffinityFor(me, rest);
+
+    assertThat(result.affinity()).isZero();
+    assertThat(result.recommenderCount()).isZero();
+  }
+
+  @Test
+  void affinity_directFriendRated_returnsDepth1Score() {
+    UserId friend = UserId.newId();
+    RestaurantId rest = RestaurantId.newId();
+    mergeUser(friend);
+    mergeRestaurant(rest, "Septime", "80 Rue de Charonne", 48.852, 2.380);
+    mergeKnows(me, friend);
+    mergeRated(friend, rest, 5);
+
+    RestaurantAffinity result = adapter.findAffinityFor(me, rest);
+
+    assertThat(result.restaurantId()).isEqualTo(rest);
+    assertThat(result.affinity()).isEqualTo(5.0);
+    assertThat(result.recommenderCount()).isEqualTo(1);
+  }
+
+  @Test
+  void affinity_friendOfFriendRated_returnsDepth2Score() {
+    UserId friend = UserId.newId();
+    UserId fof = UserId.newId();
+    RestaurantId rest = RestaurantId.newId();
+    mergeUser(friend);
+    mergeUser(fof);
+    mergeRestaurant(rest, "Le Servan", "32 Rue Saint-Maur", 48.860, 2.382);
+    mergeKnows(me, friend);
+    mergeKnows(friend, fof);
+    mergeRated(fof, rest, 4);
+
+    RestaurantAffinity result = adapter.findAffinityFor(me, rest);
+
+    assertThat(result.affinity()).isEqualTo(4.0);
+    assertThat(result.recommenderCount()).isEqualTo(1);
+  }
+
+  @Test
+  void affinity_multipleRaters_sumScoresAndCountRecommenders() {
+    UserId friend = UserId.newId();
+    UserId fof = UserId.newId();
+    RestaurantId rest = RestaurantId.newId();
+    mergeUser(friend);
+    mergeUser(fof);
+    mergeRestaurant(rest, "Clamato", "80 Rue de Charonne", 48.852, 2.379);
+    mergeKnows(me, friend);
+    mergeKnows(friend, fof);
+    mergeRated(friend, rest, 5);
+    mergeRated(fof, rest, 3);
+
+    RestaurantAffinity result = adapter.findAffinityFor(me, rest);
+
+    assertThat(result.affinity()).isEqualTo(8.0);
+    assertThat(result.recommenderCount()).isEqualTo(2);
+  }
+
+  @Test
+  void affinity_requesterSelfRated_stillComputes() {
+    // Diverges from M7.2 recommendations Cypher: affinity is a reflective query — we still want
+    // the friend-network score even when the user has already rated the place themselves.
+    UserId friend = UserId.newId();
+    RestaurantId rest = RestaurantId.newId();
+    mergeUser(friend);
+    mergeRestaurant(rest, "Chez Aline", "85 Rue de la Roquette", 48.857, 2.378);
+    mergeKnows(me, friend);
+    mergeRated(friend, rest, 5);
+    mergeRated(me, rest, 3);
+
+    RestaurantAffinity result = adapter.findAffinityFor(me, rest);
+
+    assertThat(result.affinity()).isEqualTo(5.0);
+    assertThat(result.recommenderCount()).isEqualTo(1);
   }
 
   // --- helpers -----------------------------------------------------------
