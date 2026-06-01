@@ -1,9 +1,10 @@
-package fr.lepgu.palaisdivin.backend.restaurant.adapters.rest;
+package fr.lepgu.palaisdivin.backend.review.adapters.rest;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantCursor;
+import fr.lepgu.palaisdivin.backend.review.domain.model.ReviewCursor;
+import fr.lepgu.palaisdivin.backend.review.domain.model.ReviewId;
 import fr.lepgu.palaisdivin.backend.shared.adapters.web.InvalidCursorException;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -11,7 +12,7 @@ import java.util.Base64;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
-class CursorCodecTest {
+class ReviewCursorCodecTest {
 
   private static String b64(String json) {
     return Base64.getUrlEncoder()
@@ -21,26 +22,26 @@ class CursorCodecTest {
 
   @Test
   void encodeDecode_roundTrip() {
-    RestaurantCursor original =
-        new RestaurantCursor(
+    ReviewCursor original =
+        new ReviewCursor(
             Instant.parse("2026-05-27T10:15:30.123Z"),
-            UUID.fromString("11111111-2222-3333-4444-555555555555"));
+            new ReviewId(UUID.fromString("11111111-2222-3333-4444-555555555555")));
 
-    String token = CursorCodec.encode(original);
-    RestaurantCursor decoded = CursorCodec.decode(token);
+    String token = ReviewCursorCodec.encode(original);
+    ReviewCursor decoded = ReviewCursorCodec.decode(token);
 
     assertThat(decoded).isEqualTo(original);
   }
 
   @Test
   void decode_invalidBase64_throws() {
-    assertThatThrownBy(() -> CursorCodec.decode("not!base64!!"))
+    assertThatThrownBy(() -> ReviewCursorCodec.decode("not!base64!!"))
         .isInstanceOf(InvalidCursorException.class);
   }
 
   @Test
   void decode_notJson_throws() {
-    assertThatThrownBy(() -> CursorCodec.decode(b64("not-json")))
+    assertThatThrownBy(() -> ReviewCursorCodec.decode(b64("not-json")))
         .isInstanceOf(InvalidCursorException.class);
   }
 
@@ -48,7 +49,7 @@ class CursorCodecTest {
   void decode_missingField_throws() {
     assertThatThrownBy(
             () ->
-                CursorCodec.decode(
+                ReviewCursorCodec.decode(
                     b64("{\"k\":\"2026-05-27T10:15:30Z\",\"id\":\"" + UUID.randomUUID() + "\"}")))
         .isInstanceOf(InvalidCursorException.class);
   }
@@ -56,28 +57,28 @@ class CursorCodecTest {
   @Test
   void decode_wrongVersion_throws() {
     String json = "{\"k\":\"2026-05-27T10:15:30Z\",\"id\":\"" + UUID.randomUUID() + "\",\"v\":2}";
-    assertThatThrownBy(() -> CursorCodec.decode(b64(json)))
+    assertThatThrownBy(() -> ReviewCursorCodec.decode(b64(json)))
         .isInstanceOf(InvalidCursorException.class);
   }
 
   @Test
   void decode_unparseableInstant_throws() {
     String json = "{\"k\":\"nope\",\"id\":\"" + UUID.randomUUID() + "\",\"v\":1}";
-    assertThatThrownBy(() -> CursorCodec.decode(b64(json)))
+    assertThatThrownBy(() -> ReviewCursorCodec.decode(b64(json)))
         .isInstanceOf(InvalidCursorException.class);
   }
 
   @Test
   void decode_unparseableUuid_throws() {
     String json = "{\"k\":\"2026-05-27T10:15:30Z\",\"id\":\"nope\",\"v\":1}";
-    assertThatThrownBy(() -> CursorCodec.decode(b64(json)))
+    assertThatThrownBy(() -> ReviewCursorCodec.decode(b64(json)))
         .isInstanceOf(InvalidCursorException.class);
   }
 
   @Test
   void decode_wrongTypeField_throws() {
     String json = "{\"k\":42,\"id\":\"" + UUID.randomUUID() + "\",\"v\":1}";
-    assertThatThrownBy(() -> CursorCodec.decode(b64(json)))
+    assertThatThrownBy(() -> ReviewCursorCodec.decode(b64(json)))
         .isInstanceOf(InvalidCursorException.class);
   }
 }

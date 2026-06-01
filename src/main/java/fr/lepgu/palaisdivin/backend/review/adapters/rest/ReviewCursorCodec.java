@@ -1,8 +1,9 @@
-package fr.lepgu.palaisdivin.backend.restaurant.adapters.rest;
+package fr.lepgu.palaisdivin.backend.review.adapters.rest;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantCursor;
+import fr.lepgu.palaisdivin.backend.review.domain.model.ReviewCursor;
+import fr.lepgu.palaisdivin.backend.review.domain.model.ReviewId;
 import fr.lepgu.palaisdivin.backend.shared.adapters.web.InvalidCursorException;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -10,20 +11,20 @@ import java.time.format.DateTimeParseException;
 import java.util.Base64;
 import java.util.UUID;
 
-final class CursorCodec {
+final class ReviewCursorCodec {
 
   private static final int VERSION = 1;
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
-  private CursorCodec() {}
+  private ReviewCursorCodec() {}
 
-  static String encode(RestaurantCursor cursor) {
+  static String encode(ReviewCursor cursor) {
     try {
       String json =
           MAPPER
               .createObjectNode()
               .put("k", cursor.createdAt().toString())
-              .put("id", cursor.id().toString())
+              .put("id", cursor.id().value().toString())
               .put("v", VERSION)
               .toString();
       return Base64.getUrlEncoder()
@@ -34,7 +35,7 @@ final class CursorCodec {
     }
   }
 
-  static RestaurantCursor decode(String token) {
+  static ReviewCursor decode(String token) {
     byte[] raw;
     try {
       raw = Base64.getUrlDecoder().decode(token);
@@ -71,6 +72,6 @@ final class CursorCodec {
     } catch (IllegalArgumentException e) {
       throw new InvalidCursorException();
     }
-    return new RestaurantCursor(createdAt, uuid);
+    return new ReviewCursor(createdAt, new ReviewId(uuid));
   }
 }

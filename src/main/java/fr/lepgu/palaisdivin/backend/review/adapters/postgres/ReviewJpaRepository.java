@@ -1,6 +1,35 @@
 package fr.lepgu.palaisdivin.backend.review.adapters.postgres;
 
+import java.time.Instant;
 import java.util.UUID;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
-interface ReviewJpaRepository extends JpaRepository<ReviewEntity, UUID> {}
+interface ReviewJpaRepository extends JpaRepository<ReviewEntity, UUID> {
+
+  @Query(
+      """
+      select r from ReviewEntity r
+      where r.restaurantId = :restaurantId
+      order by r.createdAt desc, r.id desc
+      """)
+  Slice<ReviewEntity> findFirstPageByRestaurant(
+      @Param("restaurantId") UUID restaurantId, Pageable pageable);
+
+  @Query(
+      """
+      select r from ReviewEntity r
+      where r.restaurantId = :restaurantId
+        and (r.createdAt < :lastCreatedAt
+             or (r.createdAt = :lastCreatedAt and r.id < :lastId))
+      order by r.createdAt desc, r.id desc
+      """)
+  Slice<ReviewEntity> findAfterByRestaurant(
+      @Param("restaurantId") UUID restaurantId,
+      @Param("lastCreatedAt") Instant lastCreatedAt,
+      @Param("lastId") UUID lastId,
+      Pageable pageable);
+}

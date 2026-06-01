@@ -1,6 +1,5 @@
 package fr.lepgu.palaisdivin.backend.shared.adapters.web;
 
-import fr.lepgu.palaisdivin.backend.restaurant.adapters.rest.InvalidCursorException;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.RestaurantNotFoundException;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.UnresolvableAddressException;
 import fr.lepgu.palaisdivin.backend.user.domain.InvitationNotFoundException;

@@ -6,11 +6,15 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import fr.lepgu.palaisdivin.backend.TestcontainersConfiguration;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantId;
 import fr.lepgu.palaisdivin.backend.review.domain.model.Review;
+import fr.lepgu.palaisdivin.backend.review.domain.model.ReviewCursor;
 import fr.lepgu.palaisdivin.backend.review.domain.model.ReviewId;
+import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;
 import fr.lepgu.palaisdivin.backend.user.domain.model.UserId;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -123,5 +127,76 @@ class ReviewPostgresAdapterIT {
 
     assertThat(adapter.findById(a)).isPresent();
     assertThat(adapter.findById(b)).isPresent();
+  }
+
+  @Test
+  void findByRestaurantWalksAllPagesByCursorDescendingByCreatedAtThenId() {
+    UUID otherRestaurantUuid = UUID.randomUUID();
+    em.createNativeQuery(
+            "INSERT INTO restaurant (id, name, location, created_at)"
+                + " VALUES (?, ?, ST_GeographyFromText('SRID=4326;POINT(2.35 48.85)'), now())")
+        .setParameter(1, otherRestaurantUuid)
+        .setParameter(2, "Other")
+        .executeUpdate();
+    RestaurantId otherRestaurantId = new RestaurantId(otherRestaurantUuid);
+
+    List<ReviewId> targetIds = new ArrayList<>();
+    for (int i = 0; i < 6; i++) {
+      ReviewId id = ReviewId.newId();
+      targetIds.add(id);
+      UserId author = new UserId(UUID.randomUUID());
+      insertUser(author.value(), "subj-t-" + i, "t" + i + "@example.com", "T" + i);
+      adapter.save(
+          new Review(
+              id, RESTAURANT_ID, author, 4, "r-" + i, FIXED_CREATED_AT.plusSeconds(i * 10L)));
+    }
+    UserId otherAuthor = new UserId(UUID.randomUUID());
+    insertUser(otherAuthor.value(), "subj-other", "other@example.com", "Other");
+    adapter.save(
+        new Review(
+            ReviewId.newId(),
+            otherRestaurantId,
+            otherAuthor,
+            4,
+            "other",
+            FIXED_CREATED_AT.plusSeconds(500)));
+
+    List<ReviewId> collected = new ArrayList<>();
+    ReviewCursor cursor = null;
+    int pages = 0;
+    while (true) {
+      CursorPage<Review> page = adapter.findByRestaurant(RESTAURANT_ID, cursor, 2);
+      page.data().forEach(r -> collected.add(r.id()));
+      pages++;
+      if (!page.hasNext()) break;
+      Review last = page.data().getLast();
+      cursor = new ReviewCursor(last.createdAt(), last.id());
+      if (pages > 10) throw new AssertionError("paging did not terminate");
+    }
+
+    assertThat(pages).isEqualTo(3);
+    assertThat(collected).doesNotHaveDuplicates();
+    assertThat(collected).containsExactlyInAnyOrderElementsOf(targetIds);
+  }
+
+  @Test
+  void findByRestaurantFirstPageWithSizeLargerThanDataHasNextFalse() {
+    adapter.save(new Review(ReviewId.newId(), RESTAURANT_ID, AUTHOR_ID, 4, null, FIXED_CREATED_AT));
+    adapter.save(
+        new Review(ReviewId.newId(), RESTAURANT_ID, OTHER_AUTHOR_ID, 5, null, FIXED_CREATED_AT));
+
+    CursorPage<Review> page = adapter.findByRestaurant(RESTAURANT_ID, null, 100);
+
+    assertThat(page.data()).hasSize(2);
+    assertThat(page.hasNext()).isFalse();
+  }
+
+  @Test
+  void findByRestaurantUnknownRestaurantReturnsEmptyPage() {
+    CursorPage<Review> page =
+        adapter.findByRestaurant(new RestaurantId(UUID.randomUUID()), null, 20);
+
+    assertThat(page.data()).isEmpty();
+    assertThat(page.hasNext()).isFalse();
   }
 }

@@ -5,11 +5,14 @@ import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantId;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.RestaurantRepositoryPort;
 import fr.lepgu.palaisdivin.backend.review.domain.events.ReviewCreated;
 import fr.lepgu.palaisdivin.backend.review.domain.model.Review;
+import fr.lepgu.palaisdivin.backend.review.domain.model.ReviewCursor;
 import fr.lepgu.palaisdivin.backend.review.domain.model.ReviewId;
 import fr.lepgu.palaisdivin.backend.review.domain.ports.CreateReviewUseCase;
+import fr.lepgu.palaisdivin.backend.review.domain.ports.ListReviewsUseCase;
 import fr.lepgu.palaisdivin.backend.review.domain.ports.ReviewRepositoryPort;
 import fr.lepgu.palaisdivin.backend.shared.domain.ports.IdempotencyKeyPort;
 import fr.lepgu.palaisdivin.backend.shared.domain.ports.OutboxPublisher;
+import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;
 import fr.lepgu.palaisdivin.backend.user.domain.model.User;
 import fr.lepgu.palaisdivin.backend.user.domain.model.UserId;
 import fr.lepgu.palaisdivin.backend.user.domain.ports.UserRepositoryPort;
@@ -22,7 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Transactional
-public class ReviewService implements CreateReviewUseCase {
+public class ReviewService implements CreateReviewUseCase, ListReviewsUseCase {
 
   private static final String AGGREGATE_TYPE = "Review";
   private static final Duration IDEMPOTENCY_TTL = Duration.ofHours(24);
@@ -102,5 +105,12 @@ public class ReviewService implements CreateReviewUseCase {
         key -> idempotency.record(key, authorId, AGGREGATE_TYPE, saved.id().value()));
 
     return saved;
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public CursorPage<Review> listByRestaurant(
+      RestaurantId restaurantId, ReviewCursor cursor, int size) {
+    return reviews.findByRestaurant(restaurantId, cursor, size);
   }
 }

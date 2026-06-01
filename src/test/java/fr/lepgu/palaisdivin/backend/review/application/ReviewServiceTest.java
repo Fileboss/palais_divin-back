@@ -16,10 +16,12 @@ import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantId;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.RestaurantRepositoryPort;
 import fr.lepgu.palaisdivin.backend.review.domain.events.ReviewCreated;
 import fr.lepgu.palaisdivin.backend.review.domain.model.Review;
+import fr.lepgu.palaisdivin.backend.review.domain.model.ReviewCursor;
 import fr.lepgu.palaisdivin.backend.review.domain.model.ReviewId;
 import fr.lepgu.palaisdivin.backend.review.domain.ports.ReviewRepositoryPort;
 import fr.lepgu.palaisdivin.backend.shared.domain.ports.IdempotencyKeyPort;
 import fr.lepgu.palaisdivin.backend.shared.domain.ports.OutboxPublisher;
+import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;
 import fr.lepgu.palaisdivin.backend.user.domain.model.User;
 import fr.lepgu.palaisdivin.backend.user.domain.model.UserId;
 import fr.lepgu.palaisdivin.backend.user.domain.ports.UserRepositoryPort;
@@ -27,6 +29,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -154,5 +157,30 @@ class ReviewServiceTest {
     verify(reviews, never()).save(any());
     verify(restaurants, never()).findById(any());
     verifyNoInteractions(outbox);
+  }
+
+  @Test
+  void listByRestaurantDelegatesToRepository() {
+    Review r =
+        new Review(ReviewId.newId(), restaurantId, authorId, 5, "Good", NOW.minusSeconds(60));
+    CursorPage<Review> page = new CursorPage<>(List.of(r), false);
+    when(reviews.findByRestaurant(restaurantId, null, 20)).thenReturn(page);
+
+    CursorPage<Review> result = service.listByRestaurant(restaurantId, null, 20);
+
+    assertThat(result).isSameAs(page);
+    verifyNoInteractions(users, restaurants, idempotency, outbox);
+  }
+
+  @Test
+  void listByRestaurantPassesCursorThrough() {
+    ReviewCursor cursor = new ReviewCursor(NOW.minusSeconds(10), ReviewId.newId());
+    CursorPage<Review> page = new CursorPage<>(List.of(), false);
+    when(reviews.findByRestaurant(restaurantId, cursor, 5)).thenReturn(page);
+
+    CursorPage<Review> result = service.listByRestaurant(restaurantId, cursor, 5);
+
+    assertThat(result).isSameAs(page);
+    verify(reviews).findByRestaurant(restaurantId, cursor, 5);
   }
 }

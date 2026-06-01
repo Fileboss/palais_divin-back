@@ -3,15 +3,9 @@ package fr.lepgu.palaisdivin.backend.review.domain.ports;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantId;
 import fr.lepgu.palaisdivin.backend.review.domain.model.Review;
 import fr.lepgu.palaisdivin.backend.review.domain.model.ReviewCursor;
-import fr.lepgu.palaisdivin.backend.review.domain.model.ReviewId;
 import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;
-import java.util.Optional;
 
-public interface ReviewRepositoryPort {
+public interface ListReviewsUseCase {
 
-  Review save(Review review);
-
-  Optional<Review> findById(ReviewId id);
-
-  CursorPage<Review> findByRestaurant(RestaurantId restaurantId, ReviewCursor cursor, int size);
+  CursorPage<Review> listByRestaurant(RestaurantId restaurantId, ReviewCursor cursor, int size);
 }
