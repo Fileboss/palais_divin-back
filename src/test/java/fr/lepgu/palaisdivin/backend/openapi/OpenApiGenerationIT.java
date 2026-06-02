@@ -39,6 +39,7 @@ class OpenApiGenerationIT {
         .contains("/api/v1/user/recommendations")
         .contains("/api/v1/user/restaurants/{id}/affinity")
         .contains("/api/v1/user/restaurants/{restaurantId}/photos/upload-url")
+        .contains("/api/v1/user/restaurants/{restaurantId}/photos")
         .contains("/api/v1/admin/restaurants/{id}");
 
     String baseDir = System.getProperty("project.basedir", System.getProperty("user.dir"));

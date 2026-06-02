@@ -1,5 +1,6 @@
 package fr.lepgu.palaisdivin.backend.shared.adapters.web;
 
+import fr.lepgu.palaisdivin.backend.photo.domain.InvalidObjectKeyException;
 import fr.lepgu.palaisdivin.backend.photo.domain.PhotoStorageException;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.RestaurantNotFoundException;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.UnresolvableAddressException;
@@ -225,6 +226,15 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     pd.setDetail("Your account is not fully provisioned. Please contact support.");
     addTraceId(pd);
     return ResponseEntity.internalServerError().body(pd);
+  }
+
+  @ExceptionHandler(InvalidObjectKeyException.class)
+  ResponseEntity<ProblemDetail> handleInvalidObjectKey(InvalidObjectKeyException ex) {
+    ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+    pd.setType(PROBLEM_BASE.resolve("invalid-object-key"));
+    pd.setTitle("Invalid object key");
+    addTraceId(pd);
+    return ResponseEntity.badRequest().body(pd);
   }
 
   @ExceptionHandler(PhotoStorageException.class)

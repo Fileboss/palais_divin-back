@@ -272,6 +272,36 @@ paths:
           description: OK
       tags:
       - restaurant-affinity-rest-controller
+  /api/v1/user/restaurants/{restaurantId}/photos:
+    post:
+      operationId: register
+      parameters:
+      - in: path
+        name: restaurantId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: header
+        name: Idempotency-Key
+        required: false
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterPhotoRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PhotoResponse"
+          description: OK
+      tags:
+      - photo-rest-controller
   /api/v1/user/restaurants/{restaurantId}/photos/upload-url:
     post:
       operationId: mint
@@ -290,7 +320,7 @@ paths:
                 $ref: "#/components/schemas/PhotoUploadUrlResponse"
           description: OK
       tags:
-      - photo-upload-url-rest-controller
+      - photo-rest-controller
   /api/v1/user/restaurants/{restaurantId}/reviews:
     get:
       operationId: getMyReview
@@ -441,6 +471,25 @@ components:
         size:
           type: integer
           format: int32
+    PhotoResponse:
+      type: object
+      properties:
+        authorId:
+          type: string
+          format: uuid
+        contentType:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        id:
+          type: string
+          format: uuid
+        objectKey:
+          type: string
+        restaurantId:
+          type: string
+          format: uuid
     PhotoUploadUrlResponse:
       type: object
       properties:
@@ -490,6 +539,20 @@ components:
             $ref: "#/components/schemas/RecommendationResponse"
         page:
           $ref: "#/components/schemas/PageMeta"
+    RegisterPhotoRequest:
+      type: object
+      properties:
+        contentType:
+          type: string
+          maxLength: 127
+          minLength: 0
+        objectKey:
+          type: string
+          maxLength: 512
+          minLength: 0
+      required:
+      - contentType
+      - objectKey
     RestaurantAffinityResponse:
       type: object
       properties:
