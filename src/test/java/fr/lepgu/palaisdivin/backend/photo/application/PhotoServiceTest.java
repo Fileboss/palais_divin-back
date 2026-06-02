@@ -11,8 +11,10 @@ import static org.mockito.Mockito.when;
 
 import fr.lepgu.palaisdivin.backend.config.MinioProperties;
 import fr.lepgu.palaisdivin.backend.photo.domain.InvalidObjectKeyException;
+import fr.lepgu.palaisdivin.backend.photo.domain.PhotoNotFoundException;
 import fr.lepgu.palaisdivin.backend.photo.domain.PhotoStorageException;
 import fr.lepgu.palaisdivin.backend.photo.domain.model.Photo;
+import fr.lepgu.palaisdivin.backend.photo.domain.model.PhotoDownloadUrl;
 import fr.lepgu.palaisdivin.backend.photo.domain.model.PhotoId;
 import fr.lepgu.palaisdivin.backend.photo.domain.model.PhotoUploadUrl;
 import fr.lepgu.palaisdivin.backend.photo.domain.ports.PhotoRepositoryPort;
@@ -43,9 +45,12 @@ class PhotoServiceTest {
 
   private static final Instant NOW = Instant.parse("2026-06-02T12:00:00Z");
   private static final Duration TTL = Duration.ofMinutes(10);
+  private static final Duration DOWNLOAD_TTL = Duration.ofMinutes(10);
   private static final String SUBJECT = "kc-subject-xyz";
   private static final URI SIGNED_URL =
       URI.create("http://minio.test/palaisdivin-photos/key?X-Amz-Signature=abc");
+  private static final URI SIGNED_GET_URL =
+      URI.create("http://minio.test/palaisdivin-photos/key?X-Amz-Signature=get");
 
   @Mock RestaurantRepositoryPort restaurants;
   @Mock PhotoStoragePort storage;
@@ -64,7 +69,13 @@ class PhotoServiceTest {
   void setUp() {
     properties =
         new MinioProperties(
-            "http://minio.test", "k", "s", Duration.ofSeconds(2), "palaisdivin-photos", TTL);
+            "http://minio.test",
+            "k",
+            "s",
+            Duration.ofSeconds(2),
+            "palaisdivin-photos",
+            TTL,
+            DOWNLOAD_TTL);
     Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
     service = new PhotoService(restaurants, storage, photos, users, idempotency, properties, clock);
 
@@ -206,5 +217,66 @@ class PhotoServiceTest {
         service.register(SUBJECT, restaurantId, validObjectKey, "image/jpeg", Optional.of("KEY-2"));
 
     verify(idempotency).record("KEY-2", authorId, "Photo", result.id().value());
+  }
+
+  @Test
+  void mintDownloadUrlReturnsObjectKeyUrlAndExpiry() {
+    PhotoId photoId = PhotoId.newId();
+    Photo photo =
+        new Photo(
+            photoId, restaurantId, authorId, validObjectKey, "image/jpeg", NOW.minusSeconds(3600));
+    when(photos.findById(photoId)).thenReturn(Optional.of(photo));
+    when(storage.presignGet(validObjectKey, DOWNLOAD_TTL)).thenReturn(SIGNED_GET_URL);
+
+    PhotoDownloadUrl result = service.mint(restaurantId, photoId);
+
+    assertThat(result.objectKey()).isEqualTo(validObjectKey);
+    assertThat(result.downloadUrl()).isEqualTo(SIGNED_GET_URL);
+    assertThat(result.expiresAt()).isEqualTo(NOW.plus(DOWNLOAD_TTL));
+  }
+
+  @Test
+  void mintDownloadUrlThrowsWhenPhotoMissing() {
+    PhotoId photoId = PhotoId.newId();
+    when(photos.findById(photoId)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> service.mint(restaurantId, photoId))
+        .isInstanceOf(PhotoNotFoundException.class);
+
+    verify(storage, never()).presignGet(any(), any());
+  }
+
+  @Test
+  void mintDownloadUrlThrowsWhenPhotoBelongsToOtherRestaurant() {
+    PhotoId photoId = PhotoId.newId();
+    RestaurantId otherRestaurant = RestaurantId.newId();
+    Photo photo =
+        new Photo(
+            photoId,
+            otherRestaurant,
+            authorId,
+            validObjectKey,
+            "image/jpeg",
+            NOW.minusSeconds(3600));
+    when(photos.findById(photoId)).thenReturn(Optional.of(photo));
+
+    assertThatThrownBy(() -> service.mint(restaurantId, photoId))
+        .isInstanceOf(PhotoNotFoundException.class);
+
+    verify(storage, never()).presignGet(any(), any());
+  }
+
+  @Test
+  void mintDownloadUrlPropagatesStorageFailure() {
+    PhotoId photoId = PhotoId.newId();
+    Photo photo =
+        new Photo(
+            photoId, restaurantId, authorId, validObjectKey, "image/jpeg", NOW.minusSeconds(3600));
+    when(photos.findById(photoId)).thenReturn(Optional.of(photo));
+    when(storage.presignGet(validObjectKey, DOWNLOAD_TTL))
+        .thenThrow(new PhotoStorageException("boom", new RuntimeException()));
+
+    assertThatThrownBy(() -> service.mint(restaurantId, photoId))
+        .isInstanceOf(PhotoStorageException.class);
   }
 }

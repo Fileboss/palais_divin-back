@@ -1,6 +1,7 @@
 package fr.lepgu.palaisdivin.backend.shared.adapters.web;
 
 import fr.lepgu.palaisdivin.backend.photo.domain.InvalidObjectKeyException;
+import fr.lepgu.palaisdivin.backend.photo.domain.PhotoNotFoundException;
 import fr.lepgu.palaisdivin.backend.photo.domain.PhotoStorageException;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.RestaurantNotFoundException;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.UnresolvableAddressException;
@@ -235,6 +236,15 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     pd.setTitle("Invalid object key");
     addTraceId(pd);
     return ResponseEntity.badRequest().body(pd);
+  }
+
+  @ExceptionHandler(PhotoNotFoundException.class)
+  ResponseEntity<ProblemDetail> handlePhotoNotFound(PhotoNotFoundException ex) {
+    ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+    pd.setType(PROBLEM_BASE.resolve("not-found"));
+    pd.setTitle("Resource not found");
+    addTraceId(pd);
+    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(pd);
   }
 
   @ExceptionHandler(PhotoStorageException.class)

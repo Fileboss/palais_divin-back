@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -13,10 +14,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import fr.lepgu.palaisdivin.backend.config.security.SecurityConfig;
 import fr.lepgu.palaisdivin.backend.photo.domain.InvalidObjectKeyException;
+import fr.lepgu.palaisdivin.backend.photo.domain.PhotoNotFoundException;
 import fr.lepgu.palaisdivin.backend.photo.domain.PhotoStorageException;
 import fr.lepgu.palaisdivin.backend.photo.domain.model.Photo;
+import fr.lepgu.palaisdivin.backend.photo.domain.model.PhotoDownloadUrl;
 import fr.lepgu.palaisdivin.backend.photo.domain.model.PhotoId;
 import fr.lepgu.palaisdivin.backend.photo.domain.model.PhotoUploadUrl;
+import fr.lepgu.palaisdivin.backend.photo.domain.ports.MintPhotoDownloadUrlUseCase;
 import fr.lepgu.palaisdivin.backend.photo.domain.ports.MintPhotoUploadUrlUseCase;
 import fr.lepgu.palaisdivin.backend.photo.domain.ports.RegisterPhotoUseCase;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.RestaurantNotFoundException;
@@ -52,6 +56,7 @@ class PhotoRestControllerTest {
 
   @MockitoBean MintPhotoUploadUrlUseCase mintUploadUrl;
   @MockitoBean RegisterPhotoUseCase registerPhoto;
+  @MockitoBean MintPhotoDownloadUrlUseCase mintDownloadUrl;
   @MockitoBean JwtDecoder jwtDecoder;
 
   private static RequestPostProcessor userJwt() {
@@ -268,5 +273,54 @@ class PhotoRestControllerTest {
             eq("image/jpeg"),
             keyCaptor.capture());
     org.assertj.core.api.Assertions.assertThat(keyCaptor.getValue()).contains("KEY-XYZ");
+  }
+
+  @Test
+  void downloadUrl_returns_200_with_body() throws Exception {
+    UUID restaurantId = UUID.randomUUID();
+    UUID photoId = UUID.randomUUID();
+    String objectKey = "restaurants/" + restaurantId + "/" + UUID.randomUUID();
+    URI signedUrl = URI.create("http://minio.test/palaisdivin-photos/" + objectKey + "?sig=get");
+    when(mintDownloadUrl.mint(new RestaurantId(restaurantId), new PhotoId(photoId)))
+        .thenReturn(new PhotoDownloadUrl(objectKey, signedUrl, FIXED_EXPIRES_AT));
+
+    mockMvc
+        .perform(
+            get("/api/v1/user/restaurants/{rid}/photos/{pid}/download-url", restaurantId, photoId)
+                .with(userJwt()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.objectKey").value(objectKey))
+        .andExpect(jsonPath("$.downloadUrl").value(signedUrl.toString()))
+        .andExpect(jsonPath("$.expiresAt").value(FIXED_EXPIRES_AT.toString()));
+  }
+
+  @Test
+  void downloadUrl_photoMissing_returns_404_problem() throws Exception {
+    UUID photoId = UUID.randomUUID();
+    when(mintDownloadUrl.mint(any(), any()))
+        .thenThrow(new PhotoNotFoundException(new PhotoId(photoId)));
+
+    mockMvc
+        .perform(
+            get(
+                    "/api/v1/user/restaurants/{rid}/photos/{pid}/download-url",
+                    UUID.randomUUID(),
+                    photoId)
+                .with(userJwt()))
+        .andExpect(status().isNotFound())
+        .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+        .andExpect(jsonPath("$.type").value("https://palaisdivin.lepgu.fr/problems/not-found"));
+  }
+
+  @Test
+  void downloadUrl_anonymous_returns_401_problem() throws Exception {
+    mockMvc
+        .perform(
+            get(
+                "/api/v1/user/restaurants/{rid}/photos/{pid}/download-url",
+                UUID.randomUUID(),
+                UUID.randomUUID()))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.type").value("https://palaisdivin.lepgu.fr/problems/unauthorized"));
   }
 }

@@ -14,4 +14,5 @@ public record MinioProperties(
     @NotBlank String secretKey,
     @NotNull Duration timeout,
     @NotBlank String bucket,
-    @NotNull Duration uploadUrlTtl) {}
+    @NotNull Duration uploadUrlTtl,
+    @NotNull Duration downloadUrlTtl) {}

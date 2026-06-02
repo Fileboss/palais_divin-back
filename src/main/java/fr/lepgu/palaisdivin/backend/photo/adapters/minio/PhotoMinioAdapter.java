@@ -41,4 +41,21 @@ class PhotoMinioAdapter implements PhotoStoragePort {
       throw new PhotoStorageException("Failed to mint presigned PUT URL for " + objectKey, e);
     }
   }
+
+  @Override
+  public URI presignGet(String objectKey, Duration ttl) {
+    try {
+      String url =
+          client.getPresignedObjectUrl(
+              GetPresignedObjectUrlArgs.builder()
+                  .method(Method.GET)
+                  .bucket(properties.bucket())
+                  .object(objectKey)
+                  .expiry((int) ttl.toSeconds(), TimeUnit.SECONDS)
+                  .build());
+      return URI.create(url);
+    } catch (MinioException | GeneralSecurityException | IOException e) {
+      throw new PhotoStorageException("Failed to mint presigned GET URL for " + objectKey, e);
+    }
+  }
 }

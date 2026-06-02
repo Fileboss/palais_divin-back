@@ -38,4 +38,28 @@ class PhotoMinioAdapterIT extends AbstractIntegrationTest {
 
     assertThat(put.statusCode()).isEqualTo(200);
   }
+
+  @Test
+  void presignGetReturnsUrlThatServesUploadedBytes() throws IOException, InterruptedException {
+    String objectKey = "restaurants/" + UUID.randomUUID() + "/" + UUID.randomUUID();
+    byte[] payload = "hello-download".getBytes();
+
+    URI putUrl = storage.presignPut(objectKey, Duration.ofMinutes(5));
+    HttpClient.newHttpClient()
+        .send(
+            HttpRequest.newBuilder(putUrl).PUT(BodyPublishers.ofByteArray(payload)).build(),
+            BodyHandlers.discarding());
+
+    URI getUrl = storage.presignGet(objectKey, Duration.ofMinutes(5));
+
+    assertThat(getUrl.toString()).contains("palaisdivin-photos");
+    assertThat(getUrl.toString()).contains(objectKey);
+
+    HttpResponse<byte[]> get =
+        HttpClient.newHttpClient()
+            .send(HttpRequest.newBuilder(getUrl).GET().build(), BodyHandlers.ofByteArray());
+
+    assertThat(get.statusCode()).isEqualTo(200);
+    assertThat(get.body()).isEqualTo(payload);
+  }
 }

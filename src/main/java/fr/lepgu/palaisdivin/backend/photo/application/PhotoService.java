@@ -2,9 +2,12 @@ package fr.lepgu.palaisdivin.backend.photo.application;
 
 import fr.lepgu.palaisdivin.backend.config.MinioProperties;
 import fr.lepgu.palaisdivin.backend.photo.domain.InvalidObjectKeyException;
+import fr.lepgu.palaisdivin.backend.photo.domain.PhotoNotFoundException;
 import fr.lepgu.palaisdivin.backend.photo.domain.model.Photo;
+import fr.lepgu.palaisdivin.backend.photo.domain.model.PhotoDownloadUrl;
 import fr.lepgu.palaisdivin.backend.photo.domain.model.PhotoId;
 import fr.lepgu.palaisdivin.backend.photo.domain.model.PhotoUploadUrl;
+import fr.lepgu.palaisdivin.backend.photo.domain.ports.MintPhotoDownloadUrlUseCase;
 import fr.lepgu.palaisdivin.backend.photo.domain.ports.MintPhotoUploadUrlUseCase;
 import fr.lepgu.palaisdivin.backend.photo.domain.ports.PhotoRepositoryPort;
 import fr.lepgu.palaisdivin.backend.photo.domain.ports.PhotoStoragePort;
@@ -26,7 +29,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Transactional
-public class PhotoService implements MintPhotoUploadUrlUseCase, RegisterPhotoUseCase {
+public class PhotoService
+    implements MintPhotoUploadUrlUseCase, RegisterPhotoUseCase, MintPhotoDownloadUrlUseCase {
 
   private static final String AGGREGATE_TYPE = "Photo";
   private static final Duration IDEMPOTENCY_TTL = Duration.ofHours(24);
@@ -111,5 +115,17 @@ public class PhotoService implements MintPhotoUploadUrlUseCase, RegisterPhotoUse
         key -> idempotency.record(key, authorId, AGGREGATE_TYPE, saved.id().value()));
 
     return saved;
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public PhotoDownloadUrl mint(RestaurantId restaurantId, PhotoId photoId) {
+    Photo photo = photos.findById(photoId).orElseThrow(() -> new PhotoNotFoundException(photoId));
+    if (!photo.restaurantId().equals(restaurantId)) {
+      throw new PhotoNotFoundException(photoId);
+    }
+    Duration ttl = properties.downloadUrlTtl();
+    URI url = storage.presignGet(photo.objectKey(), ttl);
+    return new PhotoDownloadUrl(photo.objectKey(), url, clock.instant().plus(ttl));
   }
 }

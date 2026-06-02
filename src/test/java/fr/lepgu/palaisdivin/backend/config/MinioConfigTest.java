@@ -17,6 +17,7 @@ class MinioConfigTest {
             "s",
             Duration.ofSeconds(2),
             "palaisdivin-photos",
+            Duration.ofMinutes(10),
             Duration.ofMinutes(10));
 
     MinioClient client = new MinioConfig().minioClient(properties);

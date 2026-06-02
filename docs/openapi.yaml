@@ -321,6 +321,31 @@ paths:
           description: OK
       tags:
       - photo-rest-controller
+  /api/v1/user/restaurants/{restaurantId}/photos/{photoId}/download-url:
+    get:
+      operationId: downloadUrl
+      parameters:
+      - in: path
+        name: restaurantId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: photoId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PhotoDownloadUrlResponse"
+          description: OK
+      tags:
+      - photo-rest-controller
   /api/v1/user/restaurants/{restaurantId}/reviews:
     get:
       operationId: getMyReview
@@ -471,6 +496,16 @@ components:
         size:
           type: integer
           format: int32
+    PhotoDownloadUrlResponse:
+      type: object
+      properties:
+        downloadUrl:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        objectKey:
+          type: string
     PhotoResponse:
       type: object
       properties:
