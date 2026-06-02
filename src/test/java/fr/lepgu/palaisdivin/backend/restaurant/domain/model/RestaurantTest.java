@@ -15,7 +15,7 @@ class RestaurantTest {
 
   @Test
   void buildsWithValidInputs() {
-    Restaurant r = new Restaurant(ID, "Septime", "80 Rue de Charonne", LOCATION, NOW);
+    Restaurant r = new Restaurant(ID, "Septime", "80 Rue de Charonne", LOCATION, NOW, null);
 
     assertThat(r.id()).isEqualTo(ID);
     assertThat(r.name()).isEqualTo("Septime");
@@ -26,7 +26,7 @@ class RestaurantTest {
 
   @Test
   void allowsNullAddress() {
-    Restaurant r = new Restaurant(ID, "Septime", null, LOCATION, NOW);
+    Restaurant r = new Restaurant(ID, "Septime", null, LOCATION, NOW, null);
 
     assertThat(r.address()).isNull();
   }
@@ -34,38 +34,38 @@ class RestaurantTest {
   @Test
   void rejectsNullId() {
     assertThatNullPointerException()
-        .isThrownBy(() -> new Restaurant(null, "Septime", null, LOCATION, NOW))
+        .isThrownBy(() -> new Restaurant(null, "Septime", null, LOCATION, NOW, null))
         .withMessage("id");
   }
 
   @Test
   void rejectsNullName() {
     assertThatNullPointerException()
-        .isThrownBy(() -> new Restaurant(ID, null, null, LOCATION, NOW))
+        .isThrownBy(() -> new Restaurant(ID, null, null, LOCATION, NOW, null))
         .withMessage("name");
   }
 
   @Test
   void rejectsBlankName() {
     assertThatIllegalArgumentException()
-        .isThrownBy(() -> new Restaurant(ID, "", null, LOCATION, NOW))
+        .isThrownBy(() -> new Restaurant(ID, "", null, LOCATION, NOW, null))
         .withMessageContaining("blank");
     assertThatIllegalArgumentException()
-        .isThrownBy(() -> new Restaurant(ID, "   ", null, LOCATION, NOW))
+        .isThrownBy(() -> new Restaurant(ID, "   ", null, LOCATION, NOW, null))
         .withMessageContaining("blank");
   }
 
   @Test
   void rejectsNullLocation() {
     assertThatNullPointerException()
-        .isThrownBy(() -> new Restaurant(ID, "Septime", null, null, NOW))
+        .isThrownBy(() -> new Restaurant(ID, "Septime", null, null, NOW, null))
         .withMessage("location");
   }
 
   @Test
   void rejectsNullCreatedAt() {
     assertThatNullPointerException()
-        .isThrownBy(() -> new Restaurant(ID, "Septime", null, LOCATION, null))
+        .isThrownBy(() -> new Restaurant(ID, "Septime", null, LOCATION, null, null))
         .withMessage("createdAt");
   }
 }

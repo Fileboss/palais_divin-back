@@ -54,7 +54,8 @@ class PublicReviewRestIT extends AbstractIntegrationTest {
                 "Septime",
                 "80 Rue de Charonne",
                 new Coordinates(48.8536, 2.3795),
-                Instant.now()));
+                Instant.now(),
+                null));
     restaurantId = r.id();
   }
 
@@ -142,6 +143,62 @@ class PublicReviewRestIT extends AbstractIntegrationTest {
     assertThat(page.data()).isEmpty();
     assertThat(page.page().hasNext()).isFalse();
     assertThat(page.page().nextCursor()).isNull();
+  }
+
+  @Test
+  void getByAuthor_found_returns200_withBody() {
+    User u =
+        users.save(
+            new User(
+                UserId.newId(),
+                "subj-author-" + UUID.randomUUID(),
+                "author@example.test",
+                "Author",
+                Instant.now()));
+    reviews.save(
+        new Review(
+            ReviewId.newId(),
+            restaurantId,
+            u.id(),
+            5,
+            "Superb",
+            Instant.parse("2026-05-31T10:00:00Z")));
+
+    RestClient unauthed = RestClient.create("http://localhost:" + port);
+    ReviewResponse body =
+        unauthed
+            .get()
+            .uri(
+                "/api/v1/public/restaurants/{rid}/reviews/author/{aid}",
+                restaurantId.value(),
+                u.id().value())
+            .retrieve()
+            .body(ReviewResponse.class);
+
+    assertThat(body).isNotNull();
+    assertThat(body.restaurantId()).isEqualTo(restaurantId.value());
+    assertThat(body.rating()).isEqualTo(5);
+    assertThat(body.comment()).isEqualTo("Superb");
+  }
+
+  @Test
+  void getByAuthor_notFound_returns404_problemDetail() {
+    RestClient unauthed = RestClient.create("http://localhost:" + port);
+    ResponseEntity<String> resp =
+        unauthed
+            .get()
+            .uri(
+                "/api/v1/public/restaurants/{rid}/reviews/author/{aid}",
+                restaurantId.value(),
+                UUID.randomUUID())
+            .retrieve()
+            .onStatus(s -> s.is4xxClientError(), (req, res) -> {})
+            .toEntity(String.class);
+
+    assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    assertThat(resp.getHeaders().getContentType().toString())
+        .startsWith("application/problem+json");
+    assertThat(resp.getBody()).contains("/problems/not-found");
   }
 
   private Set<UUID> seedReviews(int count) {

@@ -33,7 +33,8 @@ class RestaurantPostgresAdapterIT {
             "Le Train Bleu",
             "Gare de Lyon",
             new Coordinates(48.8443, 2.3736),
-            FIXED_CREATED_AT);
+            FIXED_CREATED_AT,
+            null);
 
     Restaurant saved = adapter.save(input);
     Optional<Restaurant> found = adapter.findById(id);
@@ -58,7 +59,8 @@ class RestaurantPostgresAdapterIT {
   void nullAddressRoundTrips() {
     RestaurantId id = RestaurantId.newId();
     Restaurant input =
-        new Restaurant(id, "Septime", null, new Coordinates(48.8536, 2.3795), FIXED_CREATED_AT);
+        new Restaurant(
+            id, "Septime", null, new Coordinates(48.8536, 2.3795), FIXED_CREATED_AT, null);
 
     adapter.save(input);
 

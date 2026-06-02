@@ -65,6 +65,7 @@ public class RestaurantPostgresAdapter implements RestaurantRepositoryPort {
         e.getName(),
         e.getAddress(),
         new Coordinates(point.getY(), point.getX()),
-        e.getCreatedAt());
+        e.getCreatedAt(),
+        e.getAvgRating());
   }
 }

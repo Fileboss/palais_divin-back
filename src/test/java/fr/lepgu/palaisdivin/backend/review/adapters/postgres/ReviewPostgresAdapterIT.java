@@ -12,6 +12,7 @@ import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;
 import fr.lepgu.palaisdivin.backend.user.domain.model.UserId;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -198,5 +199,44 @@ class ReviewPostgresAdapterIT {
 
     assertThat(page.data()).isEmpty();
     assertThat(page.hasNext()).isFalse();
+  }
+
+  @Test
+  void findByRestaurantAndAuthor_returnsExistingReview() {
+    Review saved =
+        adapter.save(
+            new Review(ReviewId.newId(), RESTAURANT_ID, AUTHOR_ID, 4, "Nice", FIXED_CREATED_AT));
+
+    Optional<Review> found = adapter.findByRestaurantAndAuthor(RESTAURANT_ID, AUTHOR_ID);
+
+    assertThat(found).isPresent();
+    assertThat(found.get().id()).isEqualTo(saved.id());
+    assertThat(found.get().rating()).isEqualTo(4);
+  }
+
+  @Test
+  void findByRestaurantAndAuthor_missingReview_returnsEmpty() {
+    assertThat(
+            adapter.findByRestaurantAndAuthor(
+                new RestaurantId(UUID.randomUUID()), new UserId(UUID.randomUUID())))
+        .isEmpty();
+  }
+
+  @Test
+  void avgRatingIsUpdatedByTriggerOnReviewSave() {
+    adapter.save(new Review(ReviewId.newId(), RESTAURANT_ID, AUTHOR_ID, 4, null, FIXED_CREATED_AT));
+    adapter.save(
+        new Review(ReviewId.newId(), RESTAURANT_ID, OTHER_AUTHOR_ID, 2, null, FIXED_CREATED_AT));
+    em.flush();
+    em.clear();
+
+    BigDecimal avgRating =
+        (BigDecimal)
+            em.createNativeQuery("SELECT avg_rating FROM restaurant WHERE id = ?")
+                .setParameter(1, RESTAURANT_UUID)
+                .getSingleResult();
+
+    assertThat(avgRating).isNotNull();
+    assertThat(avgRating.doubleValue()).isEqualTo(3.0);
   }
 }

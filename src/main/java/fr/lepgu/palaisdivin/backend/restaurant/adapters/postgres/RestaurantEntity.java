@@ -31,6 +31,13 @@ class RestaurantEntity {
   @Column(name = "created_at", nullable = false)
   private Instant createdAt;
 
+  @Column(
+      name = "avg_rating",
+      insertable = false,
+      updatable = false,
+      columnDefinition = "numeric(3,2)")
+  private Double avgRating;
+
   protected RestaurantEntity() {}
 
   RestaurantEntity(UUID id, String name, String address, Point location, Instant createdAt) {
@@ -59,5 +66,9 @@ class RestaurantEntity {
 
   Instant getCreatedAt() {
     return createdAt;
+  }
+
+  Double getAvgRating() {
+    return avgRating;
   }
 }

@@ -3,9 +3,11 @@ package fr.lepgu.palaisdivin.backend.review.adapters.rest;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantId;
 import fr.lepgu.palaisdivin.backend.review.domain.model.Review;
 import fr.lepgu.palaisdivin.backend.review.domain.model.ReviewCursor;
+import fr.lepgu.palaisdivin.backend.review.domain.ports.FindReviewByAuthorUseCase;
 import fr.lepgu.palaisdivin.backend.review.domain.ports.ListReviewsUseCase;
 import fr.lepgu.palaisdivin.backend.shared.adapters.web.PageMeta;
 import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;
+import fr.lepgu.palaisdivin.backend.user.domain.model.UserId;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import java.util.List;
@@ -23,9 +25,12 @@ import org.springframework.web.bind.annotation.RestController;
 class PublicReviewRestController {
 
   private final ListReviewsUseCase listReviews;
+  private final FindReviewByAuthorUseCase findReviewByAuthor;
 
-  PublicReviewRestController(ListReviewsUseCase listReviews) {
+  PublicReviewRestController(
+      ListReviewsUseCase listReviews, FindReviewByAuthorUseCase findReviewByAuthor) {
     this.listReviews = listReviews;
+    this.findReviewByAuthor = findReviewByAuthor;
   }
 
   @GetMapping
@@ -44,5 +49,13 @@ class PublicReviewRestController {
                 new ReviewCursor(page.data().getLast().createdAt(), page.data().getLast().id()))
             : null;
     return new ReviewsPageResponse(data, new PageMeta(size, page.hasNext(), nextCursor));
+  }
+
+  @GetMapping("/author/{authorId}")
+  ReviewResponse getByAuthor(@PathVariable UUID restaurantId, @PathVariable UUID authorId) {
+    Review review =
+        findReviewByAuthor.findByRestaurantAndAuthor(
+            new RestaurantId(restaurantId), new UserId(authorId));
+    return ReviewResponse.from(review);
   }
 }

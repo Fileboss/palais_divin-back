@@ -37,7 +37,7 @@ class RestaurantListIT {
       inserted.add(id.value());
       adapter.save(
           new Restaurant(
-              id, "r-" + i, null, new Coordinates(48.8536, 2.3795), base.plusSeconds(i)));
+              id, "r-" + i, null, new Coordinates(48.8536, 2.3795), base.plusSeconds(i), null));
     }
 
     List<Restaurant> collected = new ArrayList<>();
@@ -82,7 +82,8 @@ class RestaurantListIT {
               "r-" + i,
               null,
               new Coordinates(48.8536, 2.3795),
-              Instant.parse("2026-05-27T10:00:00Z").plusSeconds(i)));
+              Instant.parse("2026-05-27T10:00:00Z").plusSeconds(i),
+              null));
     }
     CursorPage<Restaurant> page = adapter.findAll(null, 10);
     assertThat(page.data()).hasSize(3);

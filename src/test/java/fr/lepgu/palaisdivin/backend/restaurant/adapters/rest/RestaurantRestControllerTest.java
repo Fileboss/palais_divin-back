@@ -65,7 +65,8 @@ class RestaurantRestControllerTest {
             "Septime",
             "80 Rue de Charonne",
             new Coordinates(48.8536, 2.3795),
-            FIXED_CREATED_AT);
+            FIXED_CREATED_AT,
+            null);
     when(createRestaurant.create(eq("Septime"), eq("80 Rue de Charonne"))).thenReturn(created);
 
     mockMvc
@@ -169,7 +170,8 @@ class RestaurantRestControllerTest {
             "Septime",
             "80 Rue de Charonne",
             new Coordinates(48.8536, 2.3795),
-            FIXED_CREATED_AT);
+            FIXED_CREATED_AT,
+            null);
     when(findRestaurant.findById(id)).thenReturn(Optional.of(found));
 
     mockMvc
@@ -287,6 +289,11 @@ class RestaurantRestControllerTest {
 
   private static Restaurant restaurant(String name) {
     return new Restaurant(
-        RestaurantId.newId(), name, "addr", new Coordinates(48.8536, 2.3795), FIXED_CREATED_AT);
+        RestaurantId.newId(),
+        name,
+        "addr",
+        new Coordinates(48.8536, 2.3795),
+        FIXED_CREATED_AT,
+        null);
   }
 }

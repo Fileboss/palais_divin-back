@@ -5,7 +5,12 @@ import java.time.Instant;
 import java.util.UUID;
 
 public record RestaurantResponse(
-    UUID id, String name, String address, CoordinatesDto location, Instant createdAt) {
+    UUID id,
+    String name,
+    String address,
+    CoordinatesDto location,
+    Instant createdAt,
+    Double avgRating) {
 
   public static RestaurantResponse from(Restaurant r) {
     return new RestaurantResponse(
@@ -13,6 +18,7 @@ public record RestaurantResponse(
         r.name(),
         r.address(),
         new CoordinatesDto(r.location().latitude(), r.location().longitude()),
-        r.createdAt());
+        r.createdAt(),
+        r.avgRating());
   }
 }

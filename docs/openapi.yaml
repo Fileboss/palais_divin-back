@@ -123,6 +123,31 @@ paths:
           description: OK
       tags:
       - public-review-rest-controller
+  /api/v1/public/restaurants/{restaurantId}/reviews/author/{authorId}:
+    get:
+      operationId: getByAuthor
+      parameters:
+      - in: path
+        name: restaurantId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: authorId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ReviewResponse"
+          description: OK
+      tags:
+      - public-review-rest-controller
   /api/v1/public/signup:
     post:
       operationId: signup
@@ -231,7 +256,7 @@ paths:
       tags:
       - restaurant-rest-controller
     post:
-      operationId: create
+      operationId: create_1
       requestBody:
         content:
           application/json:
@@ -287,7 +312,7 @@ paths:
       - restaurant-affinity-rest-controller
   /api/v1/user/restaurants/{restaurantId}/reviews:
     post:
-      operationId: create_1
+      operationId: create
       parameters:
       - in: path
         name: restaurantId
@@ -300,6 +325,30 @@ paths:
         required: false
         schema:
           type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateReviewRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ReviewResponse"
+          description: OK
+      tags:
+      - review-rest-controller
+    put:
+      operationId: update
+      parameters:
+      - in: path
+        name: restaurantId
+        required: true
+        schema:
+          type: string
+          format: uuid
       requestBody:
         content:
           application/json:
@@ -449,6 +498,9 @@ components:
       properties:
         address:
           type: string
+        avgRating:
+          type: number
+          format: double
         createdAt:
           type: string
           format: date-time

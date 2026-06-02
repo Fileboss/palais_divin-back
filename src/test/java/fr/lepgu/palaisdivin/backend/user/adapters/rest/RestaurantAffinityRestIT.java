@@ -112,7 +112,8 @@ class RestaurantAffinityRestIT extends AbstractIntegrationTest {
                 "Septime",
                 "80 Rue de Charonne",
                 new Coordinates(48.8536, 2.3795),
-                Instant.now()));
+                Instant.now(),
+                null));
     RestaurantId restId = r.id();
 
     UserId friend = UserId.newId();
@@ -147,7 +148,8 @@ class RestaurantAffinityRestIT extends AbstractIntegrationTest {
                 "Clamato",
                 "80 Rue de Charonne",
                 new Coordinates(48.8536, 2.3795),
-                Instant.now()));
+                Instant.now(),
+                null));
     RestaurantId restId = r.id();
 
     RestaurantAffinityResponse body =

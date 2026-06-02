@@ -133,6 +133,12 @@ Goal: recommendations come from the graph, not from aggregates.
 
 ---
 
+## ~~Intermediate phase I3 — more endpoints~~ ✓ Done
+
+`GET /api/v1/public/restaurants/{restaurantId}/reviews/author/{authorId}` — fetch a specific review by restaurant + author. `PUT /api/v1/user/restaurants/{restaurantId}/reviews` — replace a user's own review (idempotent by restaurant+author pair). `avg_rating` added to restaurant responses: stored on the `restaurant` table as `numeric(3,2)`, maintained by a Postgres trigger `trg_restaurant_avg_rating` that fires after any INSERT/UPDATE/DELETE on `review`. DB trigger chosen over a projector to keep the cross-component write contained at the DB layer. `ReviewUpdated` event published on PUT so Neo4j `RATED` edge score stays in sync. `ReviewNotFoundException` second constructor (restaurant+author path) added to `GlobalExceptionHandler`. All four features tested: unit (ReviewServiceTest +4, ReviewRestControllerTest +3, PublicReviewRestControllerTest +2), adapter (ReviewPostgresAdapterIT +3 incl. trigger assertion), and IT (ReviewRestIT +2, PublicReviewRestIT +2).
+
+---
+
 ## Phase M8 — Photos via MinIO presigned URLs
 
 Goal: media without proxying bytes through Java. README §5.4.
@@ -143,6 +149,12 @@ Goal: media without proxying bytes through Java. README §5.4.
 - [ ] **M8.4 — `GET /user/restaurants/{id}/photos/{key}/download-url`** — returns presigned GET URL.
 
 `MILESTONE M8` — Restaurants have photos. Frontend uploads/downloads direct to MinIO.
+
+---
+
+## Intermediate phase I4 - restaurant details / user details
+ - on user detail page, front wants to display all restaurant noted by this person and the related review. Add endpoints if require or tick it directly if nothing to do
+ - on restaurant page, front want to display all reviews with note text and author. same
 
 ---
 

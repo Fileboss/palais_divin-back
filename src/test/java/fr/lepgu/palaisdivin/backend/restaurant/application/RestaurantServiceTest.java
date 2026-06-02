@@ -96,7 +96,8 @@ class RestaurantServiceTest {
   void createReturnsWhateverRepositorySaveReturns() {
     when(geocoder.geocode("80 Rue de Charonne")).thenReturn(LOCATION);
     Restaurant fromStore =
-        new Restaurant(RestaurantId.newId(), "Septime", "80 Rue de Charonne", LOCATION, FIXED_NOW);
+        new Restaurant(
+            RestaurantId.newId(), "Septime", "80 Rue de Charonne", LOCATION, FIXED_NOW, null);
     when(repository.save(any(Restaurant.class))).thenReturn(fromStore);
 
     Restaurant returned = service.create("Septime", "80 Rue de Charonne");
@@ -133,7 +134,7 @@ class RestaurantServiceTest {
   @Test
   void findByIdDelegatesToRepositoryAndReturnsResult() {
     RestaurantId id = RestaurantId.newId();
-    Restaurant stored = new Restaurant(id, "Septime", null, LOCATION, FIXED_NOW);
+    Restaurant stored = new Restaurant(id, "Septime", null, LOCATION, FIXED_NOW, null);
     when(repository.findById(id)).thenReturn(Optional.of(stored));
 
     Optional<Restaurant> found = service.findById(id);
@@ -150,4 +151,5 @@ class RestaurantServiceTest {
 
     assertThat(found).isEmpty();
   }
+
 }

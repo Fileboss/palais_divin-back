@@ -14,7 +14,9 @@ import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Coordinates;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Restaurant;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantId;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.RestaurantRepositoryPort;
+import fr.lepgu.palaisdivin.backend.review.domain.ReviewNotFoundException;
 import fr.lepgu.palaisdivin.backend.review.domain.events.ReviewCreated;
+import fr.lepgu.palaisdivin.backend.review.domain.events.ReviewUpdated;
 import fr.lepgu.palaisdivin.backend.review.domain.model.Review;
 import fr.lepgu.palaisdivin.backend.review.domain.model.ReviewCursor;
 import fr.lepgu.palaisdivin.backend.review.domain.model.ReviewId;
@@ -67,7 +69,12 @@ class ReviewServiceTest {
     author = new User(authorId, SUBJECT, "u@example.com", "U", NOW.minusSeconds(60));
     restaurant =
         new Restaurant(
-            restaurantId, "Septime", "addr", new Coordinates(48.8, 2.3), NOW.minusSeconds(60));
+            restaurantId,
+            "Septime",
+            "addr",
+            new Coordinates(48.8, 2.3),
+            NOW.minusSeconds(60),
+            null);
   }
 
   @Test
@@ -182,5 +189,60 @@ class ReviewServiceTest {
 
     assertThat(result).isSameAs(page);
     verify(reviews).findByRestaurant(restaurantId, cursor, 5);
+  }
+
+  @Test
+  void findByRestaurantAndAuthorDelegatesToRepository() {
+    Review r = new Review(ReviewId.newId(), restaurantId, authorId, 4, "Good", NOW);
+    when(reviews.findByRestaurantAndAuthor(restaurantId, authorId)).thenReturn(Optional.of(r));
+
+    Review result = service.findByRestaurantAndAuthor(restaurantId, authorId);
+
+    assertThat(result).isSameAs(r);
+    verifyNoInteractions(users, restaurants, idempotency, outbox);
+  }
+
+  @Test
+  void findByRestaurantAndAuthorThrowsReviewNotFoundWhenMissing() {
+    when(reviews.findByRestaurantAndAuthor(restaurantId, authorId)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> service.findByRestaurantAndAuthor(restaurantId, authorId))
+        .isInstanceOf(ReviewNotFoundException.class);
+  }
+
+  @Test
+  void updatePersistsNewRatingAndPublishesReviewUpdated() {
+    ReviewId reviewId = ReviewId.newId();
+    Review existing =
+        new Review(reviewId, restaurantId, authorId, 4, "Good", NOW.minusSeconds(3600));
+    when(users.findBySubject(SUBJECT)).thenReturn(Optional.of(author));
+    when(reviews.findByRestaurantAndAuthor(restaurantId, authorId))
+        .thenReturn(Optional.of(existing));
+    when(reviews.save(any(Review.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    Review result = service.update(SUBJECT, restaurantId, 2, "Changed");
+
+    assertThat(result.id()).isEqualTo(reviewId);
+    assertThat(result.rating()).isEqualTo(2);
+    assertThat(result.comment()).isEqualTo("Changed");
+    assertThat(result.createdAt()).isEqualTo(existing.createdAt());
+
+    ArgumentCaptor<ReviewUpdated> event = ArgumentCaptor.forClass(ReviewUpdated.class);
+    verify(outbox)
+        .publish(eq("Review"), eq(reviewId.value()), eq("ReviewUpdated"), event.capture());
+    assertThat(event.getValue().rating()).isEqualTo(2);
+    assertThat(event.getValue().comment()).isEqualTo("Changed");
+  }
+
+  @Test
+  void updateThrowsWhenReviewMissing() {
+    when(users.findBySubject(SUBJECT)).thenReturn(Optional.of(author));
+    when(reviews.findByRestaurantAndAuthor(restaurantId, authorId)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> service.update(SUBJECT, restaurantId, 3, null))
+        .isInstanceOf(ReviewNotFoundException.class);
+
+    verify(reviews, never()).save(any());
+    verifyNoInteractions(outbox);
   }
 }

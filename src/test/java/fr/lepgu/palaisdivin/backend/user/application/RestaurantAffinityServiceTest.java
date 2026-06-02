@@ -54,7 +54,8 @@ class RestaurantAffinityServiceTest {
             "Septime",
             "80 rue de Charonne",
             new Coordinates(48.8, 2.3),
-            Instant.parse("2026-05-01T00:00:00Z"));
+            Instant.parse("2026-05-01T00:00:00Z"),
+            null);
   }
 
   @Test

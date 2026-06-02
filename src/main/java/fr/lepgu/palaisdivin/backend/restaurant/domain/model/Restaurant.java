@@ -4,7 +4,12 @@ import java.time.Instant;
 import java.util.Objects;
 
 public record Restaurant(
-    RestaurantId id, String name, String address, Coordinates location, Instant createdAt) {
+    RestaurantId id,
+    String name,
+    String address,
+    Coordinates location,
+    Instant createdAt,
+    Double avgRating) {
   public Restaurant {
     Objects.requireNonNull(id, "id");
     Objects.requireNonNull(name, "name");

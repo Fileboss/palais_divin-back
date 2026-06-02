@@ -248,6 +248,49 @@ class ReviewRestIT extends AbstractIntegrationTest {
     assertThat(resp.getBody()).contains("/problems/unauthorized");
   }
 
+  @Test
+  void putUpdatesRatingAndReturns200() {
+    authedClient()
+        .post()
+        .uri("/api/v1/user/restaurants/{rid}/reviews", restaurantId)
+        .contentType(MediaType.APPLICATION_JSON)
+        .body(new CreateReviewRequest(4, "Original"))
+        .retrieve()
+        .toBodilessEntity();
+
+    ResponseEntity<ReviewResponse> resp =
+        authedClient()
+            .put()
+            .uri("/api/v1/user/restaurants/{rid}/reviews", restaurantId)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new CreateReviewRequest(2, "Changed"))
+            .retrieve()
+            .toEntity(ReviewResponse.class);
+
+    assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
+    ReviewResponse body = resp.getBody();
+    assertThat(body).isNotNull();
+    assertThat(body.restaurantId()).isEqualTo(restaurantId);
+    assertThat(body.rating()).isEqualTo(2);
+    assertThat(body.comment()).isEqualTo("Changed");
+  }
+
+  @Test
+  void putNonExistentReviewReturns404() {
+    ResponseEntity<String> resp =
+        authedClient()
+            .put()
+            .uri("/api/v1/user/restaurants/{rid}/reviews", restaurantId)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new CreateReviewRequest(3, null))
+            .retrieve()
+            .onStatus(s -> s.is4xxClientError(), (req, res) -> {})
+            .toEntity(String.class);
+
+    assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    assertThat(resp.getBody()).contains("/problems/not-found");
+  }
+
   private RestClient authedClient() {
     return RestClient.builder()
         .baseUrl("http://localhost:" + port)

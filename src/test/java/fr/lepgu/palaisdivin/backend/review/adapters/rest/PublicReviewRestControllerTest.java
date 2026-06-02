@@ -11,9 +11,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import fr.lepgu.palaisdivin.backend.config.security.SecurityConfig;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantId;
+import fr.lepgu.palaisdivin.backend.review.domain.ReviewNotFoundException;
 import fr.lepgu.palaisdivin.backend.review.domain.model.Review;
 import fr.lepgu.palaisdivin.backend.review.domain.model.ReviewCursor;
 import fr.lepgu.palaisdivin.backend.review.domain.model.ReviewId;
+import fr.lepgu.palaisdivin.backend.review.domain.ports.FindReviewByAuthorUseCase;
 import fr.lepgu.palaisdivin.backend.review.domain.ports.ListReviewsUseCase;
 import fr.lepgu.palaisdivin.backend.shared.adapters.web.GlobalExceptionHandler;
 import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;
@@ -41,6 +43,7 @@ class PublicReviewRestControllerTest {
   @Autowired MockMvc mockMvc;
 
   @MockitoBean ListReviewsUseCase listReviews;
+  @MockitoBean FindReviewByAuthorUseCase findReviewByAuthor;
   @MockitoBean JwtDecoder jwtDecoder;
 
   @Test
@@ -137,6 +140,40 @@ class PublicReviewRestControllerTest {
         .perform(
             get("/api/v1/public/restaurants/{rid}/reviews", UUID.randomUUID()).param("size", "0"))
         .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void getByAuthor_found_returns200_withBody() throws Exception {
+    UUID restaurantId = UUID.randomUUID();
+    UUID authorId = UUID.randomUUID();
+    Review r = review(restaurantId, 4, "Nice");
+    when(findReviewByAuthor.findByRestaurantAndAuthor(
+            new RestaurantId(restaurantId), new UserId(authorId)))
+        .thenReturn(r);
+
+    mockMvc
+        .perform(
+            get("/api/v1/public/restaurants/{rid}/reviews/author/{aid}", restaurantId, authorId))
+        .andExpect(status().isOk())
+        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$.rating").value(4))
+        .andExpect(jsonPath("$.comment").value("Nice"));
+  }
+
+  @Test
+  void getByAuthor_notFound_returns404() throws Exception {
+    UUID restaurantId = UUID.randomUUID();
+    UUID authorId = UUID.randomUUID();
+    when(findReviewByAuthor.findByRestaurantAndAuthor(
+            new RestaurantId(restaurantId), new UserId(authorId)))
+        .thenThrow(new ReviewNotFoundException(new ReviewId(UUID.randomUUID())));
+
+    mockMvc
+        .perform(
+            get("/api/v1/public/restaurants/{rid}/reviews/author/{aid}", restaurantId, authorId))
+        .andExpect(status().isNotFound())
+        .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+        .andExpect(jsonPath("$.type").value("https://palaisdivin.lepgu.fr/problems/not-found"));
   }
 
   @Test

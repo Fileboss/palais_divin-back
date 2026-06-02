@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -15,9 +16,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import fr.lepgu.palaisdivin.backend.config.security.SecurityConfig;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.RestaurantNotFoundException;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantId;
+import fr.lepgu.palaisdivin.backend.review.domain.ReviewNotFoundException;
 import fr.lepgu.palaisdivin.backend.review.domain.model.Review;
 import fr.lepgu.palaisdivin.backend.review.domain.model.ReviewId;
 import fr.lepgu.palaisdivin.backend.review.domain.ports.CreateReviewUseCase;
+import fr.lepgu.palaisdivin.backend.review.domain.ports.UpdateReviewUseCase;
 import fr.lepgu.palaisdivin.backend.shared.adapters.web.GlobalExceptionHandler;
 import fr.lepgu.palaisdivin.backend.user.domain.model.UserId;
 import java.time.Instant;
@@ -47,6 +50,7 @@ class ReviewRestControllerTest {
   @Autowired MockMvc mockMvc;
 
   @MockitoBean CreateReviewUseCase createReview;
+  @MockitoBean UpdateReviewUseCase updateReview;
   @MockitoBean JwtDecoder jwtDecoder;
 
   private static RequestPostProcessor userJwt() {
@@ -191,6 +195,64 @@ class ReviewRestControllerTest {
         .andExpect(status().isConflict())
         .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
         .andExpect(jsonPath("$.type").value("https://palaisdivin.lepgu.fr/problems/conflict"));
+  }
+
+  @Test
+  void put_validPayload_returns_200_with_body() throws Exception {
+    UUID restaurantId = UUID.randomUUID();
+    Review updated = review(restaurantId, 3, "Changed my mind");
+    when(updateReview.update(
+            eq(SUBJECT), eq(new RestaurantId(restaurantId)), eq(3), eq("Changed my mind")))
+        .thenReturn(updated);
+
+    mockMvc
+        .perform(
+            put("/api/v1/user/restaurants/{rid}/reviews", restaurantId)
+                .with(userJwt())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    { "rating": 3, "comment": "Changed my mind" }
+                    """))
+        .andExpect(status().isOk())
+        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$.rating").value(3))
+        .andExpect(jsonPath("$.comment").value("Changed my mind"));
+  }
+
+  @Test
+  void put_reviewNotFound_returns_404() throws Exception {
+    UUID restaurantId = UUID.randomUUID();
+    when(updateReview.update(any(), any(), anyInt(), any()))
+        .thenThrow(new ReviewNotFoundException(new ReviewId(UUID.randomUUID())));
+
+    mockMvc
+        .perform(
+            put("/api/v1/user/restaurants/{rid}/reviews", restaurantId)
+                .with(userJwt())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    { "rating": 3 }
+                    """))
+        .andExpect(status().isNotFound())
+        .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+        .andExpect(jsonPath("$.type").value("https://palaisdivin.lepgu.fr/problems/not-found"));
+  }
+
+  @Test
+  void put_anonymous_returns_401() throws Exception {
+    mockMvc
+        .perform(
+            put("/api/v1/user/restaurants/{rid}/reviews", UUID.randomUUID())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    { "rating": 4 }
+                    """))
+        .andExpect(status().isUnauthorized())
+        .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+        .andExpect(jsonPath("$.type").value("https://palaisdivin.lepgu.fr/problems/unauthorized"));
   }
 
   @Test

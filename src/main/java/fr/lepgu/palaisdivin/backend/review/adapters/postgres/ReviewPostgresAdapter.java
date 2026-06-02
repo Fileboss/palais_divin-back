@@ -32,6 +32,12 @@ public class ReviewPostgresAdapter implements ReviewRepositoryPort {
   }
 
   @Override
+  public Optional<Review> findByRestaurantAndAuthor(RestaurantId restaurantId, UserId authorId) {
+    return jpa.findByRestaurantIdAndAuthorId(restaurantId.value(), authorId.value())
+        .map(ReviewPostgresAdapter::toDomain);
+  }
+
+  @Override
   public CursorPage<Review> findByRestaurant(
       RestaurantId restaurantId, ReviewCursor cursor, int size) {
     PageRequest pageable = PageRequest.of(0, size);
