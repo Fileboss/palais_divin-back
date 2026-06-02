@@ -139,6 +139,12 @@ Goal: recommendations come from the graph, not from aggregates.
 
 ---
 
+## Intermediate phase I5 — Admin restaurant deletion
+
+- [x] **I5 — `DELETE /api/v1/admin/restaurants/{id}`** — admin-only hard delete returning 204. V9 alters `review.restaurant_id` FK to `ON DELETE CASCADE` so dependent reviews vanish with the restaurant; `RestaurantService.delete` does an existence check (404 via existing `RestaurantNotFoundException`) and publishes a `RestaurantDeleted` outbox event. `RestaurantProjector` switches on `eventType` — `RestaurantCreated` keeps its MERGE, `RestaurantDeleted` runs `MATCH (r:Restaurant {id}) DETACH DELETE r`, which sweeps incident `RATED` edges in one shot (no per-review `ReviewDeleted` event needed at the graph layer). Trigger `trg_restaurant_avg_rating` fires on each cascaded review delete with the soon-to-be-deleted restaurant id — wasted but correct (Postgres processes child cascade + AFTER triggers before parent DELETE). No `Idempotency-Key` (CLAUDE.md: user-endpoint mutations only). Soft delete remains in post-launch backlog.
+
+---
+
 ## Phase M8 — Photos via MinIO presigned URLs
 
 Goal: media without proxying bytes through Java. README §5.4.

@@ -19,6 +19,12 @@ class RestaurantProjector implements Projector {
           r.createdAt = $createdAt
       """;
 
+  private static final String DELETE_CYPHER =
+      """
+      MATCH (r:Restaurant {id: $id})
+      DETACH DELETE r
+      """;
+
   private final Neo4jClient neo4jClient;
 
   RestaurantProjector(Neo4jClient neo4jClient) {
@@ -32,16 +38,22 @@ class RestaurantProjector implements Projector {
 
   @Override
   public void project(String eventType, JsonNode payload) {
-    neo4jClient
-        .query(MERGE_CYPHER)
-        .bindAll(
-            Map.of(
-                "id", payload.get("id").asText(),
-                "name", payload.get("name").asText(),
-                "address", payload.get("address").asText(),
-                "latitude", payload.get("latitude").asDouble(),
-                "longitude", payload.get("longitude").asDouble(),
-                "createdAt", payload.get("createdAt").asText()))
-        .run();
+    switch (eventType) {
+      case "RestaurantCreated" ->
+          neo4jClient
+              .query(MERGE_CYPHER)
+              .bindAll(
+                  Map.of(
+                      "id", payload.get("id").asText(),
+                      "name", payload.get("name").asText(),
+                      "address", payload.get("address").asText(),
+                      "latitude", payload.get("latitude").asDouble(),
+                      "longitude", payload.get("longitude").asDouble(),
+                      "createdAt", payload.get("createdAt").asText()))
+              .run();
+      case "RestaurantDeleted" ->
+          neo4jClient.query(DELETE_CYPHER).bindAll(Map.of("id", payload.get("id").asText())).run();
+      default -> throw new IllegalArgumentException("Unknown Restaurant event type: " + eventType);
+    }
   }
 }

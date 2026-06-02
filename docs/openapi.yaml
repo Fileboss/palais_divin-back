@@ -16,6 +16,21 @@ paths:
           description: OK
       tags:
       - invitation-rest-controller
+  /api/v1/admin/restaurants/{id}:
+    delete:
+      operationId: delete
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+      tags:
+      - admin-restaurant-rest-controller
   /api/v1/public/ping:
     get:
       operationId: ping

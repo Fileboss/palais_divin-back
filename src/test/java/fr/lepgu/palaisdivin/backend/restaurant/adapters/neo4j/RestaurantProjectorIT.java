@@ -108,6 +108,52 @@ class RestaurantProjectorIT extends AbstractIntegrationTest {
   }
 
   @Test
+  void projectingRestaurantDeletedRemovesNodeAndIncidentRatedEdges() {
+    UUID restaurantId = UUID.randomUUID();
+    UUID userId = UUID.randomUUID();
+    neo4jClient
+        .query(
+            """
+            MERGE (u:User {id: $userId})
+            MERGE (r:Restaurant {id: $restaurantId})
+            MERGE (u)-[rated:RATED]->(r)
+            SET rated.score = 5
+            """)
+        .bindAll(Map.of("userId", userId.toString(), "restaurantId", restaurantId.toString()))
+        .run();
+
+    JsonNode payload = new ObjectMapper().createObjectNode().put("id", restaurantId.toString());
+    projector.project("RestaurantDeleted", payload);
+
+    Long restaurantCount =
+        neo4jClient
+            .query("MATCH (r:Restaurant {id: $id}) RETURN count(r) AS c")
+            .bindAll(Map.of("id", restaurantId.toString()))
+            .fetchAs(Long.class)
+            .one()
+            .orElseThrow();
+    assertThat(restaurantCount).isZero();
+
+    Long edgeCount =
+        neo4jClient
+            .query("MATCH ()-[r:RATED]->(rest:Restaurant {id: $id}) RETURN count(r) AS c")
+            .bindAll(Map.of("id", restaurantId.toString()))
+            .fetchAs(Long.class)
+            .one()
+            .orElseThrow();
+    assertThat(edgeCount).isZero();
+
+    Long userCount =
+        neo4jClient
+            .query("MATCH (u:User {id: $id}) RETURN count(u) AS c")
+            .bindAll(Map.of("id", userId.toString()))
+            .fetchAs(Long.class)
+            .one()
+            .orElseThrow();
+    assertThat(userCount).isEqualTo(1L);
+  }
+
+  @Test
   void projectingTheSameEventTwiceLeavesExactlyOneNode() {
     UUID id = UUID.randomUUID();
     JsonNode payload =

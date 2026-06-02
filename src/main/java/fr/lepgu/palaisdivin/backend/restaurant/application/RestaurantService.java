@@ -1,11 +1,14 @@
 package fr.lepgu.palaisdivin.backend.restaurant.application;
 
+import fr.lepgu.palaisdivin.backend.restaurant.domain.RestaurantNotFoundException;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.events.RestaurantCreated;
+import fr.lepgu.palaisdivin.backend.restaurant.domain.events.RestaurantDeleted;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Coordinates;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Restaurant;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantCursor;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantId;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.CreateRestaurantUseCase;
+import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.DeleteRestaurantUseCase;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.FindRestaurantUseCase;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.GeocoderPort;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.ListRestaurantsUseCase;
@@ -20,7 +23,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class RestaurantService
-    implements CreateRestaurantUseCase, FindRestaurantUseCase, ListRestaurantsUseCase {
+    implements CreateRestaurantUseCase,
+        FindRestaurantUseCase,
+        ListRestaurantsUseCase,
+        DeleteRestaurantUseCase {
 
   private final RestaurantRepositoryPort repository;
   private final GeocoderPort geocoder;
@@ -67,5 +73,17 @@ public class RestaurantService
   @Override
   public CursorPage<Restaurant> list(RestaurantCursor cursor, int size) {
     return repository.findAll(cursor, size);
+  }
+
+  @Override
+  @Transactional
+  public void delete(RestaurantId id) {
+    repository.findById(id).orElseThrow(() -> new RestaurantNotFoundException(id));
+    repository.deleteById(id);
+    outboxPublisher.publish(
+        "Restaurant",
+        id.value(),
+        "RestaurantDeleted",
+        new RestaurantDeleted(id.value(), Instant.now(clock)));
   }
 }

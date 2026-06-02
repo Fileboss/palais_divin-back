@@ -13,4 +13,6 @@ public interface RestaurantRepositoryPort {
   Optional<Restaurant> findById(RestaurantId id);
 
   CursorPage<Restaurant> findAll(RestaurantCursor cursor, int size);
+
+  void deleteById(RestaurantId id);
 }

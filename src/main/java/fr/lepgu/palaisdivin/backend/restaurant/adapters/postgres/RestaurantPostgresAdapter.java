@@ -39,6 +39,11 @@ public class RestaurantPostgresAdapter implements RestaurantRepositoryPort {
   }
 
   @Override
+  public void deleteById(RestaurantId id) {
+    jpa.deleteById(id.value());
+  }
+
+  @Override
   public CursorPage<Restaurant> findAll(RestaurantCursor cursor, int size) {
     PageRequest pageable = PageRequest.of(0, size);
     Slice<RestaurantEntity> slice =

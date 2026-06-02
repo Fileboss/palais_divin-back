@@ -56,6 +56,24 @@ class RestaurantPostgresAdapterIT {
   }
 
   @Test
+  void deleteByIdRemovesRow() {
+    RestaurantId id = RestaurantId.newId();
+    adapter.save(
+        new Restaurant(
+            id,
+            "Septime",
+            "80 Rue de Charonne",
+            new Coordinates(48.8536, 2.3795),
+            FIXED_CREATED_AT,
+            null));
+    assertThat(adapter.findById(id)).isPresent();
+
+    adapter.deleteById(id);
+
+    assertThat(adapter.findById(id)).isEmpty();
+  }
+
+  @Test
   void nullAddressRoundTrips() {
     RestaurantId id = RestaurantId.newId();
     Restaurant input =

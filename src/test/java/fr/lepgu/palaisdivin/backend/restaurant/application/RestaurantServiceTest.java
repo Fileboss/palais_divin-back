@@ -5,12 +5,15 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import fr.lepgu.palaisdivin.backend.restaurant.domain.RestaurantNotFoundException;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.UnresolvableAddressException;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.events.RestaurantCreated;
+import fr.lepgu.palaisdivin.backend.restaurant.domain.events.RestaurantDeleted;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Coordinates;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Restaurant;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantId;
@@ -152,4 +155,47 @@ class RestaurantServiceTest {
     assertThat(found).isEmpty();
   }
 
+  @Test
+  void deleteRemovesAggregateAndPublishesRestaurantDeletedEvent() {
+    RestaurantId id = RestaurantId.newId();
+    Restaurant stored = new Restaurant(id, "Septime", null, LOCATION, FIXED_NOW, null);
+    when(repository.findById(id)).thenReturn(Optional.of(stored));
+
+    service.delete(id);
+
+    verify(repository).deleteById(id);
+    ArgumentCaptor<Object> payloadCaptor = ArgumentCaptor.forClass(Object.class);
+    verify(outboxPublisher)
+        .publish(
+            eq("Restaurant"), eq(id.value()), eq("RestaurantDeleted"), payloadCaptor.capture());
+    assertThat(payloadCaptor.getValue()).isInstanceOf(RestaurantDeleted.class);
+    RestaurantDeleted event = (RestaurantDeleted) payloadCaptor.getValue();
+    assertThat(event.id()).isEqualTo(id.value());
+    assertThat(event.deletedAt()).isEqualTo(FIXED_NOW);
+  }
+
+  @Test
+  void deleteUnknownIdThrowsRestaurantNotFoundAndDoesNotPublish() {
+    RestaurantId id = RestaurantId.newId();
+    when(repository.findById(id)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> service.delete(id)).isInstanceOf(RestaurantNotFoundException.class);
+
+    verify(repository, never()).deleteById(any());
+    verifyNoInteractions(outboxPublisher);
+  }
+
+  @Test
+  void deletePropagatesRepositoryFailureAndDoesNotPublish() {
+    RestaurantId id = RestaurantId.newId();
+    Restaurant stored = new Restaurant(id, "Septime", null, LOCATION, FIXED_NOW, null);
+    when(repository.findById(id)).thenReturn(Optional.of(stored));
+    doThrow(new RuntimeException("db down")).when(repository).deleteById(id);
+
+    assertThatThrownBy(() -> service.delete(id))
+        .isInstanceOf(RuntimeException.class)
+        .hasMessage("db down");
+
+    verifyNoInteractions(outboxPublisher);
+  }
 }
