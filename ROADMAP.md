@@ -149,12 +149,22 @@ Goal: recommendations come from the graph, not from aggregates.
 
 Goal: media without proxying bytes through Java. README §5.4.
 
-- [ ] **M8.1 — `config/MinioConfig`** — client bean; 2s timeout configured on `MinioClient.httpClient(...)`.
-- [ ] **M8.2 — `POST /user/restaurants/{id}/photos/upload-url`** — returns presigned PUT URL.
+- [x] **M8.1 — `config/MinioConfig`** — `MinioClient` bean built from `@Validated MinioProperties("app.minio")`; `OkHttpClient` wired into `MinioClient.builder().httpClient(...)` with 2s connect/read/write timeouts. Self-contained `@Configuration` — MinIO isn't an `@HttpExchange` client, doesn't belong in `HttpClientsConfig`. Stub `app.minio.{access-key,secret-key}=test` added to `application-test.properties` so `@NotBlank` doesn't break IT context-load. Deferred: `app.minio.bucket`, MinIO Testcontainer + `DynamicPropertyRegistrar`, presigned-URL methods — all ship with M8.2.
+- [x] **M8.2 — `POST /api/v1/user/restaurants/{restaurantId}/photos/upload-url`** — non-mutating: signs a PUT URL, no Postgres write, no outbox, no `Idempotency-Key`. New `photo/` vertical slice (`PhotoUploadUrl` model, `MintPhotoUploadUrlUseCase` + `PhotoStoragePort`, `PhotoService` `@Transactional(readOnly = true)`, `PhotoMinioAdapter`, `PhotoUploadUrlRestController`). Restaurant existence check via cross-component `RestaurantRepositoryPort` (M6.3 precedent). Object key: `restaurants/{restaurantId}/{uuid}` — natural prefix, no file extension (M8.3 will store `contentType` server-side). Response: `{ objectKey, uploadUrl, expiresAt }` — 200 OK (no resource created server-side). TTL = `app.minio.upload-url-ttl=10m`, bucket = `app.minio.bucket=palaisdivin-photos` (both new fields on `MinioProperties`). `MinioClient.getPresignedObjectUrl(Method.PUT, ...)`; checked `MinioException | GeneralSecurityException | IOException` wrapped in `PhotoStorageException` → 502 `upstream-failure` (mirrors `KeycloakOperationException`). `MinIOContainer` joined `Startables.deepStart`; bucket seeded once in `TestcontainersConfiguration`'s static block via a throwaway `MinioClient` (guarantees existence before any Spring bean wires up); endpoint/credentials registered via `DynamicPropertyRegistrar`. IT uploads real bytes with `java.net.http.HttpClient` (Spring `RestClient.put(...).contentType(...)` against a presigned URL trips MinIO's `MissingFields` — the signature only covers the URL+verb, extra headers are surplus). Deferred: `app.minio.bucket` auto-create in dev/prod (operator step), content-type whitelist, photo registration (M8.3), download URL (M8.4).
 - [ ] **M8.3 — `POST /user/restaurants/{id}/photos`** — registers uploaded object key + metadata.
 - [ ] **M8.4 — `GET /user/restaurants/{id}/photos/{key}/download-url`** — returns presigned GET URL.
 
 `MILESTONE M8` — Restaurants have photos. Frontend uploads/downloads direct to MinIO.
+
+---
+
+## Phase M8.5 — Restaurant tags
+Goal : restaurant should have tag to be easily filterable.
+Type of food : pizza, sushi, korean ...
+Precise regime : vegan option, vegetarian option, great vegan option, vegetarian only ...
+Place : taje out only, terrce, interior ...
+Type : fast food, restaurant, chic restaurant, gastronomic ...
+
 
 ---
 

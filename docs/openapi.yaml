@@ -272,6 +272,25 @@ paths:
           description: OK
       tags:
       - restaurant-affinity-rest-controller
+  /api/v1/user/restaurants/{restaurantId}/photos/upload-url:
+    post:
+      operationId: mint
+      parameters:
+      - in: path
+        name: restaurantId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PhotoUploadUrlResponse"
+          description: OK
+      tags:
+      - photo-upload-url-rest-controller
   /api/v1/user/restaurants/{restaurantId}/reviews:
     get:
       operationId: getMyReview
@@ -422,6 +441,16 @@ components:
         size:
           type: integer
           format: int32
+    PhotoUploadUrlResponse:
+      type: object
+      properties:
+        expiresAt:
+          type: string
+          format: date-time
+        objectKey:
+          type: string
+        uploadUrl:
+          type: string
     PingResponse:
       type: object
       properties:

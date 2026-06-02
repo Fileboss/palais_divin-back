@@ -1,0 +1,101 @@
+package fr.lepgu.palaisdivin.backend.photo.adapters.rest;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import fr.lepgu.palaisdivin.backend.config.security.SecurityConfig;
+import fr.lepgu.palaisdivin.backend.photo.domain.PhotoStorageException;
+import fr.lepgu.palaisdivin.backend.photo.domain.model.PhotoUploadUrl;
+import fr.lepgu.palaisdivin.backend.photo.domain.ports.MintPhotoUploadUrlUseCase;
+import fr.lepgu.palaisdivin.backend.restaurant.domain.RestaurantNotFoundException;
+import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantId;
+import fr.lepgu.palaisdivin.backend.shared.adapters.web.GlobalExceptionHandler;
+import java.net.URI;
+import java.time.Instant;
+import java.util.UUID;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
+
+@WebMvcTest(PhotoUploadUrlRestController.class)
+@Import({SecurityConfig.class, GlobalExceptionHandler.class})
+class PhotoUploadUrlRestControllerTest {
+
+  private static final Instant FIXED_EXPIRES_AT = Instant.parse("2026-06-02T12:10:00Z");
+  private static final String SUBJECT = "kc-subject-xyz";
+
+  @Autowired MockMvc mockMvc;
+
+  @MockitoBean MintPhotoUploadUrlUseCase mintUploadUrl;
+  @MockitoBean JwtDecoder jwtDecoder;
+
+  private static RequestPostProcessor userJwt() {
+    return jwt().jwt(j -> j.subject(SUBJECT)).authorities(new SimpleGrantedAuthority("ROLE_USER"));
+  }
+
+  @Test
+  void post_mintsUploadUrl_returns_200_with_body() throws Exception {
+    UUID restaurantId = UUID.randomUUID();
+    String objectKey = "restaurants/" + restaurantId + "/" + UUID.randomUUID();
+    URI uploadUrl = URI.create("http://minio.test/palaisdivin-photos/" + objectKey + "?sig=abc");
+    when(mintUploadUrl.mint(new RestaurantId(restaurantId)))
+        .thenReturn(new PhotoUploadUrl(objectKey, uploadUrl, FIXED_EXPIRES_AT));
+
+    mockMvc
+        .perform(
+            post("/api/v1/user/restaurants/{rid}/photos/upload-url", restaurantId).with(userJwt()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.objectKey").value(objectKey))
+        .andExpect(jsonPath("$.uploadUrl").value(uploadUrl.toString()))
+        .andExpect(jsonPath("$.expiresAt").value(FIXED_EXPIRES_AT.toString()));
+  }
+
+  @Test
+  void post_restaurantMissing_returns_404_problem() throws Exception {
+    UUID restaurantId = UUID.randomUUID();
+    when(mintUploadUrl.mint(any()))
+        .thenThrow(new RestaurantNotFoundException(new RestaurantId(restaurantId)));
+
+    mockMvc
+        .perform(
+            post("/api/v1/user/restaurants/{rid}/photos/upload-url", restaurantId).with(userJwt()))
+        .andExpect(status().isNotFound())
+        .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+        .andExpect(jsonPath("$.type").value("https://palaisdivin.lepgu.fr/problems/not-found"));
+  }
+
+  @Test
+  void post_storageFailure_returns_502_problem() throws Exception {
+    when(mintUploadUrl.mint(any()))
+        .thenThrow(new PhotoStorageException("boom", new RuntimeException()));
+
+    mockMvc
+        .perform(
+            post("/api/v1/user/restaurants/{rid}/photos/upload-url", UUID.randomUUID())
+                .with(userJwt()))
+        .andExpect(status().isBadGateway())
+        .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+        .andExpect(
+            jsonPath("$.type").value("https://palaisdivin.lepgu.fr/problems/upstream-failure"));
+  }
+
+  @Test
+  void post_anonymous_returns_401_problem() throws Exception {
+    mockMvc
+        .perform(post("/api/v1/user/restaurants/{rid}/photos/upload-url", UUID.randomUUID()))
+        .andExpect(status().isUnauthorized())
+        .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+        .andExpect(jsonPath("$.type").value("https://palaisdivin.lepgu.fr/problems/unauthorized"));
+  }
+}

@@ -1,5 +1,6 @@
 package fr.lepgu.palaisdivin.backend.shared.adapters.web;
 
+import fr.lepgu.palaisdivin.backend.photo.domain.PhotoStorageException;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.RestaurantNotFoundException;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.UnresolvableAddressException;
 import fr.lepgu.palaisdivin.backend.review.domain.ReviewNotFoundException;
@@ -224,6 +225,17 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     pd.setDetail("Your account is not fully provisioned. Please contact support.");
     addTraceId(pd);
     return ResponseEntity.internalServerError().body(pd);
+  }
+
+  @ExceptionHandler(PhotoStorageException.class)
+  ResponseEntity<ProblemDetail> handlePhotoStorage(PhotoStorageException ex) {
+    log.error("Photo storage failure", ex);
+    ProblemDetail pd = ProblemDetail.forStatus(HttpStatus.BAD_GATEWAY);
+    pd.setType(PROBLEM_BASE.resolve("upstream-failure"));
+    pd.setTitle("Upstream failure");
+    pd.setDetail("Object storage request failed.");
+    addTraceId(pd);
+    return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(pd);
   }
 
   @ExceptionHandler(KeycloakOperationException.class)
