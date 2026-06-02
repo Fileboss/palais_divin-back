@@ -79,7 +79,7 @@ class ReviewServiceTest {
 
   @Test
   void createPersistsReviewAndReturnsIt() {
-    when(users.findBySubject(SUBJECT)).thenReturn(Optional.of(author));
+    when(users.requireBySubject(SUBJECT)).thenReturn(authorId);
     when(restaurants.findById(restaurantId)).thenReturn(Optional.of(restaurant));
     when(reviews.save(any(Review.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -109,7 +109,7 @@ class ReviewServiceTest {
     ReviewId existingId = ReviewId.newId();
     Review existing =
         new Review(existingId, restaurantId, authorId, 5, "Original", NOW.minusSeconds(3600));
-    when(users.findBySubject(SUBJECT)).thenReturn(Optional.of(author));
+    when(users.requireBySubject(SUBJECT)).thenReturn(authorId);
     when(idempotency.findRecent("KEY-1", authorId, "Review", Duration.ofHours(24)))
         .thenReturn(Optional.of(existingId.value()));
     when(reviews.findById(existingId)).thenReturn(Optional.of(existing));
@@ -125,7 +125,7 @@ class ReviewServiceTest {
 
   @Test
   void createWithIdempotencyKeyMissPersistsAndRecords() {
-    when(users.findBySubject(SUBJECT)).thenReturn(Optional.of(author));
+    when(users.requireBySubject(SUBJECT)).thenReturn(authorId);
     when(idempotency.findRecent("KEY-2", authorId, "Review", Duration.ofHours(24)))
         .thenReturn(Optional.empty());
     when(restaurants.findById(restaurantId)).thenReturn(Optional.of(restaurant));
@@ -143,26 +143,13 @@ class ReviewServiceTest {
 
   @Test
   void createThrowsWhenRestaurantMissing() {
-    when(users.findBySubject(SUBJECT)).thenReturn(Optional.of(author));
+    when(users.requireBySubject(SUBJECT)).thenReturn(authorId);
     when(restaurants.findById(restaurantId)).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> service.create(SUBJECT, restaurantId, 4, null, Optional.empty()))
         .isInstanceOf(RestaurantNotFoundException.class);
 
     verify(reviews, never()).save(any());
-    verifyNoInteractions(outbox);
-  }
-
-  @Test
-  void createThrowsWhenSubjectHasNoAppUser() {
-    when(users.findBySubject(SUBJECT)).thenReturn(Optional.empty());
-
-    assertThatThrownBy(() -> service.create(SUBJECT, restaurantId, 4, null, Optional.empty()))
-        .isInstanceOf(IllegalStateException.class)
-        .hasMessageContaining(SUBJECT);
-
-    verify(reviews, never()).save(any());
-    verify(restaurants, never()).findById(any());
     verifyNoInteractions(outbox);
   }
 
@@ -211,11 +198,34 @@ class ReviewServiceTest {
   }
 
   @Test
+  void getMyReview_returnsReview_whenFound() {
+    Review existing =
+        new Review(ReviewId.newId(), restaurantId, authorId, 5, "Loved it", NOW.minusSeconds(60));
+    when(users.requireBySubject(SUBJECT)).thenReturn(authorId);
+    when(reviews.findByRestaurantAndAuthor(restaurantId, authorId))
+        .thenReturn(Optional.of(existing));
+
+    Review result = service.getMyReview(SUBJECT, restaurantId);
+
+    assertThat(result).isSameAs(existing);
+    verifyNoInteractions(restaurants, idempotency, outbox);
+  }
+
+  @Test
+  void getMyReview_throwsReviewNotFound_whenMissing() {
+    when(users.requireBySubject(SUBJECT)).thenReturn(authorId);
+    when(reviews.findByRestaurantAndAuthor(restaurantId, authorId)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> service.getMyReview(SUBJECT, restaurantId))
+        .isInstanceOf(ReviewNotFoundException.class);
+  }
+
+  @Test
   void updatePersistsNewRatingAndPublishesReviewUpdated() {
     ReviewId reviewId = ReviewId.newId();
     Review existing =
         new Review(reviewId, restaurantId, authorId, 4, "Good", NOW.minusSeconds(3600));
-    when(users.findBySubject(SUBJECT)).thenReturn(Optional.of(author));
+    when(users.requireBySubject(SUBJECT)).thenReturn(authorId);
     when(reviews.findByRestaurantAndAuthor(restaurantId, authorId))
         .thenReturn(Optional.of(existing));
     when(reviews.save(any(Review.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -236,7 +246,7 @@ class ReviewServiceTest {
 
   @Test
   void updateThrowsWhenReviewMissing() {
-    when(users.findBySubject(SUBJECT)).thenReturn(Optional.of(author));
+    when(users.requireBySubject(SUBJECT)).thenReturn(authorId);
     when(reviews.findByRestaurantAndAuthor(restaurantId, authorId)).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> service.update(SUBJECT, restaurantId, 3, null))

@@ -7,7 +7,6 @@ import fr.lepgu.palaisdivin.backend.user.domain.events.ConnectionCreated;
 import fr.lepgu.palaisdivin.backend.user.domain.model.Connection;
 import fr.lepgu.palaisdivin.backend.user.domain.model.ConnectionId;
 import fr.lepgu.palaisdivin.backend.user.domain.model.ConnectionResult;
-import fr.lepgu.palaisdivin.backend.user.domain.model.User;
 import fr.lepgu.palaisdivin.backend.user.domain.model.UserId;
 import fr.lepgu.palaisdivin.backend.user.domain.ports.ConnectionRepositoryPort;
 import fr.lepgu.palaisdivin.backend.user.domain.ports.CreateConnectionUseCase;
@@ -41,14 +40,7 @@ public class ConnectionService implements CreateConnectionUseCase {
 
   @Override
   public ConnectionResult connect(String subject, UserId targetId) {
-    UserId sourceId =
-        users
-            .findBySubject(subject)
-            .map(User::id)
-            .orElseThrow(
-                () ->
-                    new IllegalStateException(
-                        "Authenticated subject %s has no app_user row".formatted(subject)));
+    UserId sourceId = users.requireBySubject(subject);
 
     if (sourceId.equals(targetId)) {
       throw new SelfConnectionException(sourceId);

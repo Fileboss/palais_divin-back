@@ -99,7 +99,7 @@ class SignupRestIT extends AbstractIntegrationTest {
             .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + userToken)
             .build()
             .get()
-            .uri("/api/v1/user/restaurants")
+            .uri("/api/v1/user/recommendations")
             .retrieve()
             .toEntity(String.class);
     assertThat(listResp.getStatusCode()).isEqualTo(HttpStatus.OK);

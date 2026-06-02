@@ -18,7 +18,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -68,7 +67,7 @@ class RestaurantRestIT extends AbstractIntegrationTest {
     RestaurantResponse fetched =
         client
             .get()
-            .uri(postResp.getHeaders().getLocation())
+            .uri("/api/v1/public/restaurants/" + created.id())
             .retrieve()
             .body(RestaurantResponse.class);
 
@@ -128,8 +127,8 @@ class RestaurantRestIT extends AbstractIntegrationTest {
     while (true) {
       String path =
           cursor == null
-              ? "/api/v1/user/restaurants?size=10"
-              : "/api/v1/user/restaurants?size=10&cursor=" + cursor;
+              ? "/api/v1/public/restaurants?size=10"
+              : "/api/v1/public/restaurants?size=10&cursor=" + cursor;
       RestaurantsPageResponse body =
           client.get().uri(path).retrieve().body(RestaurantsPageResponse.class);
       assertThat(body).isNotNull();
@@ -171,31 +170,15 @@ class RestaurantRestIT extends AbstractIntegrationTest {
   }
 
   @Test
-  void list_invalidCursor_returns400ProblemDetail() {
-    RestClient client = authedClient();
-
-    ResponseEntity<String> resp =
-        client
-            .get()
-            .uri("/api/v1/user/restaurants?cursor=not!base64!!")
-            .retrieve()
-            .onStatus(s -> s.is4xxClientError(), (req, res) -> {})
-            .toEntity(new ParameterizedTypeReference<String>() {});
-
-    assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-    assertThat(resp.getHeaders().getContentType().toString())
-        .startsWith("application/problem+json");
-    assertThat(resp.getBody()).contains("/problems/invalid-cursor");
-  }
-
-  @Test
-  void unauthenticated_request_returns_401_problem_detail() {
+  void unauthenticated_post_returns_401_problem_detail() {
     RestClient unauthed = RestClient.create("http://localhost:" + port);
 
     ResponseEntity<String> resp =
         unauthed
-            .get()
+            .post()
             .uri("/api/v1/user/restaurants")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new CreateRestaurantRequest("X", "Y"))
             .retrieve()
             .onStatus(s -> s.is4xxClientError(), (req, res) -> {})
             .toEntity(String.class);

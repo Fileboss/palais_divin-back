@@ -3,7 +3,6 @@ package fr.lepgu.palaisdivin.backend.user.application;
 import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;
 import fr.lepgu.palaisdivin.backend.user.domain.model.Recommendation;
 import fr.lepgu.palaisdivin.backend.user.domain.model.RecommendationCursor;
-import fr.lepgu.palaisdivin.backend.user.domain.model.User;
 import fr.lepgu.palaisdivin.backend.user.domain.model.UserId;
 import fr.lepgu.palaisdivin.backend.user.domain.ports.GetRecommendationsUseCase;
 import fr.lepgu.palaisdivin.backend.user.domain.ports.RecommendationGraphPort;
@@ -26,15 +25,7 @@ public class RecommendationService implements GetRecommendationsUseCase {
   @Override
   public CursorPage<Recommendation> list(
       String requesterSubject, RecommendationCursor cursor, int size) {
-    UserId requester =
-        users
-            .findBySubject(requesterSubject)
-            .map(User::id)
-            .orElseThrow(
-                () ->
-                    new IllegalStateException(
-                        "Authenticated subject %s has no app_user row"
-                            .formatted(requesterSubject)));
+    UserId requester = users.requireBySubject(requesterSubject);
     return graph.findRecommendations(requester, cursor, size);
   }
 }

@@ -30,39 +30,48 @@ class ActuatorExposureTest {
   }
 
   private HttpStatus statusOf(String path) {
-    return (HttpStatus) http().get().uri(path).retrieve().toBodilessEntity().getStatusCode();
+    return (HttpStatus)
+        http()
+            .get()
+            .uri(path)
+            .retrieve()
+            .onStatus(s -> s.is4xxClientError(), (req, res) -> {})
+            .toBodilessEntity()
+            .getStatusCode();
   }
 
   @Test
-  void health_returns_200() {
+  void health_returns_200_anon() {
     assertThat(statusOf("/actuator/health")).isEqualTo(HttpStatus.OK);
   }
 
   @Test
-  void info_returns_200() {
+  void info_returns_200_anon() {
     assertThat(statusOf("/actuator/info")).isEqualTo(HttpStatus.OK);
   }
 
   @Test
-  void metrics_returns_200() {
-    assertThat(statusOf("/actuator/metrics")).isEqualTo(HttpStatus.OK);
+  void metrics_anon_returns_401() {
+    assertThat(statusOf("/actuator/metrics")).isEqualTo(HttpStatus.UNAUTHORIZED);
   }
 
   @Test
-  void prometheus_returns_200() {
-    assertThat(statusOf("/actuator/prometheus")).isEqualTo(HttpStatus.OK);
+  void prometheus_anon_returns_401() {
+    assertThat(statusOf("/actuator/prometheus")).isEqualTo(HttpStatus.UNAUTHORIZED);
   }
 
   @Test
-  void env_is_not_exposed_returns_404_problem_detail() {
+  void unknown_actuator_endpoint_anon_returns_401() {
+    // Security matches /actuator/** → ROLE_ADMIN before MVC resolves the endpoint, so anon
+    // gets 401 (not 404). With an admin token this would surface as 404 since /env isn't exposed.
     var response =
         http()
             .get()
             .uri("/actuator/env")
             .retrieve()
-            .onStatus(s -> s.value() == 404, (req, res) -> {})
+            .onStatus(s -> s.is4xxClientError(), (req, res) -> {})
             .toBodilessEntity();
-    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
     assertThat(response.getHeaders().getContentType())
         .isNotNull()
         .matches(t -> t.isCompatibleWith(MediaType.parseMediaType("application/problem+json")));

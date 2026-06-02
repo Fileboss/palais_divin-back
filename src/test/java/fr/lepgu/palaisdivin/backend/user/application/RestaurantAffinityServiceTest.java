@@ -61,7 +61,7 @@ class RestaurantAffinityServiceTest {
   @Test
   void getFor_resolvesSubjectAndDelegatesToGraph() {
     RestaurantAffinity expected = new RestaurantAffinity(restaurantId, 9.0, 2);
-    when(users.findBySubject(SUBJECT)).thenReturn(Optional.of(requester));
+    when(users.requireBySubject(SUBJECT)).thenReturn(requesterId);
     when(restaurants.findById(restaurantId)).thenReturn(Optional.of(restaurant));
     when(graph.findAffinityFor(requesterId, restaurantId)).thenReturn(expected);
 
@@ -72,19 +72,8 @@ class RestaurantAffinityServiceTest {
   }
 
   @Test
-  void getFor_unknownSubject_throwsIllegalState() {
-    when(users.findBySubject(SUBJECT)).thenReturn(Optional.empty());
-
-    assertThatThrownBy(() -> service.getFor(SUBJECT, restaurantId))
-        .isInstanceOf(IllegalStateException.class)
-        .hasMessageContaining(SUBJECT);
-
-    verifyNoInteractions(restaurants, graph);
-  }
-
-  @Test
   void getFor_unknownRestaurant_throwsRestaurantNotFound() {
-    when(users.findBySubject(SUBJECT)).thenReturn(Optional.of(requester));
+    when(users.requireBySubject(SUBJECT)).thenReturn(requesterId);
     when(restaurants.findById(restaurantId)).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> service.getFor(SUBJECT, restaurantId))
@@ -96,7 +85,7 @@ class RestaurantAffinityServiceTest {
   @Test
   void getFor_graphReturnsZeroAffinity_passesThrough() {
     RestaurantAffinity zero = new RestaurantAffinity(restaurantId, 0.0, 0);
-    when(users.findBySubject(SUBJECT)).thenReturn(Optional.of(requester));
+    when(users.requireBySubject(SUBJECT)).thenReturn(requesterId);
     when(restaurants.findById(restaurantId)).thenReturn(Optional.of(restaurant));
     when(graph.findAffinityFor(requesterId, restaurantId)).thenReturn(zero);
 

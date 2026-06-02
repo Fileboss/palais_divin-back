@@ -34,7 +34,7 @@ class KeycloakAuthIT extends AbstractIntegrationTest {
             .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + token)
             .build()
             .get()
-            .uri("/api/v1/user/restaurants")
+            .uri("/api/v1/user/recommendations")
             .retrieve()
             .toEntity(String.class);
 
@@ -47,7 +47,7 @@ class KeycloakAuthIT extends AbstractIntegrationTest {
     ResponseEntity<String> resp =
         RestClient.create("http://localhost:" + port)
             .get()
-            .uri("/api/v1/user/restaurants")
+            .uri("/api/v1/user/recommendations")
             .retrieve()
             .onStatus(s -> s.is4xxClientError(), (req, res) -> {})
             .toEntity(String.class);
@@ -66,7 +66,7 @@ class KeycloakAuthIT extends AbstractIntegrationTest {
             .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer not-a-real-jwt")
             .build()
             .get()
-            .uri("/api/v1/user/restaurants")
+            .uri("/api/v1/user/recommendations")
             .retrieve()
             .onStatus(s -> s.is4xxClientError(), (req, res) -> {})
             .toEntity(String.class);

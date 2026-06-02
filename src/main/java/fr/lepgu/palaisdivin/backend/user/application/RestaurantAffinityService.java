@@ -4,7 +4,6 @@ import fr.lepgu.palaisdivin.backend.restaurant.domain.RestaurantNotFoundExceptio
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantId;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.RestaurantRepositoryPort;
 import fr.lepgu.palaisdivin.backend.user.domain.model.RestaurantAffinity;
-import fr.lepgu.palaisdivin.backend.user.domain.model.User;
 import fr.lepgu.palaisdivin.backend.user.domain.model.UserId;
 import fr.lepgu.palaisdivin.backend.user.domain.ports.GetRestaurantAffinityUseCase;
 import fr.lepgu.palaisdivin.backend.user.domain.ports.RecommendationGraphPort;
@@ -31,15 +30,7 @@ public class RestaurantAffinityService implements GetRestaurantAffinityUseCase {
 
   @Override
   public RestaurantAffinity getFor(String requesterSubject, RestaurantId restaurantId) {
-    UserId requester =
-        users
-            .findBySubject(requesterSubject)
-            .map(User::id)
-            .orElseThrow(
-                () ->
-                    new IllegalStateException(
-                        "Authenticated subject %s has no app_user row"
-                            .formatted(requesterSubject)));
+    UserId requester = users.requireBySubject(requesterSubject);
     restaurants
         .findById(restaurantId)
         .orElseThrow(() -> new RestaurantNotFoundException(restaurantId));

@@ -6,6 +6,7 @@ import fr.lepgu.palaisdivin.backend.review.domain.ReviewNotFoundException;
 import fr.lepgu.palaisdivin.backend.user.domain.InvitationNotFoundException;
 import fr.lepgu.palaisdivin.backend.user.domain.InvitationNotUsableException;
 import fr.lepgu.palaisdivin.backend.user.domain.KeycloakOperationException;
+import fr.lepgu.palaisdivin.backend.user.domain.OrphanSubjectException;
 import fr.lepgu.palaisdivin.backend.user.domain.SelfConnectionException;
 import fr.lepgu.palaisdivin.backend.user.domain.UserNotFoundException;
 import io.micrometer.tracing.Tracer;
@@ -211,6 +212,18 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     pd.setTitle("Conflict");
     addTraceId(pd);
     return ResponseEntity.status(HttpStatus.CONFLICT).body(pd);
+  }
+
+  @ExceptionHandler(OrphanSubjectException.class)
+  ResponseEntity<ProblemDetail> handleOrphanSubject(OrphanSubjectException ex) {
+    // JWT is valid but the matching app_user row is missing — data integrity issue, not a 4xx.
+    log.error("Orphan Keycloak subject {} — no app_user row", ex.subject());
+    ProblemDetail pd = ProblemDetail.forStatus(HttpStatus.INTERNAL_SERVER_ERROR);
+    pd.setType(PROBLEM_BASE.resolve("orphan-subject"));
+    pd.setTitle("Account state inconsistent");
+    pd.setDetail("Your account is not fully provisioned. Please contact support.");
+    addTraceId(pd);
+    return ResponseEntity.internalServerError().body(pd);
   }
 
   @ExceptionHandler(KeycloakOperationException.class)

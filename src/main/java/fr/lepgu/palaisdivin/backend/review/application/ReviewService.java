@@ -11,13 +11,13 @@ import fr.lepgu.palaisdivin.backend.review.domain.model.ReviewCursor;
 import fr.lepgu.palaisdivin.backend.review.domain.model.ReviewId;
 import fr.lepgu.palaisdivin.backend.review.domain.ports.CreateReviewUseCase;
 import fr.lepgu.palaisdivin.backend.review.domain.ports.FindReviewByAuthorUseCase;
+import fr.lepgu.palaisdivin.backend.review.domain.ports.GetMyReviewUseCase;
 import fr.lepgu.palaisdivin.backend.review.domain.ports.ListReviewsUseCase;
 import fr.lepgu.palaisdivin.backend.review.domain.ports.ReviewRepositoryPort;
 import fr.lepgu.palaisdivin.backend.review.domain.ports.UpdateReviewUseCase;
 import fr.lepgu.palaisdivin.backend.shared.domain.ports.IdempotencyKeyPort;
 import fr.lepgu.palaisdivin.backend.shared.domain.ports.OutboxPublisher;
 import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;
-import fr.lepgu.palaisdivin.backend.user.domain.model.User;
 import fr.lepgu.palaisdivin.backend.user.domain.model.UserId;
 import fr.lepgu.palaisdivin.backend.user.domain.ports.UserRepositoryPort;
 import java.time.Clock;
@@ -32,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ReviewService
     implements CreateReviewUseCase,
         FindReviewByAuthorUseCase,
+        GetMyReviewUseCase,
         ListReviewsUseCase,
         UpdateReviewUseCase {
 
@@ -67,14 +68,7 @@ public class ReviewService
       int rating,
       String comment,
       Optional<String> idempotencyKey) {
-    UserId authorId =
-        users
-            .findBySubject(authorSubject)
-            .map(User::id)
-            .orElseThrow(
-                () ->
-                    new IllegalStateException(
-                        "Authenticated subject %s has no app_user row".formatted(authorSubject)));
+    UserId authorId = users.requireBySubject(authorSubject);
 
     if (idempotencyKey.isPresent()) {
       Optional<UUID> existingId =
@@ -131,16 +125,18 @@ public class ReviewService
   }
 
   @Override
+  @Transactional(readOnly = true)
+  public Review getMyReview(String authorSubject, RestaurantId restaurantId) {
+    UserId authorId = users.requireBySubject(authorSubject);
+    return reviews
+        .findByRestaurantAndAuthor(restaurantId, authorId)
+        .orElseThrow(() -> new ReviewNotFoundException(restaurantId, authorId));
+  }
+
+  @Override
   public Review update(
       String authorSubject, RestaurantId restaurantId, int rating, String comment) {
-    UserId authorId =
-        users
-            .findBySubject(authorSubject)
-            .map(User::id)
-            .orElseThrow(
-                () ->
-                    new IllegalStateException(
-                        "Authenticated subject %s has no app_user row".formatted(authorSubject)));
+    UserId authorId = users.requireBySubject(authorSubject);
 
     Review existing =
         reviews

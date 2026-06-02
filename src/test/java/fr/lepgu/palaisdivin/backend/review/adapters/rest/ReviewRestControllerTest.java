@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -20,6 +21,7 @@ import fr.lepgu.palaisdivin.backend.review.domain.ReviewNotFoundException;
 import fr.lepgu.palaisdivin.backend.review.domain.model.Review;
 import fr.lepgu.palaisdivin.backend.review.domain.model.ReviewId;
 import fr.lepgu.palaisdivin.backend.review.domain.ports.CreateReviewUseCase;
+import fr.lepgu.palaisdivin.backend.review.domain.ports.GetMyReviewUseCase;
 import fr.lepgu.palaisdivin.backend.review.domain.ports.UpdateReviewUseCase;
 import fr.lepgu.palaisdivin.backend.shared.adapters.web.GlobalExceptionHandler;
 import fr.lepgu.palaisdivin.backend.user.domain.model.UserId;
@@ -51,6 +53,7 @@ class ReviewRestControllerTest {
 
   @MockitoBean CreateReviewUseCase createReview;
   @MockitoBean UpdateReviewUseCase updateReview;
+  @MockitoBean GetMyReviewUseCase getMyReview;
   @MockitoBean JwtDecoder jwtDecoder;
 
   private static RequestPostProcessor userJwt() {
@@ -250,6 +253,46 @@ class ReviewRestControllerTest {
                     """
                     { "rating": 4 }
                     """))
+        .andExpect(status().isUnauthorized())
+        .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+        .andExpect(jsonPath("$.type").value("https://palaisdivin.lepgu.fr/problems/unauthorized"));
+  }
+
+  @Test
+  void get_existingReview_returns_200_with_body() throws Exception {
+    UUID restaurantId = UUID.randomUUID();
+    Review found = review(restaurantId, 5, "Loved it");
+    when(getMyReview.getMyReview(eq(SUBJECT), eq(new RestaurantId(restaurantId))))
+        .thenReturn(found);
+
+    mockMvc
+        .perform(get("/api/v1/user/restaurants/{rid}/reviews", restaurantId).with(userJwt()))
+        .andExpect(status().isOk())
+        .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$.id").value(found.id().value().toString()))
+        .andExpect(jsonPath("$.restaurantId").value(restaurantId.toString()))
+        .andExpect(jsonPath("$.rating").value(5))
+        .andExpect(jsonPath("$.comment").value("Loved it"))
+        .andExpect(jsonPath("$.createdAt").value(FIXED_CREATED_AT.toString()));
+  }
+
+  @Test
+  void get_reviewMissing_returns_404_problem() throws Exception {
+    UUID restaurantId = UUID.randomUUID();
+    when(getMyReview.getMyReview(eq(SUBJECT), eq(new RestaurantId(restaurantId))))
+        .thenThrow(new ReviewNotFoundException(new RestaurantId(restaurantId), UserId.newId()));
+
+    mockMvc
+        .perform(get("/api/v1/user/restaurants/{rid}/reviews", restaurantId).with(userJwt()))
+        .andExpect(status().isNotFound())
+        .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+        .andExpect(jsonPath("$.type").value("https://palaisdivin.lepgu.fr/problems/not-found"));
+  }
+
+  @Test
+  void get_anonymous_returns_401() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/user/restaurants/{rid}/reviews", UUID.randomUUID()))
         .andExpect(status().isUnauthorized())
         .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
         .andExpect(jsonPath("$.type").value("https://palaisdivin.lepgu.fr/problems/unauthorized"));

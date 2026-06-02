@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import fr.lepgu.palaisdivin.backend.config.security.SecurityConfig;
+import fr.lepgu.palaisdivin.backend.user.domain.OrphanSubjectException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -28,6 +29,11 @@ class GlobalExceptionHandlerTest {
     @GetMapping("/api/v1/public/__test/boom")
     String boom() {
       throw new RuntimeException("kaboom");
+    }
+
+    @GetMapping("/api/v1/public/__test/orphan")
+    String orphan() {
+      throw new OrphanSubjectException("kc-sub-orphan");
     }
   }
 
@@ -66,5 +72,21 @@ class GlobalExceptionHandlerTest {
         .andExpect(jsonPath("$.title").value("Internal server error"))
         .andExpect(jsonPath("$.type").value("https://palaisdivin.lepgu.fr/problems/internal"))
         .andExpect(jsonPath("$.detail").value("An unexpected error occurred."));
+  }
+
+  @Test
+  void orphan_subject_returns_problem_detail_500_without_leaking_subject() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/public/__test/orphan"))
+        .andExpect(status().isInternalServerError())
+        .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+        .andExpect(jsonPath("$.status").value(500))
+        .andExpect(jsonPath("$.title").value("Account state inconsistent"))
+        .andExpect(jsonPath("$.type").value("https://palaisdivin.lepgu.fr/problems/orphan-subject"))
+        .andExpect(
+            content()
+                .string(
+                    org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("kc-sub-orphan"))));
   }
 }

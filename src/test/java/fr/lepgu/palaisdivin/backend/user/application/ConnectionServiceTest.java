@@ -62,7 +62,7 @@ class ConnectionServiceTest {
 
   @Test
   void connectPersistsConnectionAndPublishesEvent() {
-    when(users.findBySubject(SUBJECT)).thenReturn(Optional.of(sourceUser));
+    when(users.requireBySubject(SUBJECT)).thenReturn(sourceId);
     when(users.findById(targetId)).thenReturn(Optional.of(targetUser));
     when(connections.findBySourceAndTarget(sourceId, targetId)).thenReturn(Optional.empty());
     when(connections.save(any(Connection.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -92,7 +92,7 @@ class ConnectionServiceTest {
   void connectIdempotentReturnsExistingWithoutPublishing() {
     ConnectionId existingId = ConnectionId.newId();
     Connection existing = new Connection(existingId, sourceId, targetId, NOW.minusSeconds(3600));
-    when(users.findBySubject(SUBJECT)).thenReturn(Optional.of(sourceUser));
+    when(users.requireBySubject(SUBJECT)).thenReturn(sourceId);
     when(users.findById(targetId)).thenReturn(Optional.of(targetUser));
     when(connections.findBySourceAndTarget(sourceId, targetId)).thenReturn(Optional.of(existing));
 
@@ -106,7 +106,7 @@ class ConnectionServiceTest {
 
   @Test
   void connectThrowsSelfConnectionException() {
-    when(users.findBySubject(SUBJECT)).thenReturn(Optional.of(sourceUser));
+    when(users.requireBySubject(SUBJECT)).thenReturn(sourceId);
 
     assertThatThrownBy(() -> service.connect(SUBJECT, sourceId))
         .isInstanceOf(SelfConnectionException.class);
@@ -118,23 +118,11 @@ class ConnectionServiceTest {
 
   @Test
   void connectThrowsUserNotFoundWhenTargetMissing() {
-    when(users.findBySubject(SUBJECT)).thenReturn(Optional.of(sourceUser));
+    when(users.requireBySubject(SUBJECT)).thenReturn(sourceId);
     when(users.findById(targetId)).thenReturn(Optional.empty());
 
     assertThatThrownBy(() -> service.connect(SUBJECT, targetId))
         .isInstanceOf(UserNotFoundException.class);
-
-    verify(connections, never()).save(any());
-    verifyNoInteractions(outbox);
-  }
-
-  @Test
-  void connectThrowsWhenSubjectHasNoAppUser() {
-    when(users.findBySubject(SUBJECT)).thenReturn(Optional.empty());
-
-    assertThatThrownBy(() -> service.connect(SUBJECT, targetId))
-        .isInstanceOf(IllegalStateException.class)
-        .hasMessageContaining(SUBJECT);
 
     verify(connections, never()).save(any());
     verifyNoInteractions(outbox);

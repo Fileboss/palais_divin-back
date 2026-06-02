@@ -1,11 +1,9 @@
 package fr.lepgu.palaisdivin.backend.user.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantId;
@@ -18,7 +16,6 @@ import fr.lepgu.palaisdivin.backend.user.domain.ports.RecommendationGraphPort;
 import fr.lepgu.palaisdivin.backend.user.domain.ports.UserRepositoryPort;
 import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -54,7 +51,7 @@ class RecommendationServiceTest {
             RestaurantId.newId(), "Septime", "80 rue de Charonne", 48.8, 2.3, 9.0, 2);
     CursorPage<Recommendation> expected = new CursorPage<>(List.of(reco), false);
 
-    when(users.findBySubject(SUBJECT)).thenReturn(Optional.of(requester));
+    when(users.requireBySubject(SUBJECT)).thenReturn(requesterId);
     when(graph.findRecommendations(eq(requesterId), any(), eq(20))).thenReturn(expected);
 
     CursorPage<Recommendation> result = service.list(SUBJECT, null, 20);
@@ -66,23 +63,12 @@ class RecommendationServiceTest {
   @Test
   void list_passesCursorThroughUnchanged() {
     RecommendationCursor cursor = new RecommendationCursor(7.5, RestaurantId.newId());
-    when(users.findBySubject(SUBJECT)).thenReturn(Optional.of(requester));
+    when(users.requireBySubject(SUBJECT)).thenReturn(requesterId);
     when(graph.findRecommendations(requesterId, cursor, 5))
         .thenReturn(new CursorPage<>(List.of(), false));
 
     service.list(SUBJECT, cursor, 5);
 
     verify(graph).findRecommendations(requesterId, cursor, 5);
-  }
-
-  @Test
-  void list_unknownSubject_throwsIllegalState() {
-    when(users.findBySubject(SUBJECT)).thenReturn(Optional.empty());
-
-    assertThatThrownBy(() -> service.list(SUBJECT, null, 20))
-        .isInstanceOf(IllegalStateException.class)
-        .hasMessageContaining(SUBJECT);
-
-    verifyNoInteractions(graph);
   }
 }

@@ -3,6 +3,7 @@ package fr.lepgu.palaisdivin.backend.review.adapters.rest;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantId;
 import fr.lepgu.palaisdivin.backend.review.domain.model.Review;
 import fr.lepgu.palaisdivin.backend.review.domain.ports.CreateReviewUseCase;
+import fr.lepgu.palaisdivin.backend.review.domain.ports.GetMyReviewUseCase;
 import fr.lepgu.palaisdivin.backend.review.domain.ports.UpdateReviewUseCase;
 import jakarta.validation.Valid;
 import java.net.URI;
@@ -11,6 +12,7 @@ import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -26,10 +28,23 @@ class ReviewRestController {
 
   private final CreateReviewUseCase createReview;
   private final UpdateReviewUseCase updateReview;
+  private final GetMyReviewUseCase getMyReviewUseCase;
 
-  ReviewRestController(CreateReviewUseCase createReview, UpdateReviewUseCase updateReview) {
+  ReviewRestController(
+      CreateReviewUseCase createReview,
+      UpdateReviewUseCase updateReview,
+      GetMyReviewUseCase getMyReviewUseCase) {
     this.createReview = createReview;
     this.updateReview = updateReview;
+    this.getMyReviewUseCase = getMyReviewUseCase;
+  }
+
+  @GetMapping
+  ResponseEntity<ReviewResponse> getMyReview(
+      @PathVariable UUID restaurantId, @AuthenticationPrincipal Jwt jwt) {
+    Review review =
+        getMyReviewUseCase.getMyReview(jwt.getSubject(), new RestaurantId(restaurantId));
+    return ResponseEntity.ok(ReviewResponse.from(review));
   }
 
   @PostMapping
