@@ -27,6 +27,7 @@ public class TestcontainersConfiguration {
   private static final PostgreSQLContainer POSTGRES =
       new PostgreSQLContainer(
               DockerImageName.parse("postgis/postgis:16-3.4").asCompatibleSubstituteFor("postgres"))
+          .withCommand("postgres", "-c", "max_connections=300")
           .withReuse(true);
 
   private static final KeycloakContainer KEYCLOAK =

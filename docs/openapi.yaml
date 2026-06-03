@@ -110,7 +110,7 @@ paths:
       - public-restaurant-rest-controller
   /api/v1/public/restaurants/{id}:
     get:
-      operationId: get_1
+      operationId: get_2
       parameters:
       - in: path
         name: id
@@ -223,6 +223,25 @@ paths:
           description: OK
       tags:
       - public-tag-rest-controller
+  /api/v1/public/users/{userId}:
+    get:
+      operationId: get_1
+      parameters:
+      - in: path
+        name: userId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PublicUserResponse"
+          description: OK
+      tags:
+      - public-user-rest-controller
   /api/v1/user/connections/{targetId}:
     post:
       operationId: connect
@@ -667,6 +686,17 @@ components:
         ts:
           type: string
           format: date-time
+    PublicUserResponse:
+      type: object
+      properties:
+        createdAt:
+          type: string
+          format: date-time
+        displayName:
+          type: string
+        id:
+          type: string
+          format: uuid
     RecommendationResponse:
       type: object
       properties:

@@ -33,9 +33,10 @@ class RestaurantListIT {
   @PersistenceContext EntityManager em;
 
   @BeforeEach
-  void resetTagState() {
+  void resetState() {
     em.createNativeQuery("DELETE FROM restaurant_tag").executeUpdate();
     em.createNativeQuery("DELETE FROM tag").executeUpdate();
+    em.createNativeQuery("DELETE FROM restaurant").executeUpdate();
   }
 
   @Test

@@ -5,6 +5,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import dasniko.testcontainers.keycloak.KeycloakContainer;
 import fr.lepgu.palaisdivin.backend.AbstractIntegrationTest;
 import fr.lepgu.palaisdivin.backend.TestKeycloakTokens;
+import fr.lepgu.palaisdivin.backend.user.domain.model.User;
+import fr.lepgu.palaisdivin.backend.user.domain.model.UserId;
+import fr.lepgu.palaisdivin.backend.user.domain.ports.UserRepositoryPort;
+import java.time.Instant;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.web.server.LocalServerPort;
@@ -23,10 +27,23 @@ class KeycloakAuthIT extends AbstractIntegrationTest {
   @LocalServerPort int port;
 
   @Autowired KeycloakContainer keycloak;
+  @Autowired UserRepositoryPort users;
 
   @Test
   void authenticated_request_returns_200() {
     String token = TestKeycloakTokens.passwordGrant(keycloak, REALM, CLIENT_ID, USERNAME, PASSWORD);
+    String subject = TestKeycloakTokens.subjectOf(token);
+    users
+        .findBySubject(subject)
+        .orElseGet(
+            () ->
+                users.save(
+                    new User(
+                        UserId.newId(),
+                        subject,
+                        "testuser@example.test",
+                        "Test User",
+                        Instant.now())));
 
     ResponseEntity<String> resp =
         RestClient.builder()

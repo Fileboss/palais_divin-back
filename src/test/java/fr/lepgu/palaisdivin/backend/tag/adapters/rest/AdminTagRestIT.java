@@ -27,6 +27,7 @@ class AdminTagRestIT extends AbstractIntegrationTest {
 
   @BeforeEach
   void cleanState() {
+    jdbcClient.sql("DELETE FROM restaurant_tag").update();
     jdbcClient.sql("DELETE FROM tag").update();
   }
 
