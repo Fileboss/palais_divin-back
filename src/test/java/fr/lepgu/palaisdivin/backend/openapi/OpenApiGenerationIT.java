@@ -41,7 +41,9 @@ class OpenApiGenerationIT {
         .contains("/api/v1/user/restaurants/{restaurantId}/photos/upload-url")
         .contains("/api/v1/user/restaurants/{restaurantId}/photos")
         .contains("/api/v1/user/restaurants/{restaurantId}/photos/{photoId}/download-url")
-        .contains("/api/v1/admin/restaurants/{id}");
+        .contains("/api/v1/admin/restaurants/{id}")
+        .contains("/api/v1/admin/tags")
+        .contains("/api/v1/public/tags");
 
     String baseDir = System.getProperty("project.basedir", System.getProperty("user.dir"));
     Path output = Path.of(baseDir, "docs", "openapi.yaml");

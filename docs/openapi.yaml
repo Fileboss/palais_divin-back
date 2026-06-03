@@ -31,6 +31,24 @@ paths:
           description: OK
       tags:
       - admin-restaurant-rest-controller
+  /api/v1/admin/tags:
+    post:
+      operationId: create_2
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTagRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/TagResponse"
+          description: OK
+      tags:
+      - admin-tag-rest-controller
   /api/v1/public/ping:
     get:
       operationId: ping
@@ -45,7 +63,7 @@ paths:
       - ping-controller
   /api/v1/public/restaurants:
     get:
-      operationId: list_1
+      operationId: list_2
       parameters:
       - in: query
         name: cursor
@@ -99,7 +117,7 @@ paths:
       - public-restaurant-rest-controller
   /api/v1/public/restaurants/{restaurantId}/reviews:
     get:
-      operationId: list_2
+      operationId: list_3
       parameters:
       - in: path
         name: restaurantId
@@ -181,6 +199,18 @@ paths:
           description: OK
       tags:
       - signup-rest-controller
+  /api/v1/public/tags:
+    get:
+      operationId: list_1
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/TagCatalogResponse"
+          description: OK
+      tags:
+      - public-tag-rest-controller
   /api/v1/user/connections/{targetId}:
     post:
       operationId: connect
@@ -420,6 +450,20 @@ paths:
       - review-rest-controller
 components:
   schemas:
+    CategoryGroup:
+      type: object
+      properties:
+        category:
+          type: string
+          enum:
+          - FOOD
+          - REGIME
+          - PLACE
+          - VENUE_TYPE
+        tags:
+          type: array
+          items:
+            $ref: "#/components/schemas/TagResponse"
     ConnectionResponse:
       type: object
       properties:
@@ -475,6 +519,29 @@ components:
           format: int32
           maximum: 5
           minimum: 1
+    CreateTagRequest:
+      type: object
+      properties:
+        category:
+          type: string
+          enum:
+          - FOOD
+          - REGIME
+          - PLACE
+          - VENUE_TYPE
+        label:
+          type: string
+          maxLength: 127
+          minLength: 0
+        slug:
+          type: string
+          maxLength: 64
+          minLength: 0
+          pattern: "^[a-z0-9]+(-[a-z0-9]+)*$"
+      required:
+      - category
+      - label
+      - slug
     InvitationResponse:
       type: object
       properties:
@@ -690,3 +757,30 @@ components:
         id:
           type: string
           format: uuid
+    TagCatalogResponse:
+      type: object
+      properties:
+        groups:
+          type: array
+          items:
+            $ref: "#/components/schemas/CategoryGroup"
+    TagResponse:
+      type: object
+      properties:
+        category:
+          type: string
+          enum:
+          - FOOD
+          - REGIME
+          - PLACE
+          - VENUE_TYPE
+        createdAt:
+          type: string
+          format: date-time
+        id:
+          type: string
+          format: uuid
+        label:
+          type: string
+        slug:
+          type: string

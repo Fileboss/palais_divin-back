@@ -158,12 +158,23 @@ Goal: media without proxying bytes through Java. README §5.4.
 
 ---
 
-## Phase M8.5 — Restaurant tags
-Goal : restaurant should have tag to be easily filterable.
-Type of food : pizza, sushi, korean ...
-Precise regime : vegan option, vegetarian option, great vegan option, vegetarian only ...
-Place : taje out only, terrce, interior ...
-Type : fast food, restaurant, chic restaurant, gastronomic ...
+## Phase M9 — Restaurant tags
+
+Goal: restaurants get categorized tags so users can filter the list. Categories are fixed (food / regime / place / venue-type); tags within each category are an admin-curated controlled vocabulary. Tags project into Neo4j as `(:Tag)` nodes with `(:Restaurant)-[:HAS_TAG]->(:Tag)` edges so future M7-style traversals (e.g. "what do my friends rate among vegan terraces") can join the trust graph to the taxonomy. The README already names this shape (`Restaurant`-`HAS_TAG`-`Tag`); M9 lands it.
+
+Original spec, preserved for context:
+- **Food**: pizza, sushi, korean, …
+- **Regime**: vegan-option, vegetarian-option, great-vegan-option, vegetarian-only, …
+- **Place**: take-out-only, terrace, interior, …
+- **Venue-type**: fast-food, restaurant, chic-restaurant, gastronomic, …
+
+- [x] **M9.1 — Tag taxonomy CRUD** — new `tag/` vertical slice (`Tag(TagId, TagCategory, slug, label, createdAt)`, enum `TagCategory{FOOD,REGIME,PLACE,VENUE_TYPE}`). V11 migration with global `uq_tag_slug` (slug is the natural key — M9.3 will use it as `?tag=<slug>` without category disambiguation) + DB-level `CHECK (category IN …)` belt-and-suspenders. `TagRepositoryPort` ships `save`/`findById`/`findAll` only — `findBySlug` deferred until M9.2/M9.3 actually call it (ship-with-caller). `POST /api/v1/admin/tags` 201+Location; duplicate slug → 409 via existing `DataIntegrityViolationException` handler (no `GlobalExceptionHandler` edit). `GET /api/v1/public/tags` returns `{ groups: [{ category, tags: [...] }, ...] }` — always emits all four categories in enum order with empty arrays for empty buckets, so frontend has stable shape. Slug enforced as strict kebab-case at the API boundary (`@Pattern("^[a-z0-9]+(-[a-z0-9]+)*$") @Size(max=64)`) so M9.3's URL query params stay clean. **No outbox / projector / `(:Tag)` node** — Postgres-only writes; M9.2's first attach is what justifies the Neo4j node, mirroring `InvitationService.issue()` precedent. Admin role enforced at `SecurityConfig` matcher (no `@PreAuthorize`). Tests: +16 unit (321), +11 IT (149). Deferred: tag delete, tag rename, per-category filter (`?category=`), pagination, localization, admin label-edit.
+
+- [ ] **M9.2 — Attach/detach tags on a restaurant** — V12 migration: `restaurant_tag(restaurant_id uuid REFERENCES restaurant ON DELETE CASCADE, tag_id uuid REFERENCES tag, attached_by uuid REFERENCES app_user, attached_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY (restaurant_id, tag_id))`. `POST /api/v1/user/restaurants/{id}/tags/{tagId}` (attach, idempotent — re-POST on existing row returns 200 + existing, mirrors M7.1 connection's natural-key idempotency; `Idempotency-Key` header intentionally absent). `DELETE /api/v1/user/restaurants/{id}/tags/{tagId}` (detach, 204; idempotent missing-row → 204). Any `ROLE_USER` can attach/detach (mirrors review-write authorization; admin-gating defers until a community-quality decision). New `events/RestaurantTagAttached` + `events/RestaurantTagDetached` + `TagProjector`: MERGEs `(:Tag {id, slug, category, label})` (the M9.1 deferred node projection lands here, mirroring how M4.4/M5.5 projectors first put their endpoint nodes), then MERGE/DELETE the `(:Restaurant)-[:HAS_TAG]->(:Tag)` edge. Restaurant detail responses (`GET /public/restaurants/{id}`, `GET /user/restaurants/{id}`) gain a `tags: [{ category, slug, label }, …]` field via JPA `@EntityGraph` on the existing find-by-id query (no N+1). Unknown tagId → 404 via new `TagNotFoundException` (mirrors `PhotoNotFoundException` shape). Deferred: bulk attach (POST list), detach-by-slug, who-attached-what audit on the response (column already there).
+
+- [ ] **M9.3 — Tag-filtered restaurant list** — extend `GET /api/v1/public/restaurants` with repeatable `?tag=<slug>` query params; multiple tags AND together (restaurant must have all). Server-side enum `sort` whitelist stays as-is. SQL: candidate set narrowed via `id IN (SELECT restaurant_id FROM restaurant_tag rt JOIN tag t ON rt.tag_id = t.id WHERE t.slug = ANY(?) GROUP BY restaurant_id HAVING COUNT(DISTINCT t.id) = ?)`, then the existing keyset clause and ORDER BY apply on top. Cursor shape **unchanged** (still `{created_at, id}`) — the tag filter narrows the candidate set, not the order, so existing cursors remain valid mid-filter-change (acceptable degradation: a mid-scroll filter change re-anchors from page 1, which is the expected UX). Unknown tag slugs → empty page (consistent with the CLAUDE.md rule "list with unknown filter → empty, not 404"). Response items include each restaurant's tags (the M9.2 enrichment extends to the list `Slice` too). Composite index `idx_restaurant_tag_tag_id` (V12 already has the PK; add this in V12 if filter perf needs it — verify with `EXPLAIN`, ship with caller). Deferred: OR-semantics (`?tag-any=`), tag + rating combined filters, facet counts (`{ availableTags: [{ slug, count }, …] }` next to the page envelope), tag-aware affinity (M7 traversal narrowed to `(:Tag)`-tagged restaurants).
+
+`MILESTONE M9` — A user can browse restaurants filtered by what they want to eat, where, and how. Frontend gets a real catalog UI. The taxonomy seeds the trust graph for future "friends + tags" recommendations.
 
 
 ---
@@ -174,29 +185,29 @@ Type : fast food, restaurant, chic restaurant, gastronomic ...
 
 ---
 
-## Phase M9 — Observability & hardening
+## Phase M10 — Observability & hardening
 
-- [ ] **M9.1 — JSON logging via `logstash-logback-encoder`** — `logback-spring.xml` with `traceId`/`spanId` MDC.
-- [ ] **M9.2 — OTLP exporter target** — `compose.yaml` adds an OpenTelemetry collector; verify traces arrive.
-- [ ] **M9.3 — Domain metrics** — `Counter`/`Timer` on: ratings created, outbox lag, Neo4j projection latency, presigned URL minting.
-- [ ] **M9.4 — OWASP Dependency-Check + Trivy** — Maven plugin + GH Action.
+- [ ] **M10.1 — JSON logging via `logstash-logback-encoder`** — `logback-spring.xml` with `traceId`/`spanId` MDC.
+- [ ] **M10.2 — OTLP exporter target** — `compose.yaml` adds an OpenTelemetry collector; verify traces arrive.
+- [ ] **M10.3 — Domain metrics** — `Counter`/`Timer` on: ratings created, outbox lag, Neo4j projection latency, presigned URL minting.
+- [ ] **M10.4 — OWASP Dependency-Check + Trivy** — Maven plugin + GH Action.
 
-`MILESTONE M9` — Ready to deploy with someone watching it.
+`MILESTONE M10` — Ready to deploy with someone watching it.
 
 ---
 
-## Phase M10 — First production deployment
+## Phase M11 — First production deployment
 
 Shared infra lives in **`lepgu_infra`** (the renamed `qui-est-ce_infra` repo, hosting Caddy + Postgres + Keycloak for all `*.lepgu.fr` apps).
 
-- [ ] **M10.0 — Rename `qui-est-ce_infra` → `lepgu_infra`** — rename the GitHub repo, update its README to "shared infra for `*.lepgu.fr`", create a `palais-divin/` subdir alongside the existing `qui-est-ce` layout. One Keycloak instance, **one realm per app** (`qui-est-ce`, `palais-divin`).
-- [ ] **M10.1 — Multi-stage Dockerfile on Distroless Java 25.**
-- [ ] **M10.2 — CI pipeline** — Spotless → unit + ArchUnit → integration (profiled) → scans → image build → registry push. README §10.
-- [ ] **M10.3 — Wire `palais-divin` into `lepgu_infra`** — add a `palais-divin` service to `docker-compose.yml` pulling the image tag; add a `palais-divin` realm + client to Keycloak; add a Postgres database `palaisdivin` (separate from `qui-est-ce`'s DB) on the existing instance.
-- [ ] **M10.4 — Caddy route for `api.palais-divin.lepgu.fr`** — add the vhost to the existing `Caddyfile`, terminate TLS, proxy to the backend container. JVM does not terminate TLS.
-- [ ] **M10.5 — Smoke test script** — `scripts/smoke.sh` hits ping + an authenticated endpoint against the deployed URL.
+- [ ] **M11.0 — Rename `qui-est-ce_infra` → `lepgu_infra`** — rename the GitHub repo, update its README to "shared infra for `*.lepgu.fr`", create a `palais-divin/` subdir alongside the existing `qui-est-ce` layout. One Keycloak instance, **one realm per app** (`qui-est-ce`, `palais-divin`).
+- [ ] **M11.1 — Multi-stage Dockerfile on Distroless Java 25.**
+- [ ] **M11.2 — CI pipeline** — Spotless → unit + ArchUnit → integration (profiled) → scans → image build → registry push. README §10.
+- [ ] **M11.3 — Wire `palais-divin` into `lepgu_infra`** — add a `palais-divin` service to `docker-compose.yml` pulling the image tag; add a `palais-divin` realm + client to Keycloak; add a Postgres database `palaisdivin` (separate from `qui-est-ce`'s DB) on the existing instance.
+- [ ] **M11.4 — Caddy route for `api.palais-divin.lepgu.fr`** — add the vhost to the existing `Caddyfile`, terminate TLS, proxy to the backend container. JVM does not terminate TLS.
+- [ ] **M11.5 — Smoke test script** — `scripts/smoke.sh` hits ping + an authenticated endpoint against the deployed URL.
 
-`MILESTONE M10` — **First prod deployment.** Invitation-only beta opens.
+`MILESTONE M11` — **First prod deployment.** Invitation-only beta opens.
 
 ---
 
