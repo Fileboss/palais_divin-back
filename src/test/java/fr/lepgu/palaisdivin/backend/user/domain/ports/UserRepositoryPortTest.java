@@ -7,6 +7,8 @@ import fr.lepgu.palaisdivin.backend.user.domain.OrphanSubjectException;
 import fr.lepgu.palaisdivin.backend.user.domain.model.User;
 import fr.lepgu.palaisdivin.backend.user.domain.model.UserId;
 import java.time.Instant;
+import java.util.Collection;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
@@ -49,6 +51,11 @@ class UserRepositoryPortTest {
       @Override
       public Optional<User> findBySubject(String subject) {
         return lookup;
+      }
+
+      @Override
+      public Map<UserId, User> findByIds(Collection<UserId> ids) {
+        throw new UnsupportedOperationException();
       }
     };
   }

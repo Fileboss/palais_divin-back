@@ -6,6 +6,8 @@ import fr.lepgu.palaisdivin.backend.TestcontainersConfiguration;
 import fr.lepgu.palaisdivin.backend.user.domain.model.User;
 import fr.lepgu.palaisdivin.backend.user.domain.model.UserId;
 import java.time.Instant;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -66,5 +68,45 @@ class UserPostgresAdapterIT {
   @Test
   void findBySubjectReturnsEmptyForMissingSubject() {
     assertThat(adapter.findBySubject("kc-missing-" + UUID.randomUUID())).isEmpty();
+  }
+
+  @Test
+  void findByIds_returnsMapKeyedByUserId() {
+    User alice = saveUser("Alice");
+    User bob = saveUser("Bob");
+
+    Map<UserId, User> got = adapter.findByIds(List.of(alice.id(), bob.id()));
+
+    assertThat(got).hasSize(2);
+    assertThat(got.get(alice.id()).displayName()).isEqualTo("Alice");
+    assertThat(got.get(bob.id()).displayName()).isEqualTo("Bob");
+  }
+
+  @Test
+  void findByIds_emptyInput_returnsEmptyMap() {
+    assertThat(adapter.findByIds(List.of())).isEmpty();
+  }
+
+  @Test
+  void findByIds_unknownId_silentlySkipped() {
+    User alice = saveUser("Alice");
+    UserId unknown = UserId.newId();
+
+    Map<UserId, User> got = adapter.findByIds(List.of(alice.id(), unknown));
+
+    assertThat(got).hasSize(1);
+    assertThat(got).containsKey(alice.id());
+    assertThat(got).doesNotContainKey(unknown);
+  }
+
+  private User saveUser(String displayName) {
+    UserId id = UserId.newId();
+    return adapter.save(
+        new User(
+            id,
+            "kc-" + UUID.randomUUID(),
+            id.value() + "@example.test",
+            displayName,
+            FIXED_CREATED_AT));
   }
 }

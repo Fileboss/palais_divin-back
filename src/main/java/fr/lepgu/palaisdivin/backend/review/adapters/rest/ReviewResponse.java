@@ -5,13 +5,24 @@ import java.time.Instant;
 import java.util.UUID;
 
 public record ReviewResponse(
-    UUID id, UUID restaurantId, UUID authorId, int rating, String comment, Instant createdAt) {
+    UUID id,
+    UUID restaurantId,
+    UUID authorId,
+    String authorDisplayName,
+    int rating,
+    String comment,
+    Instant createdAt) {
 
   public static ReviewResponse from(Review r) {
+    return from(r, null);
+  }
+
+  public static ReviewResponse from(Review r, String authorDisplayName) {
     return new ReviewResponse(
         r.id().value(),
         r.restaurantId().value(),
         r.authorId().value(),
+        authorDisplayName,
         r.rating(),
         r.comment(),
         r.createdAt());

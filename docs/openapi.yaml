@@ -773,6 +773,8 @@ components:
     ReviewResponse:
       type: object
       properties:
+        authorDisplayName:
+          type: string
         authorId:
           type: string
           format: uuid

@@ -7,10 +7,13 @@ import fr.lepgu.palaisdivin.backend.review.domain.ports.FindReviewByAuthorUseCas
 import fr.lepgu.palaisdivin.backend.review.domain.ports.ListReviewsUseCase;
 import fr.lepgu.palaisdivin.backend.shared.adapters.web.PageMeta;
 import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;
+import fr.lepgu.palaisdivin.backend.user.domain.model.User;
 import fr.lepgu.palaisdivin.backend.user.domain.model.UserId;
+import fr.lepgu.palaisdivin.backend.user.domain.ports.LookupUsersUseCase;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,11 +29,15 @@ class PublicReviewRestController {
 
   private final ListReviewsUseCase listReviews;
   private final FindReviewByAuthorUseCase findReviewByAuthor;
+  private final LookupUsersUseCase lookupUsers;
 
   PublicReviewRestController(
-      ListReviewsUseCase listReviews, FindReviewByAuthorUseCase findReviewByAuthor) {
+      ListReviewsUseCase listReviews,
+      FindReviewByAuthorUseCase findReviewByAuthor,
+      LookupUsersUseCase lookupUsers) {
     this.listReviews = listReviews;
     this.findReviewByAuthor = findReviewByAuthor;
+    this.lookupUsers = lookupUsers;
   }
 
   @GetMapping
@@ -42,7 +49,14 @@ class PublicReviewRestController {
     ReviewCursor decoded = cursor == null ? null : ReviewCursorCodec.decode(cursor);
     CursorPage<Review> page =
         listReviews.listByRestaurant(new RestaurantId(restaurantId), decoded, size);
-    List<ReviewResponse> data = page.data().stream().map(ReviewResponse::from).toList();
+
+    List<UserId> authorIds = page.data().stream().map(Review::authorId).distinct().toList();
+    Map<UserId, User> authors = lookupUsers.findByIds(authorIds);
+
+    List<ReviewResponse> data =
+        page.data().stream()
+            .map(r -> ReviewResponse.from(r, displayNameOf(authors, r.authorId())))
+            .toList();
     String nextCursor =
         page.hasNext() && !data.isEmpty()
             ? ReviewCursorCodec.encode(
@@ -56,6 +70,12 @@ class PublicReviewRestController {
     Review review =
         findReviewByAuthor.findByRestaurantAndAuthor(
             new RestaurantId(restaurantId), new UserId(authorId));
-    return ReviewResponse.from(review);
+    Map<UserId, User> authors = lookupUsers.findByIds(List.of(review.authorId()));
+    return ReviewResponse.from(review, displayNameOf(authors, review.authorId()));
+  }
+
+  private static String displayNameOf(Map<UserId, User> authors, UserId id) {
+    User u = authors.get(id);
+    return u == null ? null : u.displayName();
   }
 }

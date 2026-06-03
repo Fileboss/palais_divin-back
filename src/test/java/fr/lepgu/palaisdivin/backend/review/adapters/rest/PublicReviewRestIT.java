@@ -182,6 +182,73 @@ class PublicReviewRestIT extends AbstractIntegrationTest {
   }
 
   @Test
+  void list_includesAuthorDisplayName() {
+    User alice =
+        users.save(
+            new User(
+                UserId.newId(),
+                "subj-alice-" + UUID.randomUUID(),
+                "alice-" + UUID.randomUUID() + "@example.test",
+                "Alice",
+                Instant.now()));
+    reviews.save(
+        new Review(
+            ReviewId.newId(),
+            restaurantId,
+            alice.id(),
+            5,
+            "Excellent",
+            Instant.parse("2026-05-31T10:00:00Z")));
+
+    RestClient unauthed = RestClient.create("http://localhost:" + port);
+    ReviewsPageResponse body =
+        unauthed
+            .get()
+            .uri("/api/v1/public/restaurants/{rid}/reviews", restaurantId.value())
+            .retrieve()
+            .body(ReviewsPageResponse.class);
+
+    assertThat(body).isNotNull();
+    assertThat(body.data()).hasSize(1);
+    assertThat(body.data().get(0).authorDisplayName()).isEqualTo("Alice");
+    assertThat(body.data().get(0).authorId()).isEqualTo(alice.id().value());
+  }
+
+  @Test
+  void getByAuthor_includesAuthorDisplayName() {
+    User author =
+        users.save(
+            new User(
+                UserId.newId(),
+                "subj-named-" + UUID.randomUUID(),
+                "named-" + UUID.randomUUID() + "@example.test",
+                "Charlie",
+                Instant.now()));
+    reviews.save(
+        new Review(
+            ReviewId.newId(),
+            restaurantId,
+            author.id(),
+            5,
+            "Top",
+            Instant.parse("2026-05-31T10:00:00Z")));
+
+    RestClient unauthed = RestClient.create("http://localhost:" + port);
+    ReviewResponse body =
+        unauthed
+            .get()
+            .uri(
+                "/api/v1/public/restaurants/{rid}/reviews/author/{aid}",
+                restaurantId.value(),
+                author.id().value())
+            .retrieve()
+            .body(ReviewResponse.class);
+
+    assertThat(body).isNotNull();
+    assertThat(body.authorDisplayName()).isEqualTo("Charlie");
+  }
+
+  @Test
   void getByAuthor_notFound_returns404_problemDetail() {
     RestClient unauthed = RestClient.create("http://localhost:" + port);
     ResponseEntity<String> resp =

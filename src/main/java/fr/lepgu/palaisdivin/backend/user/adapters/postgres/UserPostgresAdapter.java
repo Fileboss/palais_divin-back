@@ -3,7 +3,12 @@ package fr.lepgu.palaisdivin.backend.user.adapters.postgres;
 import fr.lepgu.palaisdivin.backend.user.domain.model.User;
 import fr.lepgu.palaisdivin.backend.user.domain.model.UserId;
 import fr.lepgu.palaisdivin.backend.user.domain.ports.UserRepositoryPort;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -28,6 +33,17 @@ public class UserPostgresAdapter implements UserRepositoryPort {
   @Override
   public Optional<User> findBySubject(String subject) {
     return jpa.findBySubject(subject).map(UserPostgresAdapter::toDomain);
+  }
+
+  @Override
+  public Map<UserId, User> findByIds(Collection<UserId> ids) {
+    if (ids.isEmpty()) {
+      return Map.of();
+    }
+    List<UUID> raw = ids.stream().map(UserId::value).toList();
+    return jpa.findAllById(raw).stream()
+        .map(UserPostgresAdapter::toDomain)
+        .collect(Collectors.toUnmodifiableMap(User::id, u -> u));
   }
 
   private static UserEntity toEntity(User u) {
