@@ -12,6 +12,7 @@ import jakarta.persistence.PersistenceContext;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
@@ -21,13 +22,23 @@ import org.springframework.context.annotation.Import;
 
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = Replace.NONE)
-@Import({TestcontainersConfiguration.class, TagPostgresAdapter.class})
+@Import({
+  TestcontainersConfiguration.class,
+  TagPostgresAdapter.class,
+  RestaurantTagPostgresAdapter.class
+})
 class TagPostgresAdapterIT {
 
   private static final Instant CREATED_AT = Instant.parse("2026-06-03T10:00:00Z");
 
   @Autowired TagPostgresAdapter adapter;
   @PersistenceContext EntityManager em;
+
+  @BeforeEach
+  void cleanTags() {
+    em.createNativeQuery("DELETE FROM restaurant_tag").executeUpdate();
+    em.createNativeQuery("DELETE FROM tag").executeUpdate();
+  }
 
   @Test
   void save_round_trips_through_postgres() {

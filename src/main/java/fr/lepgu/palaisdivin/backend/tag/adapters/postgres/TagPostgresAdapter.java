@@ -38,7 +38,7 @@ public class TagPostgresAdapter implements TagRepositoryPort {
     return new TagEntity(t.id().value(), t.category().name(), t.slug(), t.label(), t.createdAt());
   }
 
-  private static Tag toDomain(TagEntity e) {
+  static Tag toDomain(TagEntity e) {
     return new Tag(
         new TagId(e.getId()),
         TagCategory.valueOf(e.getCategory()),

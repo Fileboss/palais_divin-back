@@ -8,6 +8,7 @@ import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.FindRestaurantUseCas
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.ListRestaurantsUseCase;
 import fr.lepgu.palaisdivin.backend.shared.adapters.web.PageMeta;
 import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;
+import fr.lepgu.palaisdivin.backend.tag.domain.ports.ListRestaurantTagsUseCase;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import java.util.List;
@@ -26,20 +27,25 @@ class PublicRestaurantRestController {
 
   private final FindRestaurantUseCase findRestaurant;
   private final ListRestaurantsUseCase listRestaurants;
+  private final ListRestaurantTagsUseCase listRestaurantTags;
 
   PublicRestaurantRestController(
-      FindRestaurantUseCase findRestaurant, ListRestaurantsUseCase listRestaurants) {
+      FindRestaurantUseCase findRestaurant,
+      ListRestaurantsUseCase listRestaurants,
+      ListRestaurantTagsUseCase listRestaurantTags) {
     this.findRestaurant = findRestaurant;
     this.listRestaurants = listRestaurants;
+    this.listRestaurantTags = listRestaurantTags;
   }
 
   @GetMapping("/{id}")
   RestaurantResponse get(@PathVariable UUID id) {
     RestaurantId restaurantId = new RestaurantId(id);
-    return findRestaurant
-        .findById(restaurantId)
-        .map(RestaurantResponse::from)
-        .orElseThrow(() -> new RestaurantNotFoundException(restaurantId));
+    Restaurant restaurant =
+        findRestaurant
+            .findById(restaurantId)
+            .orElseThrow(() -> new RestaurantNotFoundException(restaurantId));
+    return RestaurantResponse.from(restaurant, listRestaurantTags.listFor(restaurantId));
   }
 
   @GetMapping

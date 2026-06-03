@@ -1,5 +1,6 @@
 package fr.lepgu.palaisdivin.backend.restaurant.adapters.rest;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -14,11 +15,13 @@ import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.FindRestaurantUseCas
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.ListRestaurantsUseCase;
 import fr.lepgu.palaisdivin.backend.shared.adapters.web.GlobalExceptionHandler;
 import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;
+import fr.lepgu.palaisdivin.backend.tag.domain.ports.ListRestaurantTagsUseCase;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.hamcrest.Matchers;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -38,7 +41,13 @@ class PublicRestaurantRestControllerTest {
 
   @MockitoBean FindRestaurantUseCase findRestaurant;
   @MockitoBean ListRestaurantsUseCase listRestaurants;
+  @MockitoBean ListRestaurantTagsUseCase listRestaurantTags;
   @MockitoBean JwtDecoder jwtDecoder;
+
+  @BeforeEach
+  void stubEmptyTags() {
+    when(listRestaurantTags.listFor(any())).thenReturn(List.of());
+  }
 
   @Test
   void get_existingId_returns_200_without_auth() throws Exception {

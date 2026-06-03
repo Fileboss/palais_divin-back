@@ -6,6 +6,7 @@ import dasniko.testcontainers.keycloak.KeycloakContainer;
 import fr.lepgu.palaisdivin.backend.AbstractIntegrationTest;
 import fr.lepgu.palaisdivin.backend.SharedTestStubs.BanApiClientStub;
 import fr.lepgu.palaisdivin.backend.TestKeycloakTokens;
+import fr.lepgu.palaisdivin.backend.tag.domain.model.TagCategory;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -19,6 +20,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.web.client.RestClient;
 
 class PublicRestaurantRestIT extends AbstractIntegrationTest {
@@ -29,11 +31,15 @@ class PublicRestaurantRestIT extends AbstractIntegrationTest {
 
   @Autowired BanApiClientStub banApiClient;
 
+  @Autowired JdbcClient jdbcClient;
+
   private String userToken;
 
   @BeforeEach
   void resetBanStub() {
     banApiClient.reset();
+    jdbcClient.sql("DELETE FROM restaurant_tag").update();
+    jdbcClient.sql("DELETE FROM tag").update();
   }
 
   @Test
@@ -87,7 +93,87 @@ class PublicRestaurantRestIT extends AbstractIntegrationTest {
     assertThat(fetched).isNotNull();
     assertThat(fetched.id()).isEqualTo(created.id());
     assertThat(fetched.name()).isEqualTo("Septime");
+    assertThat(fetched.tags()).isEmpty();
   }
+
+  @Test
+  void get_byId_returns_attached_tags_in_category_then_slug_order() {
+    String suffix = UUID.randomUUID().toString().substring(0, 8);
+    String foodSlug = "pub-food-" + suffix;
+    String regimeSlug = "pub-regime-" + suffix;
+    String foodLabel = "Food " + suffix;
+    String regimeLabel = "Regime " + suffix;
+
+    RestClient authed = authedClient();
+    RestaurantResponse created =
+        authed
+            .post()
+            .uri("/api/v1/user/restaurants")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new CreateRestaurantRequest("Septime", "80 Rue de Charonne"))
+            .retrieve()
+            .body(RestaurantResponse.class);
+
+    String adminToken =
+        TestKeycloakTokens.passwordGrant(
+            keycloak, "palaisdivin", "palais-divin-frontend", "testadmin", "testadmin");
+    RestClient admin =
+        RestClient.builder()
+            .baseUrl("http://localhost:" + port)
+            .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
+            .build();
+    UUID foodId =
+        admin
+            .post()
+            .uri("/api/v1/admin/tags")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new TagPayload("FOOD", foodSlug, foodLabel))
+            .retrieve()
+            .body(TagResponseDto.class)
+            .id();
+    UUID regimeId =
+        admin
+            .post()
+            .uri("/api/v1/admin/tags")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new TagPayload("REGIME", regimeSlug, regimeLabel))
+            .retrieve()
+            .body(TagResponseDto.class)
+            .id();
+
+    authed
+        .post()
+        .uri("/api/v1/user/restaurants/{r}/tags/{t}", created.id(), regimeId)
+        .retrieve()
+        .toBodilessEntity();
+    authed
+        .post()
+        .uri("/api/v1/user/restaurants/{r}/tags/{t}", created.id(), foodId)
+        .retrieve()
+        .toBodilessEntity();
+
+    RestClient unauthed = RestClient.create("http://localhost:" + port);
+    RestaurantResponse fetched =
+        unauthed
+            .get()
+            .uri("/api/v1/public/restaurants/" + created.id())
+            .retrieve()
+            .body(RestaurantResponse.class);
+
+    assertThat(fetched).isNotNull();
+    assertThat(fetched.tags())
+        .extracting(
+            RestaurantResponse.TagSummary::category,
+            RestaurantResponse.TagSummary::slug,
+            RestaurantResponse.TagSummary::label)
+        .containsExactly(
+            org.assertj.core.groups.Tuple.tuple(TagCategory.FOOD, foodSlug, foodLabel),
+            org.assertj.core.groups.Tuple.tuple(TagCategory.REGIME, regimeSlug, regimeLabel));
+  }
+
+  private record TagPayload(String category, String slug, String label) {}
+
+  private record TagResponseDto(UUID id) {}
 
   @Test
   void get_missingId_returns_404_problem_detail_withoutAuth() {

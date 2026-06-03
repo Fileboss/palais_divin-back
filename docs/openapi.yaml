@@ -448,6 +448,51 @@ paths:
           description: OK
       tags:
       - review-rest-controller
+  /api/v1/user/restaurants/{restaurantId}/tags/{tagId}:
+    delete:
+      operationId: detach
+      parameters:
+      - in: path
+        name: restaurantId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: tagId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+      tags:
+      - restaurant-tag-rest-controller
+    post:
+      operationId: attach
+      parameters:
+      - in: path
+        name: restaurantId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: tagId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/RestaurantTagResponse"
+          description: OK
+      tags:
+      - restaurant-tag-rest-controller
 components:
   schemas:
     CategoryGroup:
@@ -685,6 +730,25 @@ components:
           $ref: "#/components/schemas/CoordinatesDto"
         name:
           type: string
+        tags:
+          type: array
+          items:
+            $ref: "#/components/schemas/TagSummary"
+    RestaurantTagResponse:
+      type: object
+      properties:
+        attachedAt:
+          type: string
+          format: date-time
+        attachedBy:
+          type: string
+          format: uuid
+        restaurantId:
+          type: string
+          format: uuid
+        tagId:
+          type: string
+          format: uuid
     RestaurantsPageResponse:
       type: object
       properties:
@@ -780,6 +844,20 @@ components:
         id:
           type: string
           format: uuid
+        label:
+          type: string
+        slug:
+          type: string
+    TagSummary:
+      type: object
+      properties:
+        category:
+          type: string
+          enum:
+          - FOOD
+          - REGIME
+          - PLACE
+          - VENUE_TYPE
         label:
           type: string
         slug:
