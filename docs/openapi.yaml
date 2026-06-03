@@ -87,6 +87,18 @@ paths:
           default: CREATED_AT_DESC
           enum:
           - CREATED_AT_DESC
+      - in: query
+        name: tag
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+            maxLength: 64
+            minLength: 0
+            pattern: "^[a-z0-9]+(-[a-z0-9]+)*$"
+          maxItems: 10
+          minItems: 0
       responses:
         "200":
           content:

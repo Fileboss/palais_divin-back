@@ -17,6 +17,7 @@ import fr.lepgu.palaisdivin.backend.shared.domain.ports.OutboxPublisher;
 import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -71,8 +72,8 @@ public class RestaurantService
   }
 
   @Override
-  public CursorPage<Restaurant> list(RestaurantCursor cursor, int size) {
-    return repository.findAll(cursor, size);
+  public CursorPage<Restaurant> list(RestaurantCursor cursor, int size, List<String> tagSlugs) {
+    return repository.findAll(cursor, size, tagSlugs);
   }
 
   @Override

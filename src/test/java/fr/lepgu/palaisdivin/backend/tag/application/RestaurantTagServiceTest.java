@@ -30,6 +30,8 @@ import fr.lepgu.palaisdivin.backend.user.domain.ports.UserRepositoryPort;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -181,5 +183,25 @@ class RestaurantTagServiceTest {
     service.detach(restaurantId, tagId);
 
     verifyNoInteractions(outbox);
+  }
+
+  @Test
+  void listFor_collection_delegates_to_repo_and_returns_grouped_map() {
+    RestaurantId other = RestaurantId.newId();
+    Map<RestaurantId, List<Tag>> expected = Map.of(restaurantId, List.of(tag));
+    when(restaurantTags.findTagsByRestaurants(List.of(restaurantId, other))).thenReturn(expected);
+
+    Map<RestaurantId, List<Tag>> got = service.listFor(List.of(restaurantId, other));
+
+    assertThat(got).isSameAs(expected);
+    verify(restaurantTags).findTagsByRestaurants(List.of(restaurantId, other));
+  }
+
+  @Test
+  void listFor_empty_collection_short_circuits_no_query() {
+    Map<RestaurantId, List<Tag>> got = service.listFor(List.of());
+
+    assertThat(got).isEmpty();
+    verify(restaurantTags, never()).findTagsByRestaurants(any());
   }
 }

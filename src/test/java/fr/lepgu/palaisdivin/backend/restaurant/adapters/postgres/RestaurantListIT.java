@@ -8,12 +8,15 @@ import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Restaurant;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantCursor;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantId;
 import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
@@ -27,6 +30,13 @@ import org.springframework.context.annotation.Import;
 class RestaurantListIT {
 
   @Autowired RestaurantPostgresAdapter adapter;
+  @PersistenceContext EntityManager em;
+
+  @BeforeEach
+  void resetTagState() {
+    em.createNativeQuery("DELETE FROM restaurant_tag").executeUpdate();
+    em.createNativeQuery("DELETE FROM tag").executeUpdate();
+  }
 
   @Test
   void walkAllPagesByCursor_descendingByCreatedAtThenId_noOverlapNoSkip() {
@@ -44,7 +54,7 @@ class RestaurantListIT {
     RestaurantCursor cursor = null;
     int pages = 0;
     while (true) {
-      CursorPage<Restaurant> page = adapter.findAll(cursor, 10);
+      CursorPage<Restaurant> page = adapter.findAll(cursor, 10, List.of());
       collected.addAll(page.data());
       pages++;
       if (!page.hasNext()) {
@@ -85,8 +95,140 @@ class RestaurantListIT {
               Instant.parse("2026-05-27T10:00:00Z").plusSeconds(i),
               null));
     }
-    CursorPage<Restaurant> page = adapter.findAll(null, 10);
+    CursorPage<Restaurant> page = adapter.findAll(null, 10, List.of());
     assertThat(page.data()).hasSize(3);
     assertThat(page.hasNext()).isFalse();
+  }
+
+  @Test
+  void findAll_singleTagFilter_returnsOnlyRestaurantsCarryingThatTag() {
+    String suffix = UUID.randomUUID().toString().substring(0, 8);
+    Instant base = Instant.parse("2026-05-27T10:00:00Z");
+    RestaurantId rA = saveRestaurant("A", base);
+    RestaurantId rB = saveRestaurant("B", base.plusSeconds(1));
+    RestaurantId rC = saveRestaurant("C", base.plusSeconds(2));
+
+    UUID attacher = seedUser(suffix);
+    UUID burger = seedTag("FOOD", "rl-burger-" + suffix, "Burger");
+    UUID vegan = seedTag("REGIME", "rl-vegan-" + suffix, "Vegan");
+    attach(rA.value(), burger, attacher, base);
+    attach(rC.value(), burger, attacher, base);
+    attach(rB.value(), vegan, attacher, base);
+
+    CursorPage<Restaurant> page = adapter.findAll(null, 10, List.of("rl-burger-" + suffix));
+
+    assertThat(page.data().stream().map(r -> r.id().value()))
+        .containsExactlyInAnyOrder(rA.value(), rC.value());
+  }
+
+  @Test
+  void findAll_twoTagFilter_requiresAllOfThem() {
+    String suffix = UUID.randomUUID().toString().substring(0, 8);
+    Instant base = Instant.parse("2026-05-27T10:00:00Z");
+    RestaurantId rA = saveRestaurant("A", base);
+    RestaurantId rB = saveRestaurant("B", base.plusSeconds(1));
+    RestaurantId rC = saveRestaurant("C", base.plusSeconds(2));
+
+    UUID attacher = seedUser(suffix);
+    UUID burger = seedTag("FOOD", "rl-burger-" + suffix, "Burger");
+    UUID vegan = seedTag("REGIME", "rl-vegan-" + suffix, "Vegan");
+    attach(rA.value(), burger, attacher, base);
+    attach(rA.value(), vegan, attacher, base);
+    attach(rB.value(), burger, attacher, base);
+    attach(rC.value(), vegan, attacher, base);
+
+    CursorPage<Restaurant> page =
+        adapter.findAll(null, 10, List.of("rl-burger-" + suffix, "rl-vegan-" + suffix));
+
+    assertThat(page.data().stream().map(r -> r.id().value())).containsExactly(rA.value());
+  }
+
+  @Test
+  void findAll_unknownSlug_returnsEmptyPage() {
+    Instant base = Instant.parse("2026-05-27T10:00:00Z");
+    saveRestaurant("A", base);
+    saveRestaurant("B", base.plusSeconds(1));
+
+    CursorPage<Restaurant> page =
+        adapter.findAll(null, 10, List.of("nonexistent-slug-" + UUID.randomUUID()));
+
+    assertThat(page.data()).isEmpty();
+    assertThat(page.hasNext()).isFalse();
+  }
+
+  @Test
+  void findAll_filteredCursorWalk_paginatesWithoutDuplicates() {
+    String suffix = UUID.randomUUID().toString().substring(0, 8);
+    Instant base = Instant.parse("2026-05-27T10:00:00Z");
+    UUID attacher = seedUser(suffix);
+    UUID burger = seedTag("FOOD", "rl-burger-" + suffix, "Burger");
+
+    Set<UUID> attached = new HashSet<>();
+    for (int i = 0; i < 7; i++) {
+      RestaurantId rid = saveRestaurant("burger-" + i, base.plusSeconds(i));
+      attach(rid.value(), burger, attacher, base);
+      attached.add(rid.value());
+    }
+    // also seed an untagged restaurant we should never see
+    saveRestaurant("untagged", base.plusSeconds(100));
+
+    List<UUID> collected = new ArrayList<>();
+    RestaurantCursor cursor = null;
+    int pages = 0;
+    while (true) {
+      CursorPage<Restaurant> page = adapter.findAll(cursor, 3, List.of("rl-burger-" + suffix));
+      page.data().forEach(r -> collected.add(r.id().value()));
+      pages++;
+      if (!page.hasNext()) break;
+      Restaurant last = page.data().getLast();
+      cursor = new RestaurantCursor(last.createdAt(), last.id().value());
+      if (pages > 5) throw new AssertionError("paging did not terminate");
+    }
+
+    assertThat(collected).doesNotHaveDuplicates();
+    assertThat(new HashSet<>(collected)).isEqualTo(attached);
+  }
+
+  private RestaurantId saveRestaurant(String name, Instant createdAt) {
+    RestaurantId id = RestaurantId.newId();
+    adapter.save(new Restaurant(id, name, null, new Coordinates(48.8536, 2.3795), createdAt, null));
+    return id;
+  }
+
+  private UUID seedUser(String suffix) {
+    UUID id = UUID.randomUUID();
+    em.createNativeQuery(
+            "INSERT INTO app_user(id, subject, email, display_name, created_at)"
+                + " VALUES (:id, :subject, :email, :displayName, now())")
+        .setParameter("id", id)
+        .setParameter("subject", "kc-rlist-" + suffix)
+        .setParameter("email", "rlist-" + suffix + "@example.test")
+        .setParameter("displayName", "RList")
+        .executeUpdate();
+    return id;
+  }
+
+  private UUID seedTag(String category, String slug, String label) {
+    UUID id = UUID.randomUUID();
+    em.createNativeQuery(
+            "INSERT INTO tag(id, category, slug, label, created_at)"
+                + " VALUES (:id, :category, :slug, :label, now())")
+        .setParameter("id", id)
+        .setParameter("category", category)
+        .setParameter("slug", slug)
+        .setParameter("label", label)
+        .executeUpdate();
+    return id;
+  }
+
+  private void attach(UUID restaurantId, UUID tagId, UUID attachedBy, Instant attachedAt) {
+    em.createNativeQuery(
+            "INSERT INTO restaurant_tag(restaurant_id, tag_id, attached_by, attached_at)"
+                + " VALUES (:r, :t, :u, :at)")
+        .setParameter("r", restaurantId)
+        .setParameter("t", tagId)
+        .setParameter("u", attachedBy)
+        .setParameter("at", attachedAt)
+        .executeUpdate();
   }
 }

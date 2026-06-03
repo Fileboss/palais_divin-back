@@ -12,6 +12,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -105,6 +106,48 @@ class RestaurantTagPostgresAdapterIT {
         .extracting(t -> t.category().name() + ":" + t.slug())
         .containsExactly(
             "FOOD:rt-burger-" + suffix, "FOOD:rt-food-" + suffix, "REGIME:rt-regime-" + suffix);
+  }
+
+  @Test
+  void findTagsByRestaurants_groups_by_restaurant_ordered_by_category_then_slug() {
+    RestaurantId other = RestaurantId.newId();
+    insertRestaurant(other.value(), "Le Train Bleu", "Gare de Lyon");
+    TagId foodBurgerId = TagId.newId();
+    insertTag(foodBurgerId.value(), "FOOD", "rt-burger-" + suffix, "Burger");
+
+    // restaurant 1 -> burger, food, vegan(regime)
+    adapter.save(new RestaurantTag(restaurantId, foodTagId, attacherId, CREATED_AT));
+    adapter.save(new RestaurantTag(restaurantId, foodBurgerId, attacherId, CREATED_AT));
+    adapter.save(new RestaurantTag(restaurantId, regimeTagId, attacherId, CREATED_AT));
+    // restaurant 2 -> regime only
+    adapter.save(new RestaurantTag(other, regimeTagId, attacherId, CREATED_AT));
+    em.flush();
+    em.clear();
+
+    Map<RestaurantId, List<Tag>> grouped =
+        adapter.findTagsByRestaurants(List.of(restaurantId, other));
+
+    assertThat(grouped).hasSize(2);
+    assertThat(grouped.get(restaurantId))
+        .extracting(t -> t.category().name() + ":" + t.slug())
+        .containsExactly(
+            "FOOD:rt-burger-" + suffix, "FOOD:rt-food-" + suffix, "REGIME:rt-regime-" + suffix);
+    assertThat(grouped.get(other))
+        .extracting(t -> t.category().name() + ":" + t.slug())
+        .containsExactly("REGIME:rt-regime-" + suffix);
+  }
+
+  @Test
+  void findTagsByRestaurants_empty_input_returns_empty_map() {
+    Map<RestaurantId, List<Tag>> grouped = adapter.findTagsByRestaurants(List.of());
+    assertThat(grouped).isEmpty();
+  }
+
+  @Test
+  void findTagsByRestaurants_unknown_id_returns_empty_map() {
+    Map<RestaurantId, List<Tag>> grouped =
+        adapter.findTagsByRestaurants(List.of(RestaurantId.newId()));
+    assertThat(grouped).isEmpty();
   }
 
   private void insertRestaurant(UUID id, String name, String address) {

@@ -16,13 +16,16 @@ import fr.lepgu.palaisdivin.backend.restaurant.domain.events.RestaurantCreated;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.events.RestaurantDeleted;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Coordinates;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Restaurant;
+import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantCursor;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantId;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.GeocoderPort;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.RestaurantRepositoryPort;
 import fr.lepgu.palaisdivin.backend.shared.domain.ports.OutboxPublisher;
+import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -183,6 +186,31 @@ class RestaurantServiceTest {
 
     verify(repository, never()).deleteById(any());
     verifyNoInteractions(outboxPublisher);
+  }
+
+  @Test
+  void listPassesTagSlugsThroughToRepository() {
+    RestaurantCursor cursor = new RestaurantCursor(FIXED_NOW, UUID.randomUUID());
+    List<String> slugs = List.of("burger", "vegan");
+    Restaurant r = new Restaurant(RestaurantId.newId(), "Septime", null, LOCATION, FIXED_NOW, null);
+    CursorPage<Restaurant> expected = new CursorPage<>(List.of(r), false);
+    when(repository.findAll(cursor, 5, slugs)).thenReturn(expected);
+
+    CursorPage<Restaurant> got = service.list(cursor, 5, slugs);
+
+    assertThat(got).isSameAs(expected);
+    verify(repository).findAll(cursor, 5, slugs);
+  }
+
+  @Test
+  void listWithEmptySlugsCallsRepoWithEmptyList() {
+    CursorPage<Restaurant> expected = new CursorPage<>(List.of(), false);
+    when(repository.findAll(null, 20, List.of())).thenReturn(expected);
+
+    CursorPage<Restaurant> got = service.list(null, 20, List.of());
+
+    assertThat(got).isSameAs(expected);
+    verify(repository).findAll(null, 20, List.of());
   }
 
   @Test

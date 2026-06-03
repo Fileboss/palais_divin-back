@@ -8,10 +8,14 @@ import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.FindRestaurantUseCas
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.ListRestaurantsUseCase;
 import fr.lepgu.palaisdivin.backend.shared.adapters.web.PageMeta;
 import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;
+import fr.lepgu.palaisdivin.backend.tag.domain.model.Tag;
 import fr.lepgu.palaisdivin.backend.tag.domain.ports.ListRestaurantTagsUseCase;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -52,10 +56,18 @@ class PublicRestaurantRestController {
   RestaurantsPageResponse list(
       @RequestParam(required = false) String cursor,
       @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
-      @RequestParam(defaultValue = "CREATED_AT_DESC") RestaurantSort sort) {
+      @RequestParam(defaultValue = "CREATED_AT_DESC") RestaurantSort sort,
+      @RequestParam(name = "tag", required = false) @Size(max = 10)
+          List<@Pattern(regexp = "^[a-z0-9]+(-[a-z0-9]+)*$") @Size(max = 64) String> tag) {
+    List<String> tagSlugs = tag == null ? List.of() : tag;
     RestaurantCursor decoded = cursor == null ? null : CursorCodec.decode(cursor);
-    CursorPage<Restaurant> page = listRestaurants.list(decoded, size);
-    List<RestaurantResponse> data = page.data().stream().map(RestaurantResponse::from).toList();
+    CursorPage<Restaurant> page = listRestaurants.list(decoded, size, tagSlugs);
+    List<RestaurantId> ids = page.data().stream().map(Restaurant::id).toList();
+    Map<RestaurantId, List<Tag>> tagsByRestaurant = listRestaurantTags.listFor(ids);
+    List<RestaurantResponse> data =
+        page.data().stream()
+            .map(r -> RestaurantResponse.from(r, tagsByRestaurant.getOrDefault(r.id(), List.of())))
+            .toList();
     String nextCursor =
         page.hasNext() && !data.isEmpty()
             ? CursorCodec.encode(

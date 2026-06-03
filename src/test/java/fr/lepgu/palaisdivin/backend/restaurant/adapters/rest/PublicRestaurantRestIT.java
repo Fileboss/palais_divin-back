@@ -34,6 +34,7 @@ class PublicRestaurantRestIT extends AbstractIntegrationTest {
   @Autowired JdbcClient jdbcClient;
 
   private String userToken;
+  private String adminToken;
 
   @BeforeEach
   void resetBanStub() {
@@ -193,6 +194,240 @@ class PublicRestaurantRestIT extends AbstractIntegrationTest {
   }
 
   @Test
+  void list_filterByTag_returnsOnlyTaggedRestaurants() {
+    String suffix = UUID.randomUUID().toString().substring(0, 8);
+    String burgerSlug = "lp-burger-" + suffix;
+
+    RestClient authed = authedClient();
+    UUID r1 =
+        authed
+            .post()
+            .uri("/api/v1/user/restaurants")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new CreateRestaurantRequest("WithTag-" + suffix, "addr-with-" + suffix))
+            .retrieve()
+            .body(RestaurantResponse.class)
+            .id();
+    UUID r2 =
+        authed
+            .post()
+            .uri("/api/v1/user/restaurants")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new CreateRestaurantRequest("NoTag-" + suffix, "addr-no-" + suffix))
+            .retrieve()
+            .body(RestaurantResponse.class)
+            .id();
+
+    UUID burgerId =
+        adminClient()
+            .post()
+            .uri("/api/v1/admin/tags")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new TagPayload("FOOD", burgerSlug, "Burger"))
+            .retrieve()
+            .body(TagResponseDto.class)
+            .id();
+    authed
+        .post()
+        .uri("/api/v1/user/restaurants/{r}/tags/{t}", r1, burgerId)
+        .retrieve()
+        .toBodilessEntity();
+
+    RestClient unauthed = RestClient.create("http://localhost:" + port);
+    RestaurantsPageResponse page =
+        unauthed
+            .get()
+            .uri("/api/v1/public/restaurants?size=100&tag=" + burgerSlug)
+            .retrieve()
+            .body(RestaurantsPageResponse.class);
+
+    assertThat(page).isNotNull();
+    assertThat(page.data().stream().map(RestaurantResponse::id).toList())
+        .contains(r1)
+        .doesNotContain(r2);
+  }
+
+  @Test
+  void list_filterByTwoTags_andsThem() {
+    String suffix = UUID.randomUUID().toString().substring(0, 8);
+    String burgerSlug = "lp-burger-" + suffix;
+    String veganSlug = "lp-vegan-" + suffix;
+
+    RestClient authed = authedClient();
+    UUID rBoth =
+        authed
+            .post()
+            .uri("/api/v1/user/restaurants")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new CreateRestaurantRequest("Both-" + suffix, "addr-both-" + suffix))
+            .retrieve()
+            .body(RestaurantResponse.class)
+            .id();
+    UUID rBurgerOnly =
+        authed
+            .post()
+            .uri("/api/v1/user/restaurants")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new CreateRestaurantRequest("Burger-" + suffix, "addr-burger-" + suffix))
+            .retrieve()
+            .body(RestaurantResponse.class)
+            .id();
+
+    UUID burgerId =
+        adminClient()
+            .post()
+            .uri("/api/v1/admin/tags")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new TagPayload("FOOD", burgerSlug, "Burger"))
+            .retrieve()
+            .body(TagResponseDto.class)
+            .id();
+    UUID veganId =
+        adminClient()
+            .post()
+            .uri("/api/v1/admin/tags")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new TagPayload("REGIME", veganSlug, "Vegan"))
+            .retrieve()
+            .body(TagResponseDto.class)
+            .id();
+    authed
+        .post()
+        .uri("/api/v1/user/restaurants/{r}/tags/{t}", rBoth, burgerId)
+        .retrieve()
+        .toBodilessEntity();
+    authed
+        .post()
+        .uri("/api/v1/user/restaurants/{r}/tags/{t}", rBoth, veganId)
+        .retrieve()
+        .toBodilessEntity();
+    authed
+        .post()
+        .uri("/api/v1/user/restaurants/{r}/tags/{t}", rBurgerOnly, burgerId)
+        .retrieve()
+        .toBodilessEntity();
+
+    RestClient unauthed = RestClient.create("http://localhost:" + port);
+    RestaurantsPageResponse page =
+        unauthed
+            .get()
+            .uri("/api/v1/public/restaurants?size=100&tag=" + burgerSlug + "&tag=" + veganSlug)
+            .retrieve()
+            .body(RestaurantsPageResponse.class);
+
+    assertThat(page).isNotNull();
+    assertThat(page.data().stream().map(RestaurantResponse::id).toList())
+        .contains(rBoth)
+        .doesNotContain(rBurgerOnly);
+  }
+
+  @Test
+  void list_unknownSlug_returnsEmptyPage() {
+    RestClient authed = authedClient();
+    authed
+        .post()
+        .uri("/api/v1/user/restaurants")
+        .contentType(MediaType.APPLICATION_JSON)
+        .body(new CreateRestaurantRequest("any", "addr-any"))
+        .retrieve()
+        .toBodilessEntity();
+
+    RestClient unauthed = RestClient.create("http://localhost:" + port);
+    RestaurantsPageResponse page =
+        unauthed
+            .get()
+            .uri(
+                "/api/v1/public/restaurants?size=10&tag=does-not-exist-"
+                    + UUID.randomUUID().toString().substring(0, 8))
+            .retrieve()
+            .body(RestaurantsPageResponse.class);
+
+    assertThat(page).isNotNull();
+    assertThat(page.data()).isEmpty();
+    assertThat(page.page().hasNext()).isFalse();
+    assertThat(page.page().nextCursor()).isNull();
+  }
+
+  @Test
+  void list_includesTagsInItemsInCategoryThenSlugOrder() {
+    String suffix = UUID.randomUUID().toString().substring(0, 8);
+    String foodSlug = "li-food-" + suffix;
+    String regimeSlug = "li-regime-" + suffix;
+
+    RestClient authed = authedClient();
+    UUID r =
+        authed
+            .post()
+            .uri("/api/v1/user/restaurants")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new CreateRestaurantRequest("WithTags-" + suffix, "addr-" + suffix))
+            .retrieve()
+            .body(RestaurantResponse.class)
+            .id();
+    UUID foodId =
+        adminClient()
+            .post()
+            .uri("/api/v1/admin/tags")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new TagPayload("FOOD", foodSlug, "Food"))
+            .retrieve()
+            .body(TagResponseDto.class)
+            .id();
+    UUID regimeId =
+        adminClient()
+            .post()
+            .uri("/api/v1/admin/tags")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new TagPayload("REGIME", regimeSlug, "Regime"))
+            .retrieve()
+            .body(TagResponseDto.class)
+            .id();
+    authed
+        .post()
+        .uri("/api/v1/user/restaurants/{r}/tags/{t}", r, regimeId)
+        .retrieve()
+        .toBodilessEntity();
+    authed
+        .post()
+        .uri("/api/v1/user/restaurants/{r}/tags/{t}", r, foodId)
+        .retrieve()
+        .toBodilessEntity();
+
+    RestClient unauthed = RestClient.create("http://localhost:" + port);
+    RestaurantsPageResponse page =
+        unauthed
+            .get()
+            .uri("/api/v1/public/restaurants?size=100")
+            .retrieve()
+            .body(RestaurantsPageResponse.class);
+
+    RestaurantResponse fetched =
+        page.data().stream().filter(it -> it.id().equals(r)).findFirst().orElseThrow();
+    assertThat(fetched.tags())
+        .extracting(
+            RestaurantResponse.TagSummary::category,
+            RestaurantResponse.TagSummary::slug,
+            RestaurantResponse.TagSummary::label)
+        .containsExactly(
+            org.assertj.core.groups.Tuple.tuple(TagCategory.FOOD, foodSlug, "Food"),
+            org.assertj.core.groups.Tuple.tuple(TagCategory.REGIME, regimeSlug, "Regime"));
+  }
+
+  @Test
+  void list_invalidSlugFormat_returns400() {
+    RestClient unauthed = RestClient.create("http://localhost:" + port);
+    ResponseEntity<String> resp =
+        unauthed
+            .get()
+            .uri("/api/v1/public/restaurants?tag=Bad%20Slug")
+            .retrieve()
+            .onStatus(s -> s.is4xxClientError(), (req, res) -> {})
+            .toEntity(String.class);
+
+    assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+  }
+
+  @Test
   void list_walks_all_pages_by_cursor_withoutAuth() {
     RestClient authed = authedClient();
     Set<UUID> postedIds = new HashSet<>();
@@ -241,6 +476,18 @@ class PublicRestaurantRestIT extends AbstractIntegrationTest {
     return RestClient.builder()
         .baseUrl("http://localhost:" + port)
         .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + userToken)
+        .build();
+  }
+
+  private RestClient adminClient() {
+    if (adminToken == null) {
+      adminToken =
+          TestKeycloakTokens.passwordGrant(
+              keycloak, "palaisdivin", "palais-divin-frontend", "testadmin", "testadmin");
+    }
+    return RestClient.builder()
+        .baseUrl("http://localhost:" + port)
+        .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken)
         .build();
   }
 }

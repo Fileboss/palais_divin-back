@@ -4,7 +4,9 @@ import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantId;
 import fr.lepgu.palaisdivin.backend.tag.domain.model.RestaurantTag;
 import fr.lepgu.palaisdivin.backend.tag.domain.model.Tag;
 import fr.lepgu.palaisdivin.backend.tag.domain.model.TagId;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 public interface RestaurantTagRepositoryPort {
@@ -16,4 +18,6 @@ public interface RestaurantTagRepositoryPort {
   boolean delete(RestaurantId restaurantId, TagId tagId);
 
   List<Tag> findTagsByRestaurant(RestaurantId restaurantId);
+
+  Map<RestaurantId, List<Tag>> findTagsByRestaurants(Collection<RestaurantId> restaurantIds);
 }

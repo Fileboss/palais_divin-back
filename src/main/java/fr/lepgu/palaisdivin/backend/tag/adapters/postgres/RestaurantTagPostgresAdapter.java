@@ -6,8 +6,13 @@ import fr.lepgu.palaisdivin.backend.tag.domain.model.Tag;
 import fr.lepgu.palaisdivin.backend.tag.domain.model.TagId;
 import fr.lepgu.palaisdivin.backend.tag.domain.ports.RestaurantTagRepositoryPort;
 import fr.lepgu.palaisdivin.backend.user.domain.model.UserId;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -40,6 +45,22 @@ public class RestaurantTagPostgresAdapter implements RestaurantTagRepositoryPort
     return jpa.findTagsByRestaurantId(restaurantId.value()).stream()
         .map(TagPostgresAdapter::toDomain)
         .toList();
+  }
+
+  @Override
+  public Map<RestaurantId, List<Tag>> findTagsByRestaurants(
+      Collection<RestaurantId> restaurantIds) {
+    if (restaurantIds.isEmpty()) {
+      return Map.of();
+    }
+    List<UUID> ids = restaurantIds.stream().map(RestaurantId::value).toList();
+    Map<RestaurantId, List<Tag>> grouped = new LinkedHashMap<>();
+    for (Object[] row : jpa.findTagsForRestaurants(ids)) {
+      RestaurantId restaurantId = new RestaurantId((UUID) row[0]);
+      Tag tag = TagPostgresAdapter.toDomain((TagEntity) row[1]);
+      grouped.computeIfAbsent(restaurantId, k -> new ArrayList<>()).add(tag);
+    }
+    return grouped;
   }
 
   private static RestaurantTagEntity toEntity(RestaurantTag a) {

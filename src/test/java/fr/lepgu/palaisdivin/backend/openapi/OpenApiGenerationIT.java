@@ -45,6 +45,8 @@ class OpenApiGenerationIT {
         .contains("/api/v1/admin/tags")
         .contains("/api/v1/public/tags")
         .contains("/api/v1/user/restaurants/{restaurantId}/tags/{tagId}");
+    // M9.3: tag query param on the public list
+    assertThat(yaml).contains("name: tag");
 
     String baseDir = System.getProperty("project.basedir", System.getProperty("user.dir"));
     Path output = Path.of(baseDir, "docs", "openapi.yaml");

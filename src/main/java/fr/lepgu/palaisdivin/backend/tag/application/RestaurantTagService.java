@@ -19,7 +19,9 @@ import fr.lepgu.palaisdivin.backend.tag.domain.ports.TagRepositoryPort;
 import fr.lepgu.palaisdivin.backend.user.domain.model.UserId;
 import fr.lepgu.palaisdivin.backend.user.domain.ports.UserRepositoryPort;
 import java.time.Clock;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -99,5 +101,14 @@ public class RestaurantTagService
   @Transactional(readOnly = true)
   public List<Tag> listFor(RestaurantId restaurantId) {
     return restaurantTags.findTagsByRestaurant(restaurantId);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public Map<RestaurantId, List<Tag>> listFor(Collection<RestaurantId> restaurantIds) {
+    if (restaurantIds.isEmpty()) {
+      return Map.of();
+    }
+    return restaurantTags.findTagsByRestaurants(restaurantIds);
   }
 }

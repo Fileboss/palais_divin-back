@@ -6,6 +6,7 @@ import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantCursor;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantId;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.RestaurantRepositoryPort;
 import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;
+import java.util.List;
 import java.util.Optional;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
@@ -44,12 +45,21 @@ public class RestaurantPostgresAdapter implements RestaurantRepositoryPort {
   }
 
   @Override
-  public CursorPage<Restaurant> findAll(RestaurantCursor cursor, int size) {
+  public CursorPage<Restaurant> findAll(RestaurantCursor cursor, int size, List<String> tagSlugs) {
     PageRequest pageable = PageRequest.of(0, size);
-    Slice<RestaurantEntity> slice =
-        cursor == null
-            ? jpa.findFirstPage(pageable)
-            : jpa.findAfter(cursor.createdAt(), cursor.id(), pageable);
+    Slice<RestaurantEntity> slice;
+    if (tagSlugs.isEmpty()) {
+      slice =
+          cursor == null
+              ? jpa.findFirstPage(pageable)
+              : jpa.findAfter(cursor.createdAt(), cursor.id(), pageable);
+    } else {
+      slice =
+          cursor == null
+              ? jpa.findFirstPageFilteredByTags(tagSlugs, tagSlugs.size(), pageable)
+              : jpa.findAfterFilteredByTags(
+                  cursor.createdAt(), cursor.id(), tagSlugs, tagSlugs.size(), pageable);
+    }
     return new CursorPage<>(
         slice.getContent().stream().map(RestaurantPostgresAdapter::toDomain).toList(),
         slice.hasNext());

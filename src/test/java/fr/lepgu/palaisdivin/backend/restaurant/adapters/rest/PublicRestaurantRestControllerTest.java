@@ -1,6 +1,7 @@
 package fr.lepgu.palaisdivin.backend.restaurant.adapters.rest;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -15,9 +16,13 @@ import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.FindRestaurantUseCas
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.ListRestaurantsUseCase;
 import fr.lepgu.palaisdivin.backend.shared.adapters.web.GlobalExceptionHandler;
 import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;
+import fr.lepgu.palaisdivin.backend.tag.domain.model.Tag;
+import fr.lepgu.palaisdivin.backend.tag.domain.model.TagCategory;
+import fr.lepgu.palaisdivin.backend.tag.domain.model.TagId;
 import fr.lepgu.palaisdivin.backend.tag.domain.ports.ListRestaurantTagsUseCase;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.hamcrest.Matchers;
@@ -46,7 +51,8 @@ class PublicRestaurantRestControllerTest {
 
   @BeforeEach
   void stubEmptyTags() {
-    when(listRestaurantTags.listFor(any())).thenReturn(List.of());
+    when(listRestaurantTags.listFor(any(RestaurantId.class))).thenReturn(List.of());
+    when(listRestaurantTags.listFor(anyCollection())).thenReturn(Map.of());
   }
 
   @Test
@@ -90,7 +96,8 @@ class PublicRestaurantRestControllerTest {
   void list_noCursor_returnsEnvelope_withoutNextCursorWhenLastPage() throws Exception {
     Restaurant r1 = restaurant("Septime");
     Restaurant r2 = restaurant("Le Train Bleu");
-    when(listRestaurants.list(null, 20)).thenReturn(new CursorPage<>(List.of(r1, r2), false));
+    when(listRestaurants.list(null, 20, List.of()))
+        .thenReturn(new CursorPage<>(List.of(r1, r2), false));
 
     mockMvc
         .perform(get("/api/v1/public/restaurants"))
@@ -108,7 +115,8 @@ class PublicRestaurantRestControllerTest {
   void list_withMoreAvailable_emitsNextCursor() throws Exception {
     Restaurant r1 = restaurant("Septime");
     Restaurant r2 = restaurant("Le Train Bleu");
-    when(listRestaurants.list(null, 2)).thenReturn(new CursorPage<>(List.of(r1, r2), true));
+    when(listRestaurants.list(null, 2, List.of()))
+        .thenReturn(new CursorPage<>(List.of(r1, r2), true));
 
     mockMvc
         .perform(get("/api/v1/public/restaurants").param("size", "2"))
@@ -125,6 +133,78 @@ class PublicRestaurantRestControllerTest {
     mockMvc
         .perform(get("/api/v1/public/restaurants").param("size", "101"))
         .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void list_withSingleTag_passesFilterToService() throws Exception {
+    Restaurant r = restaurant("Septime");
+    when(listRestaurants.list(null, 20, List.of("burger")))
+        .thenReturn(new CursorPage<>(List.of(r), false));
+
+    mockMvc
+        .perform(get("/api/v1/public/restaurants").param("tag", "burger"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.length()").value(1))
+        .andExpect(jsonPath("$.data[0].name").value("Septime"));
+  }
+
+  @Test
+  void list_withMultipleTags_passesAllSlugsInOrder() throws Exception {
+    Restaurant r = restaurant("Septime");
+    when(listRestaurants.list(null, 20, List.of("burger", "vegan")))
+        .thenReturn(new CursorPage<>(List.of(r), false));
+
+    mockMvc
+        .perform(get("/api/v1/public/restaurants").param("tag", "burger").param("tag", "vegan"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.length()").value(1));
+  }
+
+  @Test
+  void list_withInvalidSlugFormat_returns400() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/public/restaurants").param("tag", "Invalid Slug"))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void list_withTooManyTags_returns400() throws Exception {
+    mockMvc
+        .perform(
+            get("/api/v1/public/restaurants")
+                .param("tag", "a")
+                .param("tag", "b")
+                .param("tag", "c")
+                .param("tag", "d")
+                .param("tag", "e")
+                .param("tag", "f")
+                .param("tag", "g")
+                .param("tag", "h")
+                .param("tag", "i")
+                .param("tag", "j")
+                .param("tag", "k"))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void list_emitsTagsPerRestaurantItem() throws Exception {
+    Restaurant r1 = restaurant("Septime");
+    Restaurant r2 = restaurant("Le Train Bleu");
+    when(listRestaurants.list(null, 20, List.of()))
+        .thenReturn(new CursorPage<>(List.of(r1, r2), false));
+    Tag food = new Tag(TagId.newId(), TagCategory.FOOD, "burger", "Burger", FIXED_CREATED_AT);
+    Tag regime = new Tag(TagId.newId(), TagCategory.REGIME, "vegan", "Vegan", FIXED_CREATED_AT);
+    when(listRestaurantTags.listFor(anyCollection()))
+        .thenReturn(Map.of(r1.id(), List.of(food), r2.id(), List.of(regime)));
+
+    mockMvc
+        .perform(get("/api/v1/public/restaurants"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data[0].tags.length()").value(1))
+        .andExpect(jsonPath("$.data[0].tags[0].slug").value("burger"))
+        .andExpect(jsonPath("$.data[0].tags[0].category").value("FOOD"))
+        .andExpect(jsonPath("$.data[1].tags[0].slug").value("vegan"))
+        .andExpect(jsonPath("$.data[1].tags[0].category").value("REGIME"));
   }
 
   private static Restaurant restaurant(String name) {
