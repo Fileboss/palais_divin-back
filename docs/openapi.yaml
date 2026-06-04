@@ -87,6 +87,8 @@ paths:
           default: CREATED_AT_DESC
           enum:
           - CREATED_AT_DESC
+          - RATING_DESC
+          - NAME_ASC
       - in: query
         name: tag
         required: false

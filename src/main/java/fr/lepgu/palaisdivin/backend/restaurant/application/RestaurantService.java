@@ -8,6 +8,7 @@ import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Restaurant;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantCursor;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantFilter;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantId;
+import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantSort;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.CreateRestaurantUseCase;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.DeleteRestaurantUseCase;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.FindRestaurantUseCase;
@@ -72,8 +73,9 @@ public class RestaurantService
   }
 
   @Override
-  public CursorPage<Restaurant> list(RestaurantCursor cursor, int size, RestaurantFilter filter) {
-    return repository.findAll(cursor, size, filter);
+  public CursorPage<Restaurant> list(
+      RestaurantCursor cursor, int size, RestaurantFilter filter, RestaurantSort sort) {
+    return repository.findAll(cursor, size, filter, sort);
   }
 
   @Override

@@ -5,6 +5,7 @@ import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Restaurant;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantCursor;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantFilter;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantId;
+import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantSort;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.FindRestaurantUseCase;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.ListRestaurantsUseCase;
 import fr.lepgu.palaisdivin.backend.shared.adapters.web.PageMeta;
@@ -15,6 +16,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -64,8 +66,8 @@ class PublicRestaurantRestController {
     List<String> tagSlugs = tag == null ? List.of() : tag;
     String trimmedName = (name == null || name.isBlank()) ? null : name.trim();
     RestaurantFilter filter = new RestaurantFilter(tagSlugs, trimmedName);
-    RestaurantCursor decoded = cursor == null ? null : CursorCodec.decode(cursor);
-    CursorPage<Restaurant> page = listRestaurants.list(decoded, size, filter);
+    RestaurantCursor decoded = cursor == null ? null : CursorCodec.decode(cursor, sort);
+    CursorPage<Restaurant> page = listRestaurants.list(decoded, size, filter, sort);
     List<RestaurantId> ids = page.data().stream().map(Restaurant::id).toList();
     Map<RestaurantId, List<Tag>> tagsByRestaurant = listRestaurantTags.listFor(ids);
     List<RestaurantResponse> data =
@@ -74,10 +76,19 @@ class PublicRestaurantRestController {
             .toList();
     String nextCursor =
         page.hasNext() && !data.isEmpty()
-            ? CursorCodec.encode(
-                new RestaurantCursor(
-                    page.data().getLast().createdAt(), page.data().getLast().id().value()))
+            ? CursorCodec.encode(nextCursorFor(page.data().getLast(), sort))
             : null;
     return new RestaurantsPageResponse(data, new PageMeta(size, page.hasNext(), nextCursor));
+  }
+
+  private static RestaurantCursor nextCursorFor(Restaurant last, RestaurantSort sort) {
+    return switch (sort) {
+      case CREATED_AT_DESC -> new RestaurantCursor.ByCreatedAt(last.createdAt(), last.id().value());
+      case RATING_DESC ->
+          new RestaurantCursor.ByRating(
+              last.avgRating() == null ? null : BigDecimal.valueOf(last.avgRating()),
+              last.id().value());
+      case NAME_ASC -> new RestaurantCursor.ByName(last.name(), last.id().value());
+    };
   }
 }

@@ -2,8 +2,11 @@ package fr.lepgu.palaisdivin.backend.restaurant.adapters.rest;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantCursor;
+import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantSort;
 import fr.lepgu.palaisdivin.backend.shared.adapters.web.InvalidCursorException;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
@@ -12,29 +15,46 @@ import java.util.UUID;
 
 final class CursorCodec {
 
-  private static final int VERSION = 1;
+  private static final int V_CREATED_AT = 1;
+  private static final int V_RATING = 2;
+  private static final int V_NAME = 3;
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
   private CursorCodec() {}
 
   static String encode(RestaurantCursor cursor) {
     try {
-      String json =
-          MAPPER
-              .createObjectNode()
-              .put("k", cursor.createdAt().toString())
-              .put("id", cursor.id().toString())
-              .put("v", VERSION)
-              .toString();
+      ObjectNode node = MAPPER.createObjectNode();
+      switch (cursor) {
+        case RestaurantCursor.ByCreatedAt c -> {
+          node.put("k", c.createdAt().toString());
+          node.put("id", c.id().toString());
+          node.put("v", V_CREATED_AT);
+        }
+        case RestaurantCursor.ByRating c -> {
+          if (c.avgRating() == null) {
+            node.putNull("r");
+          } else {
+            node.put("r", c.avgRating());
+          }
+          node.put("id", c.id().toString());
+          node.put("v", V_RATING);
+        }
+        case RestaurantCursor.ByName c -> {
+          node.put("n", c.name());
+          node.put("id", c.id().toString());
+          node.put("v", V_NAME);
+        }
+      }
       return Base64.getUrlEncoder()
           .withoutPadding()
-          .encodeToString(json.getBytes(StandardCharsets.UTF_8));
+          .encodeToString(node.toString().getBytes(StandardCharsets.UTF_8));
     } catch (RuntimeException e) {
       throw new IllegalStateException("failed to encode cursor", e);
     }
   }
 
-  static RestaurantCursor decode(String token) {
+  static RestaurantCursor decode(String token, RestaurantSort expectedSort) {
     byte[] raw;
     try {
       raw = Base64.getUrlDecoder().decode(token);
@@ -50,13 +70,27 @@ final class CursorCodec {
     if (node == null || !node.isObject()) {
       throw new InvalidCursorException();
     }
-    JsonNode k = node.get("k");
-    JsonNode id = node.get("id");
     JsonNode v = node.get("v");
-    if (k == null || !k.isTextual() || id == null || !id.isTextual() || v == null || !v.isInt()) {
+    if (v == null || !v.isInt()) {
       throw new InvalidCursorException();
     }
-    if (v.asInt() != VERSION) {
+    RestaurantCursor decoded =
+        switch (v.asInt()) {
+          case V_CREATED_AT -> decodeByCreatedAt(node);
+          case V_RATING -> decodeByRating(node);
+          case V_NAME -> decodeByName(node);
+          default -> throw new InvalidCursorException();
+        };
+    if (!matchesSort(decoded, expectedSort)) {
+      throw new InvalidCursorException();
+    }
+    return decoded;
+  }
+
+  private static RestaurantCursor decodeByCreatedAt(JsonNode node) {
+    JsonNode k = node.get("k");
+    JsonNode id = node.get("id");
+    if (k == null || !k.isTextual() || id == null || !id.isTextual()) {
       throw new InvalidCursorException();
     }
     Instant createdAt;
@@ -65,12 +99,48 @@ final class CursorCodec {
     } catch (DateTimeParseException e) {
       throw new InvalidCursorException();
     }
-    UUID uuid;
+    return new RestaurantCursor.ByCreatedAt(createdAt, parseUuid(id.asText()));
+  }
+
+  private static RestaurantCursor decodeByRating(JsonNode node) {
+    JsonNode r = node.get("r");
+    JsonNode id = node.get("id");
+    if (r == null || id == null || !id.isTextual()) {
+      throw new InvalidCursorException();
+    }
+    BigDecimal avgRating;
+    if (r.isNull()) {
+      avgRating = null;
+    } else if (r.isNumber()) {
+      avgRating = r.decimalValue();
+    } else {
+      throw new InvalidCursorException();
+    }
+    return new RestaurantCursor.ByRating(avgRating, parseUuid(id.asText()));
+  }
+
+  private static RestaurantCursor decodeByName(JsonNode node) {
+    JsonNode n = node.get("n");
+    JsonNode id = node.get("id");
+    if (n == null || !n.isTextual() || id == null || !id.isTextual()) {
+      throw new InvalidCursorException();
+    }
+    return new RestaurantCursor.ByName(n.asText(), parseUuid(id.asText()));
+  }
+
+  private static UUID parseUuid(String s) {
     try {
-      uuid = UUID.fromString(id.asText());
+      return UUID.fromString(s);
     } catch (IllegalArgumentException e) {
       throw new InvalidCursorException();
     }
-    return new RestaurantCursor(createdAt, uuid);
+  }
+
+  private static boolean matchesSort(RestaurantCursor cursor, RestaurantSort sort) {
+    return switch (sort) {
+      case CREATED_AT_DESC -> cursor instanceof RestaurantCursor.ByCreatedAt;
+      case RATING_DESC -> cursor instanceof RestaurantCursor.ByRating;
+      case NAME_ASC -> cursor instanceof RestaurantCursor.ByName;
+    };
   }
 }

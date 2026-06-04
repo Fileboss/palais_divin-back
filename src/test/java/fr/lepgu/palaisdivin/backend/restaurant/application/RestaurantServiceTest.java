@@ -19,6 +19,7 @@ import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Restaurant;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantCursor;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantFilter;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantId;
+import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantSort;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.GeocoderPort;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.RestaurantRepositoryPort;
 import fr.lepgu.palaisdivin.backend.shared.domain.ports.OutboxPublisher;
@@ -190,29 +191,54 @@ class RestaurantServiceTest {
   }
 
   @Test
-  void listPassesFilterThroughToRepository() {
-    RestaurantCursor cursor = new RestaurantCursor(FIXED_NOW, UUID.randomUUID());
+  void listPassesFilterAndSortThroughToRepository() {
+    RestaurantCursor cursor = new RestaurantCursor.ByCreatedAt(FIXED_NOW, UUID.randomUUID());
     RestaurantFilter filter = new RestaurantFilter(List.of("burger", "vegan"), "bistrot");
     Restaurant r = new Restaurant(RestaurantId.newId(), "Septime", null, LOCATION, FIXED_NOW, null);
     CursorPage<Restaurant> expected = new CursorPage<>(List.of(r), false);
-    when(repository.findAll(cursor, 5, filter)).thenReturn(expected);
+    when(repository.findAll(cursor, 5, filter, RestaurantSort.CREATED_AT_DESC))
+        .thenReturn(expected);
 
-    CursorPage<Restaurant> got = service.list(cursor, 5, filter);
+    CursorPage<Restaurant> got = service.list(cursor, 5, filter, RestaurantSort.CREATED_AT_DESC);
 
     assertThat(got).isSameAs(expected);
-    verify(repository).findAll(cursor, 5, filter);
+    verify(repository).findAll(cursor, 5, filter, RestaurantSort.CREATED_AT_DESC);
   }
 
   @Test
   void listWithNoneFilterCallsRepoWithNoneFilter() {
     RestaurantFilter none = RestaurantFilter.none();
     CursorPage<Restaurant> expected = new CursorPage<>(List.of(), false);
-    when(repository.findAll(null, 20, none)).thenReturn(expected);
+    when(repository.findAll(null, 20, none, RestaurantSort.CREATED_AT_DESC)).thenReturn(expected);
 
-    CursorPage<Restaurant> got = service.list(null, 20, none);
+    CursorPage<Restaurant> got = service.list(null, 20, none, RestaurantSort.CREATED_AT_DESC);
 
     assertThat(got).isSameAs(expected);
-    verify(repository).findAll(null, 20, none);
+    verify(repository).findAll(null, 20, none, RestaurantSort.CREATED_AT_DESC);
+  }
+
+  @Test
+  void listPropagatesRatingSort() {
+    RestaurantFilter none = RestaurantFilter.none();
+    CursorPage<Restaurant> expected = new CursorPage<>(List.of(), false);
+    when(repository.findAll(null, 20, none, RestaurantSort.RATING_DESC)).thenReturn(expected);
+
+    CursorPage<Restaurant> got = service.list(null, 20, none, RestaurantSort.RATING_DESC);
+
+    assertThat(got).isSameAs(expected);
+    verify(repository).findAll(null, 20, none, RestaurantSort.RATING_DESC);
+  }
+
+  @Test
+  void listPropagatesNameSort() {
+    RestaurantFilter none = RestaurantFilter.none();
+    CursorPage<Restaurant> expected = new CursorPage<>(List.of(), false);
+    when(repository.findAll(null, 20, none, RestaurantSort.NAME_ASC)).thenReturn(expected);
+
+    CursorPage<Restaurant> got = service.list(null, 20, none, RestaurantSort.NAME_ASC);
+
+    assertThat(got).isSameAs(expected);
+    verify(repository).findAll(null, 20, none, RestaurantSort.NAME_ASC);
   }
 
   @Test

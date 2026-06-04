@@ -13,6 +13,7 @@ import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Coordinates;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Restaurant;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantFilter;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantId;
+import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantSort;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.FindRestaurantUseCase;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.ListRestaurantsUseCase;
 import fr.lepgu.palaisdivin.backend.shared.adapters.web.GlobalExceptionHandler;
@@ -97,7 +98,7 @@ class PublicRestaurantRestControllerTest {
   void list_noCursor_returnsEnvelope_withoutNextCursorWhenLastPage() throws Exception {
     Restaurant r1 = restaurant("Septime");
     Restaurant r2 = restaurant("Le Train Bleu");
-    when(listRestaurants.list(null, 20, RestaurantFilter.none()))
+    when(listRestaurants.list(null, 20, RestaurantFilter.none(), RestaurantSort.CREATED_AT_DESC))
         .thenReturn(new CursorPage<>(List.of(r1, r2), false));
 
     mockMvc
@@ -116,7 +117,7 @@ class PublicRestaurantRestControllerTest {
   void list_withMoreAvailable_emitsNextCursor() throws Exception {
     Restaurant r1 = restaurant("Septime");
     Restaurant r2 = restaurant("Le Train Bleu");
-    when(listRestaurants.list(null, 2, RestaurantFilter.none()))
+    when(listRestaurants.list(null, 2, RestaurantFilter.none(), RestaurantSort.CREATED_AT_DESC))
         .thenReturn(new CursorPage<>(List.of(r1, r2), true));
 
     mockMvc
@@ -139,7 +140,11 @@ class PublicRestaurantRestControllerTest {
   @Test
   void list_withSingleTag_passesFilterToService() throws Exception {
     Restaurant r = restaurant("Septime");
-    when(listRestaurants.list(null, 20, new RestaurantFilter(List.of("burger"), null)))
+    when(listRestaurants.list(
+            null,
+            20,
+            new RestaurantFilter(List.of("burger"), null),
+            RestaurantSort.CREATED_AT_DESC))
         .thenReturn(new CursorPage<>(List.of(r), false));
 
     mockMvc
@@ -152,7 +157,11 @@ class PublicRestaurantRestControllerTest {
   @Test
   void list_withMultipleTags_passesAllSlugsInOrder() throws Exception {
     Restaurant r = restaurant("Septime");
-    when(listRestaurants.list(null, 20, new RestaurantFilter(List.of("burger", "vegan"), null)))
+    when(listRestaurants.list(
+            null,
+            20,
+            new RestaurantFilter(List.of("burger", "vegan"), null),
+            RestaurantSort.CREATED_AT_DESC))
         .thenReturn(new CursorPage<>(List.of(r), false));
 
     mockMvc
@@ -190,7 +199,8 @@ class PublicRestaurantRestControllerTest {
   @Test
   void list_filterByName_passesTrimmedNameToUseCase() throws Exception {
     Restaurant r = restaurant("Le Bistrot");
-    when(listRestaurants.list(null, 20, new RestaurantFilter(List.of(), "pizza")))
+    when(listRestaurants.list(
+            null, 20, new RestaurantFilter(List.of(), "pizza"), RestaurantSort.CREATED_AT_DESC))
         .thenReturn(new CursorPage<>(List.of(r), false));
 
     mockMvc
@@ -202,7 +212,7 @@ class PublicRestaurantRestControllerTest {
   @Test
   void list_filterByBlankName_treatsAsNoFilter() throws Exception {
     Restaurant r = restaurant("Septime");
-    when(listRestaurants.list(null, 20, RestaurantFilter.none()))
+    when(listRestaurants.list(null, 20, RestaurantFilter.none(), RestaurantSort.CREATED_AT_DESC))
         .thenReturn(new CursorPage<>(List.of(r), false));
 
     mockMvc
@@ -222,7 +232,11 @@ class PublicRestaurantRestControllerTest {
   @Test
   void list_filterByNameAndTag_passesBothToUseCase() throws Exception {
     Restaurant r = restaurant("Septime");
-    when(listRestaurants.list(null, 20, new RestaurantFilter(List.of("burger"), "septime")))
+    when(listRestaurants.list(
+            null,
+            20,
+            new RestaurantFilter(List.of("burger"), "septime"),
+            RestaurantSort.CREATED_AT_DESC))
         .thenReturn(new CursorPage<>(List.of(r), false));
 
     mockMvc
@@ -236,7 +250,7 @@ class PublicRestaurantRestControllerTest {
   void list_emitsTagsPerRestaurantItem() throws Exception {
     Restaurant r1 = restaurant("Septime");
     Restaurant r2 = restaurant("Le Train Bleu");
-    when(listRestaurants.list(null, 20, RestaurantFilter.none()))
+    when(listRestaurants.list(null, 20, RestaurantFilter.none(), RestaurantSort.CREATED_AT_DESC))
         .thenReturn(new CursorPage<>(List.of(r1, r2), false));
     Tag food = new Tag(TagId.newId(), TagCategory.FOOD, "burger", "Burger", FIXED_CREATED_AT);
     Tag regime = new Tag(TagId.newId(), TagCategory.REGIME, "vegan", "Vegan", FIXED_CREATED_AT);
@@ -251,6 +265,60 @@ class PublicRestaurantRestControllerTest {
         .andExpect(jsonPath("$.data[0].tags[0].category").value("FOOD"))
         .andExpect(jsonPath("$.data[1].tags[0].slug").value("vegan"))
         .andExpect(jsonPath("$.data[1].tags[0].category").value("REGIME"));
+  }
+
+  @Test
+  void list_sortByRating_passesSortToUseCase() throws Exception {
+    Restaurant r = restaurant("Septime");
+    when(listRestaurants.list(null, 20, RestaurantFilter.none(), RestaurantSort.RATING_DESC))
+        .thenReturn(new CursorPage<>(List.of(r), false));
+
+    mockMvc
+        .perform(get("/api/v1/public/restaurants").param("sort", "RATING_DESC"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.length()").value(1));
+  }
+
+  @Test
+  void list_sortByName_passesSortToUseCase() throws Exception {
+    Restaurant r = restaurant("Allard");
+    when(listRestaurants.list(null, 20, RestaurantFilter.none(), RestaurantSort.NAME_ASC))
+        .thenReturn(new CursorPage<>(List.of(r), false));
+
+    mockMvc
+        .perform(get("/api/v1/public/restaurants").param("sort", "NAME_ASC"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.length()").value(1));
+  }
+
+  @Test
+  void list_unknownSortValue_returns400_badRequest() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/public/restaurants").param("sort", "NUKE"))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+        .andExpect(jsonPath("$.type").value("https://palaisdivin.lepgu.fr/problems/bad-request"));
+  }
+
+  @Test
+  void list_cursorFromCreatedAt_withRatingSort_returns400_invalidCursor() throws Exception {
+    // build a v=1 createdAt cursor token then submit it with sort=RATING_DESC
+    String token =
+        java.util.Base64.getUrlEncoder()
+            .withoutPadding()
+            .encodeToString(
+                ("{\"k\":\"2026-05-27T10:15:30Z\",\"id\":\""
+                        + java.util.UUID.randomUUID()
+                        + "\",\"v\":1}")
+                    .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+
+    mockMvc
+        .perform(
+            get("/api/v1/public/restaurants").param("sort", "RATING_DESC").param("cursor", token))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+        .andExpect(
+            jsonPath("$.type").value("https://palaisdivin.lepgu.fr/problems/invalid-cursor"));
   }
 
   private static Restaurant restaurant(String name) {

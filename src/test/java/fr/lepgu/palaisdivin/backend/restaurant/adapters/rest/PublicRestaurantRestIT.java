@@ -8,6 +8,7 @@ import fr.lepgu.palaisdivin.backend.SharedTestStubs.BanApiClientStub;
 import fr.lepgu.palaisdivin.backend.TestKeycloakTokens;
 import fr.lepgu.palaisdivin.backend.tag.domain.model.TagCategory;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -646,6 +647,248 @@ class PublicRestaurantRestIT extends AbstractIntegrationTest {
 
     assertThat(collected).doesNotHaveDuplicates();
     assertThat(new HashSet<>(collected)).containsAll(postedIds);
+  }
+
+  @Test
+  void list_sortByRating_returnsRatedFirst_thenUnrated() {
+    String suffix = UUID.randomUUID().toString().substring(0, 8);
+    RestClient authed = authedClient();
+
+    UUID hi =
+        authed
+            .post()
+            .uri("/api/v1/user/restaurants")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new CreateRestaurantRequest("Rated-Hi-" + suffix, "addr-hi-" + suffix))
+            .retrieve()
+            .body(RestaurantResponse.class)
+            .id();
+    UUID lo =
+        authed
+            .post()
+            .uri("/api/v1/user/restaurants")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new CreateRestaurantRequest("Rated-Lo-" + suffix, "addr-lo-" + suffix))
+            .retrieve()
+            .body(RestaurantResponse.class)
+            .id();
+    UUID unrated =
+        authed
+            .post()
+            .uri("/api/v1/user/restaurants")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new CreateRestaurantRequest("Unrated-" + suffix, "addr-un-" + suffix))
+            .retrieve()
+            .body(RestaurantResponse.class)
+            .id();
+    jdbcClient.sql("UPDATE restaurant SET avg_rating = 4.50 WHERE id = ?").param(hi).update();
+    jdbcClient.sql("UPDATE restaurant SET avg_rating = 2.00 WHERE id = ?").param(lo).update();
+
+    RestClient unauthed = RestClient.create("http://localhost:" + port);
+    RestaurantsPageResponse page =
+        unauthed
+            .get()
+            .uri("/api/v1/public/restaurants?size=100&sort=RATING_DESC")
+            .retrieve()
+            .body(RestaurantsPageResponse.class);
+
+    List<UUID> ids = page.data().stream().map(RestaurantResponse::id).toList();
+    int hiIdx = ids.indexOf(hi);
+    int loIdx = ids.indexOf(lo);
+    int unratedIdx = ids.indexOf(unrated);
+    assertThat(hiIdx).isGreaterThanOrEqualTo(0);
+    assertThat(loIdx).isGreaterThan(hiIdx);
+    assertThat(unratedIdx).isGreaterThan(loIdx);
+  }
+
+  @Test
+  void list_sortByRating_paginatesAcrossNullBoundary() {
+    String suffix = UUID.randomUUID().toString().substring(0, 8);
+    String prefix = "zrate-" + suffix;
+    RestClient authed = authedClient();
+    Set<UUID> seeded = new HashSet<>();
+    for (int i = 0; i < 4; i++) {
+      UUID id =
+          authed
+              .post()
+              .uri("/api/v1/user/restaurants")
+              .contentType(MediaType.APPLICATION_JSON)
+              .body(new CreateRestaurantRequest(prefix + "-rated-" + i, "addr-r-" + i))
+              .retrieve()
+              .body(RestaurantResponse.class)
+              .id();
+      jdbcClient
+          .sql("UPDATE restaurant SET avg_rating = ? WHERE id = ?")
+          .param(new java.math.BigDecimal(String.valueOf(4.0 - i * 0.5)))
+          .param(id)
+          .update();
+      seeded.add(id);
+    }
+    for (int i = 0; i < 3; i++) {
+      UUID id =
+          authed
+              .post()
+              .uri("/api/v1/user/restaurants")
+              .contentType(MediaType.APPLICATION_JSON)
+              .body(new CreateRestaurantRequest(prefix + "-unrated-" + i, "addr-u-" + i))
+              .retrieve()
+              .body(RestaurantResponse.class)
+              .id();
+      seeded.add(id);
+    }
+
+    RestClient unauthed = RestClient.create("http://localhost:" + port);
+    List<UUID> collected = new ArrayList<>();
+    String cursor = null;
+    int pages = 0;
+    while (true) {
+      String path =
+          cursor == null
+              ? "/api/v1/public/restaurants?size=2&sort=RATING_DESC&name=" + prefix
+              : "/api/v1/public/restaurants?size=2&sort=RATING_DESC&name="
+                  + prefix
+                  + "&cursor="
+                  + cursor;
+      RestaurantsPageResponse body =
+          unauthed.get().uri(path).retrieve().body(RestaurantsPageResponse.class);
+      assertThat(body).isNotNull();
+      body.data().forEach(r -> collected.add(r.id()));
+      pages++;
+      if (!body.page().hasNext()) break;
+      cursor = body.page().nextCursor();
+      assertThat(cursor).isNotBlank();
+      if (pages > 10) throw new AssertionError("paging did not terminate");
+    }
+
+    assertThat(collected).doesNotHaveDuplicates();
+    assertThat(new HashSet<>(collected)).isEqualTo(seeded);
+  }
+
+  @Test
+  void list_sortByName_returnsAlphabetical() {
+    String suffix = UUID.randomUUID().toString().substring(0, 8);
+    RestClient authed = authedClient();
+    UUID carmen =
+        authed
+            .post()
+            .uri("/api/v1/user/restaurants")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new CreateRestaurantRequest("Carmen-" + suffix, "addr-c"))
+            .retrieve()
+            .body(RestaurantResponse.class)
+            .id();
+    UUID allard =
+        authed
+            .post()
+            .uri("/api/v1/user/restaurants")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new CreateRestaurantRequest("Allard-" + suffix, "addr-a"))
+            .retrieve()
+            .body(RestaurantResponse.class)
+            .id();
+    UUID benoit =
+        authed
+            .post()
+            .uri("/api/v1/user/restaurants")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new CreateRestaurantRequest("Benoit-" + suffix, "addr-b"))
+            .retrieve()
+            .body(RestaurantResponse.class)
+            .id();
+
+    RestClient unauthed = RestClient.create("http://localhost:" + port);
+    RestaurantsPageResponse page =
+        unauthed
+            .get()
+            .uri("/api/v1/public/restaurants?size=100&sort=NAME_ASC&name=" + suffix)
+            .retrieve()
+            .body(RestaurantsPageResponse.class);
+
+    List<UUID> ids = page.data().stream().map(RestaurantResponse::id).toList();
+    assertThat(ids).containsExactly(allard, benoit, carmen);
+  }
+
+  @Test
+  void list_sortByName_paginatesNoOverlap() {
+    String suffix = UUID.randomUUID().toString().substring(0, 8);
+    RestClient authed = authedClient();
+    Set<UUID> seeded = new HashSet<>();
+    String[] names = {"alpha", "bravo", "charlie", "delta", "echo", "foxtrot", "golf"};
+    for (String n : names) {
+      UUID id =
+          authed
+              .post()
+              .uri("/api/v1/user/restaurants")
+              .contentType(MediaType.APPLICATION_JSON)
+              .body(new CreateRestaurantRequest("zpag-" + suffix + "-" + n, "addr-" + n))
+              .retrieve()
+              .body(RestaurantResponse.class)
+              .id();
+      seeded.add(id);
+    }
+
+    RestClient unauthed = RestClient.create("http://localhost:" + port);
+    List<UUID> collected = new ArrayList<>();
+    String cursor = null;
+    int pages = 0;
+    while (true) {
+      String path =
+          cursor == null
+              ? "/api/v1/public/restaurants?size=3&sort=NAME_ASC&name=zpag-" + suffix
+              : "/api/v1/public/restaurants?size=3&sort=NAME_ASC&name=zpag-"
+                  + suffix
+                  + "&cursor="
+                  + cursor;
+      RestaurantsPageResponse body =
+          unauthed.get().uri(path).retrieve().body(RestaurantsPageResponse.class);
+      assertThat(body).isNotNull();
+      body.data().forEach(r -> collected.add(r.id()));
+      pages++;
+      if (!body.page().hasNext()) break;
+      cursor = body.page().nextCursor();
+      if (pages > 10) throw new AssertionError("paging did not terminate");
+    }
+
+    assertThat(collected).doesNotHaveDuplicates();
+    assertThat(new HashSet<>(collected)).isEqualTo(seeded);
+  }
+
+  @Test
+  void list_v1CursorWithRatingSort_returns400_invalidCursorProblemDetail() {
+    String token =
+        Base64.getUrlEncoder()
+            .withoutPadding()
+            .encodeToString(
+                ("{\"k\":\"2026-05-27T10:15:30Z\",\"id\":\"" + UUID.randomUUID() + "\",\"v\":1}")
+                    .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    RestClient unauthed = RestClient.create("http://localhost:" + port);
+    ResponseEntity<String> resp =
+        unauthed
+            .get()
+            .uri("/api/v1/public/restaurants?sort=RATING_DESC&cursor=" + token)
+            .retrieve()
+            .onStatus(s -> s.is4xxClientError(), (req, res) -> {})
+            .toEntity(String.class);
+
+    assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(resp.getHeaders().getContentType().toString())
+        .startsWith("application/problem+json");
+    assertThat(resp.getBody()).contains("/problems/invalid-cursor");
+  }
+
+  @Test
+  void list_invalidSortEnum_returns400_badRequestProblemDetail() {
+    RestClient unauthed = RestClient.create("http://localhost:" + port);
+    ResponseEntity<String> resp =
+        unauthed
+            .get()
+            .uri("/api/v1/public/restaurants?sort=NUKE")
+            .retrieve()
+            .onStatus(s -> s.is4xxClientError(), (req, res) -> {})
+            .toEntity(String.class);
+
+    assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(resp.getBody()).contains("/problems/bad-request");
   }
 
   private RestClient authedClient() {
