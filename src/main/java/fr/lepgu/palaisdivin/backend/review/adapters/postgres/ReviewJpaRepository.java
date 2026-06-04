@@ -35,4 +35,26 @@ interface ReviewJpaRepository extends JpaRepository<ReviewEntity, UUID> {
       @Param("lastCreatedAt") Instant lastCreatedAt,
       @Param("lastId") UUID lastId,
       Pageable pageable);
+
+  @Query(
+      """
+      select r from ReviewEntity r
+      where r.authorId = :authorId
+      order by r.createdAt desc, r.id desc
+      """)
+  Slice<ReviewEntity> findFirstPageByAuthor(@Param("authorId") UUID authorId, Pageable pageable);
+
+  @Query(
+      """
+      select r from ReviewEntity r
+      where r.authorId = :authorId
+        and (r.createdAt < :lastCreatedAt
+             or (r.createdAt = :lastCreatedAt and r.id < :lastId))
+      order by r.createdAt desc, r.id desc
+      """)
+  Slice<ReviewEntity> findAfterByAuthor(
+      @Param("authorId") UUID authorId,
+      @Param("lastCreatedAt") Instant lastCreatedAt,
+      @Param("lastId") UUID lastId,
+      Pageable pageable);
 }

@@ -179,6 +179,21 @@ class ReviewServiceTest {
   }
 
   @Test
+  void listByAuthorDelegatesToRepositoryAndPassesCursorThrough() {
+    ReviewCursor cursor = new ReviewCursor(NOW.minusSeconds(30), ReviewId.newId());
+    Review r =
+        new Review(ReviewId.newId(), restaurantId, authorId, 5, "Good", NOW.minusSeconds(60));
+    CursorPage<Review> page = new CursorPage<>(List.of(r), true);
+    when(reviews.findByAuthor(authorId, cursor, 7)).thenReturn(page);
+
+    CursorPage<Review> result = service.listByAuthor(authorId, cursor, 7);
+
+    assertThat(result).isSameAs(page);
+    verify(reviews).findByAuthor(authorId, cursor, 7);
+    verifyNoInteractions(users, restaurants, idempotency, outbox);
+  }
+
+  @Test
   void findByRestaurantAndAuthorDelegatesToRepository() {
     Review r = new Review(ReviewId.newId(), restaurantId, authorId, 4, "Good", NOW);
     when(reviews.findByRestaurantAndAuthor(restaurantId, authorId)).thenReturn(Optional.of(r));

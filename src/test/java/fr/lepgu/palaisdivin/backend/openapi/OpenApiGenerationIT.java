@@ -45,7 +45,8 @@ class OpenApiGenerationIT {
         .contains("/api/v1/admin/tags")
         .contains("/api/v1/public/tags")
         .contains("/api/v1/user/restaurants/{restaurantId}/tags/{tagId}")
-        .contains("/api/v1/public/users/{userId}");
+        .contains("/api/v1/public/users/{userId}")
+        .contains("/api/v1/public/users/{userId}/reviews");
     // M9.3: tag query param on the public list
     assertThat(yaml).contains("name: tag");
     // I4.1: authorDisplayName on the review response shape

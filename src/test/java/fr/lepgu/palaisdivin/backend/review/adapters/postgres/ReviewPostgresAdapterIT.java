@@ -223,6 +223,72 @@ class ReviewPostgresAdapterIT {
   }
 
   @Test
+  void findByAuthorWalksAllPagesByCursorDescendingByCreatedAtThenId() {
+    UUID otherRestaurantUuid = UUID.randomUUID();
+    em.createNativeQuery(
+            "INSERT INTO restaurant (id, name, location, created_at)"
+                + " VALUES (?, ?, ST_GeographyFromText('SRID=4326;POINT(2.35 48.85)'), now())")
+        .setParameter(1, otherRestaurantUuid)
+        .setParameter(2, "Other")
+        .executeUpdate();
+    RestaurantId otherRestaurantId = new RestaurantId(otherRestaurantUuid);
+
+    List<ReviewId> targetIds = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      ReviewId id = ReviewId.newId();
+      targetIds.add(id);
+      UUID restaurantUuid = UUID.randomUUID();
+      em.createNativeQuery(
+              "INSERT INTO restaurant (id, name, location, created_at)"
+                  + " VALUES (?, ?, ST_GeographyFromText('SRID=4326;POINT(2.35 48.85)'), now())")
+          .setParameter(1, restaurantUuid)
+          .setParameter(2, "R-" + i)
+          .executeUpdate();
+      adapter.save(
+          new Review(
+              id,
+              new RestaurantId(restaurantUuid),
+              AUTHOR_ID,
+              4,
+              "r-" + i,
+              FIXED_CREATED_AT.plusSeconds(i * 10L)));
+    }
+    adapter.save(
+        new Review(
+            ReviewId.newId(),
+            otherRestaurantId,
+            OTHER_AUTHOR_ID,
+            4,
+            "other",
+            FIXED_CREATED_AT.plusSeconds(500)));
+
+    List<ReviewId> collected = new ArrayList<>();
+    ReviewCursor cursor = null;
+    int pages = 0;
+    while (true) {
+      CursorPage<Review> page = adapter.findByAuthor(AUTHOR_ID, cursor, 2);
+      page.data().forEach(r -> collected.add(r.id()));
+      pages++;
+      if (!page.hasNext()) break;
+      Review last = page.data().getLast();
+      cursor = new ReviewCursor(last.createdAt(), last.id());
+      if (pages > 10) throw new AssertionError("paging did not terminate");
+    }
+
+    assertThat(pages).isEqualTo(3);
+    assertThat(collected).doesNotHaveDuplicates();
+    assertThat(collected).containsExactlyInAnyOrderElementsOf(targetIds);
+  }
+
+  @Test
+  void findByAuthorUnknownAuthorReturnsEmptyPage() {
+    CursorPage<Review> page = adapter.findByAuthor(new UserId(UUID.randomUUID()), null, 20);
+
+    assertThat(page.data()).isEmpty();
+    assertThat(page.hasNext()).isFalse();
+  }
+
+  @Test
   void avgRatingIsUpdatedByTriggerOnReviewSave() {
     adapter.save(new Review(ReviewId.newId(), RESTAURANT_ID, AUTHOR_ID, 4, null, FIXED_CREATED_AT));
     adapter.save(

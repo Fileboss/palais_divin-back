@@ -7,7 +7,10 @@ import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Coordinates;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Restaurant;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantId;
 import java.time.Instant;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
@@ -85,5 +88,39 @@ class RestaurantPostgresAdapterIT {
     assertThat(adapter.findById(id))
         .isPresent()
         .hasValueSatisfying(r -> assertThat(r.address()).isNull());
+  }
+
+  @Test
+  void findByIdsReturnsMapKeyedById_forKnownIds() {
+    RestaurantId a = RestaurantId.newId();
+    RestaurantId b = RestaurantId.newId();
+    adapter.save(
+        new Restaurant(a, "A", "addr-a", new Coordinates(48.85, 2.35), FIXED_CREATED_AT, null));
+    adapter.save(
+        new Restaurant(b, "B", "addr-b", new Coordinates(48.86, 2.36), FIXED_CREATED_AT, null));
+
+    Map<RestaurantId, Restaurant> result = adapter.findByIds(List.of(a, b));
+
+    assertThat(result).hasSize(2);
+    assertThat(result.get(a).name()).isEqualTo("A");
+    assertThat(result.get(b).name()).isEqualTo("B");
+  }
+
+  @Test
+  void findByIdsReturnsEmptyMap_onEmptyInput() {
+    assertThat(adapter.findByIds(List.of())).isEmpty();
+  }
+
+  @Test
+  void findByIdsSkipsUnknownIds_doesNotThrow() {
+    RestaurantId known = RestaurantId.newId();
+    adapter.save(
+        new Restaurant(
+            known, "Known", "addr", new Coordinates(48.85, 2.35), FIXED_CREATED_AT, null));
+    RestaurantId unknown = new RestaurantId(UUID.randomUUID());
+
+    Map<RestaurantId, Restaurant> result = adapter.findByIds(List.of(known, unknown));
+
+    assertThat(result).hasSize(1).containsKey(known).doesNotContainKey(unknown);
   }
 }

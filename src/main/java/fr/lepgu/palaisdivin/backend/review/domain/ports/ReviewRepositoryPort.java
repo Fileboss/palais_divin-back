@@ -17,4 +17,6 @@ public interface ReviewRepositoryPort {
   Optional<Review> findByRestaurantAndAuthor(RestaurantId restaurantId, UserId authorId);
 
   CursorPage<Review> findByRestaurant(RestaurantId restaurantId, ReviewCursor cursor, int size);
+
+  CursorPage<Review> findByAuthor(UserId authorId, ReviewCursor cursor, int size);
 }

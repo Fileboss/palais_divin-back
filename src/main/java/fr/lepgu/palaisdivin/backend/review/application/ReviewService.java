@@ -118,6 +118,12 @@ public class ReviewService
 
   @Override
   @Transactional(readOnly = true)
+  public CursorPage<Review> listByAuthor(UserId authorId, ReviewCursor cursor, int size) {
+    return reviews.findByAuthor(authorId, cursor, size);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
   public Review findByRestaurantAndAuthor(RestaurantId restaurantId, UserId authorId) {
     return reviews
         .findByRestaurantAndAuthor(restaurantId, authorId)

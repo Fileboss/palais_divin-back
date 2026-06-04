@@ -63,7 +63,7 @@ paths:
       - ping-controller
   /api/v1/public/restaurants:
     get:
-      operationId: list_2
+      operationId: list_3
       parameters:
       - in: query
         name: cursor
@@ -129,7 +129,7 @@ paths:
       - public-restaurant-rest-controller
   /api/v1/public/restaurants/{restaurantId}/reviews:
     get:
-      operationId: list_3
+      operationId: list_4
       parameters:
       - in: path
         name: restaurantId
@@ -213,7 +213,7 @@ paths:
       - signup-rest-controller
   /api/v1/public/tags:
     get:
-      operationId: list_1
+      operationId: list_2
       responses:
         "200":
           content:
@@ -242,6 +242,39 @@ paths:
           description: OK
       tags:
       - public-user-rest-controller
+  /api/v1/public/users/{userId}/reviews:
+    get:
+      operationId: list_1
+      parameters:
+      - in: path
+        name: userId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: cursor
+        required: false
+        schema:
+          type: string
+      - in: query
+        name: size
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+          maximum: 100
+          minimum: 1
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/AuthorReviewsPageResponse"
+          description: OK
+      tags:
+      - public-user-reviews-rest-controller
   /api/v1/user/connections/{targetId}:
     post:
       operationId: connect
@@ -526,6 +559,41 @@ paths:
       - restaurant-tag-rest-controller
 components:
   schemas:
+    AuthorReviewResponse:
+      type: object
+      properties:
+        comment:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        rating:
+          type: integer
+          format: int32
+        restaurant:
+          $ref: "#/components/schemas/AuthorReviewRestaurantRef"
+        reviewId:
+          type: string
+          format: uuid
+    AuthorReviewRestaurantRef:
+      type: object
+      properties:
+        address:
+          type: string
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+    AuthorReviewsPageResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuthorReviewResponse"
+        page:
+          $ref: "#/components/schemas/PageMeta"
     CategoryGroup:
       type: object
       properties:

@@ -6,8 +6,12 @@ import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantCursor;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantId;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.RestaurantRepositoryPort;
 import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
@@ -37,6 +41,17 @@ public class RestaurantPostgresAdapter implements RestaurantRepositoryPort {
   @Override
   public Optional<Restaurant> findById(RestaurantId id) {
     return jpa.findById(id.value()).map(RestaurantPostgresAdapter::toDomain);
+  }
+
+  @Override
+  public Map<RestaurantId, Restaurant> findByIds(Collection<RestaurantId> ids) {
+    if (ids.isEmpty()) {
+      return Map.of();
+    }
+    List<UUID> raw = ids.stream().map(RestaurantId::value).toList();
+    return jpa.findAllById(raw).stream()
+        .map(RestaurantPostgresAdapter::toDomain)
+        .collect(Collectors.toUnmodifiableMap(Restaurant::id, r -> r));
   }
 
   @Override

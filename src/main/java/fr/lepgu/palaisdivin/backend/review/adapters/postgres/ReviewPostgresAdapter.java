@@ -50,6 +50,18 @@ public class ReviewPostgresAdapter implements ReviewRepositoryPort {
         slice.getContent().stream().map(ReviewPostgresAdapter::toDomain).toList(), slice.hasNext());
   }
 
+  @Override
+  public CursorPage<Review> findByAuthor(UserId authorId, ReviewCursor cursor, int size) {
+    PageRequest pageable = PageRequest.of(0, size);
+    Slice<ReviewEntity> slice =
+        cursor == null
+            ? jpa.findFirstPageByAuthor(authorId.value(), pageable)
+            : jpa.findAfterByAuthor(
+                authorId.value(), cursor.createdAt(), cursor.id().value(), pageable);
+    return new CursorPage<>(
+        slice.getContent().stream().map(ReviewPostgresAdapter::toDomain).toList(), slice.hasNext());
+  }
+
   private static ReviewEntity toEntity(Review r) {
     return new ReviewEntity(
         r.id().value(),
