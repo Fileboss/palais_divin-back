@@ -193,6 +193,22 @@ Goal: two screen-shapes the frontend can't render yet. The **restaurant page** w
 
 ---
 
+## Intermediate phase I6 — Restaurant list: name filter + multi-sort
+
+Goal: the catalog page needs to search by name and reorder by rating, name, distance, and friend affinity. I6.1–I6.3 are Postgres-only changes; I6.4 is cross-store (Neo4j) and sits behind auth. No outbox events, no projectors.
+
+- [x] **I6.1 — Name filter** — `?name=<query>` on `GET /api/v1/public/restaurants`, case-insensitive PostgreSQL `ILIKE %name%`, composes (AND) with existing `?tag=`. Controller trims and treats blank as no-filter (`?name=   ` ≡ omitted). `@Size(max=100)` at the boundary; over-length → 400. Unknown name → empty page. **Promoted `RestaurantFilter` record** (M9.3's deferred trigger): `findAll(cursor, size, filter)` replaces the previous positional `tagSlugs` arg — single carrier absorbs I6.2/I6.3 dimensions without further signature churn. **Routing in `RestaurantPostgresAdapter` fans 4 ways** on `(filter.hasTags(), filter.hasName())` — unfiltered JPQL untouched; existing tag-only natives untouched; two new native pairs (`findFirst/AfterFilteredByName`, `findFirst/AfterFilteredByTagsAndName`) clone M9.3's shape with `and r.name ilike :namePattern` added. Pattern built once in adapter (`"%" + name + "%"`), bind only when needed — keeps SQL boring and avoids Hibernate-on-empty-list quirks. No migration, no `tsvector`/`pg_trgm` index — current dataset is Seq-Scan-tolerable; `EXPLAIN ANALYZE` evidence is the escalation trigger. Cursor encoding untouched (filter narrows candidate set, sort unchanged). Tests: +4 unit, +3 adapter IT, +5 endpoint IT. Deferred: `tsvector`/`pg_trgm` GIN, accent folding, OR-semantics across repeated `?name=`.
+
+- [ ] **I6.2 — Sort by rating and name** — `RestaurantSort` gains `RATING_DESC` and `NAME_ASC`. `RestaurantCursor` becomes sort-aware: sealed hierarchy (or union record) carrying `{createdAt, id}` / `{avgRating, id}` / `{name, id}` — the `v` version field in the Base64URL payload discriminates shapes; mismatched cursor → 400 `/problems/invalid-cursor`. `RestaurantRepositoryPort.findAll` receives the sort; query switches `ORDER BY` and keyset predicate accordingly. Covering indexes added only if `EXPLAIN ANALYZE` on a seeded dataset justifies them.
+
+- [ ] **I6.3 — Sort by distance** — `RestaurantSort` gains `DISTANCE_ASC`. Controller accepts `?lat=<double>&lng=<double>` anchor params; `DISTANCE_ASC` without both → 400 `/problems/missing-anchor`. PostGIS `ST_Distance(location, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography)` in `ORDER BY`. Cursor carries `{distanceMetres, id}`. Deferred: `?near=<address>` shorthand (BAN geocoding round-trip), radius cap.
+
+- [ ] **I6.4 — Affinity sort on authenticated restaurant list** — `GET /api/v1/user/recommendations` gains `?includeOwn=true` which drops the `NOT (me)-[:RATED]->(rest)` guard so already-rated restaurants surface in the affinity feed. Frontend uses this variant for the "all restaurants, affinity-ordered" view. Restaurants outside the user's network (0 affinity, never touched by any friend) are naturally absent — consistent with the Web-of-Trust product model. Cursor unchanged. Deferred: zero-affinity Postgres tail, combined affinity + tag/name filter.
+
+**Out of scope:** friendship list/delete, bidirectional connection handshake, hop-decay affinity weighting — deferred to a post-launch design decision.
+
+---
+
 ## Phase M10 — Observability & hardening
 
 - [ ] **M10.1 — JSON logging via `logstash-logback-encoder`** — `logback-spring.xml` with `traceId`/`spanId` MDC.

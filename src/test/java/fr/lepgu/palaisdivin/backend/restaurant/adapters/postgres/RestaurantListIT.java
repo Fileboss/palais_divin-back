@@ -6,6 +6,7 @@ import fr.lepgu.palaisdivin.backend.TestcontainersConfiguration;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Coordinates;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Restaurant;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantCursor;
+import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantFilter;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantId;
 import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;
 import jakarta.persistence.EntityManager;
@@ -55,7 +56,7 @@ class RestaurantListIT {
     RestaurantCursor cursor = null;
     int pages = 0;
     while (true) {
-      CursorPage<Restaurant> page = adapter.findAll(cursor, 10, List.of());
+      CursorPage<Restaurant> page = adapter.findAll(cursor, 10, RestaurantFilter.none());
       collected.addAll(page.data());
       pages++;
       if (!page.hasNext()) {
@@ -96,7 +97,7 @@ class RestaurantListIT {
               Instant.parse("2026-05-27T10:00:00Z").plusSeconds(i),
               null));
     }
-    CursorPage<Restaurant> page = adapter.findAll(null, 10, List.of());
+    CursorPage<Restaurant> page = adapter.findAll(null, 10, RestaurantFilter.none());
     assertThat(page.data()).hasSize(3);
     assertThat(page.hasNext()).isFalse();
   }
@@ -116,7 +117,8 @@ class RestaurantListIT {
     attach(rC.value(), burger, attacher, base);
     attach(rB.value(), vegan, attacher, base);
 
-    CursorPage<Restaurant> page = adapter.findAll(null, 10, List.of("rl-burger-" + suffix));
+    CursorPage<Restaurant> page =
+        adapter.findAll(null, 10, new RestaurantFilter(List.of("rl-burger-" + suffix), null));
 
     assertThat(page.data().stream().map(r -> r.id().value()))
         .containsExactlyInAnyOrder(rA.value(), rC.value());
@@ -139,7 +141,10 @@ class RestaurantListIT {
     attach(rC.value(), vegan, attacher, base);
 
     CursorPage<Restaurant> page =
-        adapter.findAll(null, 10, List.of("rl-burger-" + suffix, "rl-vegan-" + suffix));
+        adapter.findAll(
+            null,
+            10,
+            new RestaurantFilter(List.of("rl-burger-" + suffix, "rl-vegan-" + suffix), null));
 
     assertThat(page.data().stream().map(r -> r.id().value())).containsExactly(rA.value());
   }
@@ -151,7 +156,8 @@ class RestaurantListIT {
     saveRestaurant("B", base.plusSeconds(1));
 
     CursorPage<Restaurant> page =
-        adapter.findAll(null, 10, List.of("nonexistent-slug-" + UUID.randomUUID()));
+        adapter.findAll(
+            null, 10, new RestaurantFilter(List.of("nonexistent-slug-" + UUID.randomUUID()), null));
 
     assertThat(page.data()).isEmpty();
     assertThat(page.hasNext()).isFalse();
@@ -177,7 +183,8 @@ class RestaurantListIT {
     RestaurantCursor cursor = null;
     int pages = 0;
     while (true) {
-      CursorPage<Restaurant> page = adapter.findAll(cursor, 3, List.of("rl-burger-" + suffix));
+      CursorPage<Restaurant> page =
+          adapter.findAll(cursor, 3, new RestaurantFilter(List.of("rl-burger-" + suffix), null));
       page.data().forEach(r -> collected.add(r.id().value()));
       pages++;
       if (!page.hasNext()) break;
@@ -188,6 +195,71 @@ class RestaurantListIT {
 
     assertThat(collected).doesNotHaveDuplicates();
     assertThat(new HashSet<>(collected)).isEqualTo(attached);
+  }
+
+  @Test
+  void findAll_nameFilter_caseInsensitive_returnsMatches() {
+    Instant base = Instant.parse("2026-05-27T10:00:00Z");
+    RestaurantId bistrot = saveRestaurant("Le Bistrot", base);
+    saveRestaurant("Le Train Bleu", base.plusSeconds(1));
+
+    CursorPage<Restaurant> lower =
+        adapter.findAll(null, 10, new RestaurantFilter(List.of(), "bistrot"));
+    CursorPage<Restaurant> upper =
+        adapter.findAll(null, 10, new RestaurantFilter(List.of(), "BISTROT"));
+
+    assertThat(lower.data().stream().map(r -> r.id().value())).containsExactly(bistrot.value());
+    assertThat(upper.data().stream().map(r -> r.id().value())).containsExactly(bistrot.value());
+  }
+
+  @Test
+  void findAll_nameAndTagFilter_ands() {
+    String suffix = UUID.randomUUID().toString().substring(0, 8);
+    Instant base = Instant.parse("2026-05-27T10:00:00Z");
+    RestaurantId burgerBistro = saveRestaurant("Burger Bistro", base);
+    RestaurantId burgerHouse = saveRestaurant("Burger House", base.plusSeconds(1));
+    RestaurantId regularBistro = saveRestaurant("Regular Bistro", base.plusSeconds(2));
+
+    UUID attacher = seedUser(suffix);
+    UUID burger = seedTag("FOOD", "rl-burger-" + suffix, "Burger");
+    attach(burgerBistro.value(), burger, attacher, base);
+    attach(burgerHouse.value(), burger, attacher, base);
+    // regularBistro tagged not-burger
+    UUID vegan = seedTag("REGIME", "rl-vegan-" + suffix, "Vegan");
+    attach(regularBistro.value(), vegan, attacher, base);
+
+    CursorPage<Restaurant> page =
+        adapter.findAll(null, 10, new RestaurantFilter(List.of("rl-burger-" + suffix), "bistro"));
+
+    assertThat(page.data().stream().map(r -> r.id().value())).containsExactly(burgerBistro.value());
+  }
+
+  @Test
+  void findAll_nameOnly_paginatesAcrossCursor() {
+    Instant base = Instant.parse("2026-05-27T10:00:00Z");
+    Set<UUID> matching = new HashSet<>();
+    for (int i = 0; i < 7; i++) {
+      RestaurantId rid = saveRestaurant("Bistro " + i, base.plusSeconds(i));
+      matching.add(rid.value());
+    }
+    saveRestaurant("Cafe Decoy", base.plusSeconds(100));
+
+    List<UUID> collected = new ArrayList<>();
+    RestaurantCursor cursor = null;
+    int pages = 0;
+    while (true) {
+      CursorPage<Restaurant> page =
+          adapter.findAll(cursor, 3, new RestaurantFilter(List.of(), "bistro"));
+      page.data().forEach(r -> collected.add(r.id().value()));
+      pages++;
+      if (!page.hasNext()) break;
+      Restaurant last = page.data().getLast();
+      cursor = new RestaurantCursor(last.createdAt(), last.id().value());
+      if (pages > 5) throw new AssertionError("paging did not terminate");
+    }
+
+    assertThat(collected).doesNotHaveDuplicates();
+    assertThat(new HashSet<>(collected)).isEqualTo(matching);
   }
 
   private RestaurantId saveRestaurant(String name, Instant createdAt) {

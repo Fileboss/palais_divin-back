@@ -71,4 +71,77 @@ interface RestaurantJpaRepository extends JpaRepository<RestaurantEntity, UUID> 
       @Param("slugs") Collection<String> slugs,
       @Param("slugCount") int slugCount,
       Pageable pageable);
+
+  @Query(
+      nativeQuery = true,
+      value =
+          """
+          select r.* from restaurant r
+          where r.name ilike :namePattern
+          order by r.created_at desc, r.id desc
+          """)
+  Slice<RestaurantEntity> findFirstPageFilteredByName(
+      @Param("namePattern") String namePattern, Pageable pageable);
+
+  @Query(
+      nativeQuery = true,
+      value =
+          """
+          select r.* from restaurant r
+          where (r.created_at < :lastCreatedAt
+              or (r.created_at = :lastCreatedAt and r.id < :lastId))
+            and r.name ilike :namePattern
+          order by r.created_at desc, r.id desc
+          """)
+  Slice<RestaurantEntity> findAfterFilteredByName(
+      @Param("lastCreatedAt") Instant lastCreatedAt,
+      @Param("lastId") UUID lastId,
+      @Param("namePattern") String namePattern,
+      Pageable pageable);
+
+  @Query(
+      nativeQuery = true,
+      value =
+          """
+          select r.* from restaurant r
+          where r.name ilike :namePattern
+            and r.id in (
+              select rt.restaurant_id from restaurant_tag rt
+              join tag t on rt.tag_id = t.id
+              where t.slug in (:slugs)
+              group by rt.restaurant_id
+              having count(distinct rt.tag_id) = :slugCount
+            )
+          order by r.created_at desc, r.id desc
+          """)
+  Slice<RestaurantEntity> findFirstPageFilteredByTagsAndName(
+      @Param("slugs") Collection<String> slugs,
+      @Param("slugCount") int slugCount,
+      @Param("namePattern") String namePattern,
+      Pageable pageable);
+
+  @Query(
+      nativeQuery = true,
+      value =
+          """
+          select r.* from restaurant r
+          where (r.created_at < :lastCreatedAt
+              or (r.created_at = :lastCreatedAt and r.id < :lastId))
+            and r.name ilike :namePattern
+            and r.id in (
+              select rt.restaurant_id from restaurant_tag rt
+              join tag t on rt.tag_id = t.id
+              where t.slug in (:slugs)
+              group by rt.restaurant_id
+              having count(distinct rt.tag_id) = :slugCount
+            )
+          order by r.created_at desc, r.id desc
+          """)
+  Slice<RestaurantEntity> findAfterFilteredByTagsAndName(
+      @Param("lastCreatedAt") Instant lastCreatedAt,
+      @Param("lastId") UUID lastId,
+      @Param("slugs") Collection<String> slugs,
+      @Param("slugCount") int slugCount,
+      @Param("namePattern") String namePattern,
+      Pageable pageable);
 }

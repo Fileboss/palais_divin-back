@@ -3,6 +3,7 @@ package fr.lepgu.palaisdivin.backend.restaurant.adapters.rest;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.RestaurantNotFoundException;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Restaurant;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantCursor;
+import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantFilter;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantId;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.FindRestaurantUseCase;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.ListRestaurantsUseCase;
@@ -58,10 +59,13 @@ class PublicRestaurantRestController {
       @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
       @RequestParam(defaultValue = "CREATED_AT_DESC") RestaurantSort sort,
       @RequestParam(name = "tag", required = false) @Size(max = 10)
-          List<@Pattern(regexp = "^[a-z0-9]+(-[a-z0-9]+)*$") @Size(max = 64) String> tag) {
+          List<@Pattern(regexp = "^[a-z0-9]+(-[a-z0-9]+)*$") @Size(max = 64) String> tag,
+      @RequestParam(required = false) @Size(max = 100) String name) {
     List<String> tagSlugs = tag == null ? List.of() : tag;
+    String trimmedName = (name == null || name.isBlank()) ? null : name.trim();
+    RestaurantFilter filter = new RestaurantFilter(tagSlugs, trimmedName);
     RestaurantCursor decoded = cursor == null ? null : CursorCodec.decode(cursor);
-    CursorPage<Restaurant> page = listRestaurants.list(decoded, size, tagSlugs);
+    CursorPage<Restaurant> page = listRestaurants.list(decoded, size, filter);
     List<RestaurantId> ids = page.data().stream().map(Restaurant::id).toList();
     Map<RestaurantId, List<Tag>> tagsByRestaurant = listRestaurantTags.listFor(ids);
     List<RestaurantResponse> data =

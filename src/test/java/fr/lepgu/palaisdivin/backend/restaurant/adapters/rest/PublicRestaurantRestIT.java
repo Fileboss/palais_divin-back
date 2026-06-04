@@ -414,6 +414,187 @@ class PublicRestaurantRestIT extends AbstractIntegrationTest {
   }
 
   @Test
+  void list_filterByName_returnsMatchingRestaurants() {
+    String suffix = UUID.randomUUID().toString().substring(0, 8);
+    String matchingName = "Le Bistrot " + suffix;
+    String nonMatchingName = "Le Train Bleu " + suffix;
+
+    RestClient authed = authedClient();
+    UUID matching =
+        authed
+            .post()
+            .uri("/api/v1/user/restaurants")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new CreateRestaurantRequest(matchingName, "addr-bistrot-" + suffix))
+            .retrieve()
+            .body(RestaurantResponse.class)
+            .id();
+    UUID nonMatching =
+        authed
+            .post()
+            .uri("/api/v1/user/restaurants")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new CreateRestaurantRequest(nonMatchingName, "addr-train-" + suffix))
+            .retrieve()
+            .body(RestaurantResponse.class)
+            .id();
+
+    RestClient unauthed = RestClient.create("http://localhost:" + port);
+    RestaurantsPageResponse page =
+        unauthed
+            .get()
+            .uri("/api/v1/public/restaurants?size=100&name=bistrot+" + suffix)
+            .retrieve()
+            .body(RestaurantsPageResponse.class);
+
+    assertThat(page).isNotNull();
+    assertThat(page.data().stream().map(RestaurantResponse::id).toList())
+        .contains(matching)
+        .doesNotContain(nonMatching);
+  }
+
+  @Test
+  void list_filterByName_isCaseInsensitive() {
+    String suffix = UUID.randomUUID().toString().substring(0, 8);
+    String name = "Le Bistrot " + suffix;
+
+    RestClient authed = authedClient();
+    UUID id =
+        authed
+            .post()
+            .uri("/api/v1/user/restaurants")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new CreateRestaurantRequest(name, "addr-case-" + suffix))
+            .retrieve()
+            .body(RestaurantResponse.class)
+            .id();
+
+    RestClient unauthed = RestClient.create("http://localhost:" + port);
+    RestaurantsPageResponse upper =
+        unauthed
+            .get()
+            .uri("/api/v1/public/restaurants?size=100&name=BISTROT+" + suffix)
+            .retrieve()
+            .body(RestaurantsPageResponse.class);
+
+    assertThat(upper).isNotNull();
+    assertThat(upper.data().stream().map(RestaurantResponse::id).toList()).contains(id);
+  }
+
+  @Test
+  void list_filterByNameAndTag_andsThem() {
+    String suffix = UUID.randomUUID().toString().substring(0, 8);
+    String burgerSlug = "lpn-burger-" + suffix;
+
+    RestClient authed = authedClient();
+    UUID burgerBistro =
+        authed
+            .post()
+            .uri("/api/v1/user/restaurants")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(
+                new CreateRestaurantRequest(
+                    "Burger Bistro " + suffix, "addr-burgerbistro-" + suffix))
+            .retrieve()
+            .body(RestaurantResponse.class)
+            .id();
+    UUID burgerHouse =
+        authed
+            .post()
+            .uri("/api/v1/user/restaurants")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(
+                new CreateRestaurantRequest("Burger House " + suffix, "addr-burgerhouse-" + suffix))
+            .retrieve()
+            .body(RestaurantResponse.class)
+            .id();
+    UUID regularBistro =
+        authed
+            .post()
+            .uri("/api/v1/user/restaurants")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(
+                new CreateRestaurantRequest(
+                    "Regular Bistro " + suffix, "addr-regularbistro-" + suffix))
+            .retrieve()
+            .body(RestaurantResponse.class)
+            .id();
+
+    UUID burgerId =
+        adminClient()
+            .post()
+            .uri("/api/v1/admin/tags")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new TagPayload("FOOD", burgerSlug, "Burger"))
+            .retrieve()
+            .body(TagResponseDto.class)
+            .id();
+    authed
+        .post()
+        .uri("/api/v1/user/restaurants/{r}/tags/{t}", burgerBistro, burgerId)
+        .retrieve()
+        .toBodilessEntity();
+    authed
+        .post()
+        .uri("/api/v1/user/restaurants/{r}/tags/{t}", burgerHouse, burgerId)
+        .retrieve()
+        .toBodilessEntity();
+
+    RestClient unauthed = RestClient.create("http://localhost:" + port);
+    RestaurantsPageResponse page =
+        unauthed
+            .get()
+            .uri("/api/v1/public/restaurants?size=100&tag=" + burgerSlug + "&name=bistro+" + suffix)
+            .retrieve()
+            .body(RestaurantsPageResponse.class);
+
+    assertThat(page).isNotNull();
+    assertThat(page.data().stream().map(RestaurantResponse::id).toList())
+        .contains(burgerBistro)
+        .doesNotContain(burgerHouse, regularBistro);
+  }
+
+  @Test
+  void list_unknownName_returnsEmptyPage() {
+    RestClient authed = authedClient();
+    authed
+        .post()
+        .uri("/api/v1/user/restaurants")
+        .contentType(MediaType.APPLICATION_JSON)
+        .body(new CreateRestaurantRequest("any-unknown", "addr-any-unknown"))
+        .retrieve()
+        .toBodilessEntity();
+
+    RestClient unauthed = RestClient.create("http://localhost:" + port);
+    RestaurantsPageResponse page =
+        unauthed
+            .get()
+            .uri("/api/v1/public/restaurants?size=10&name=zzz-no-such-name-" + UUID.randomUUID())
+            .retrieve()
+            .body(RestaurantsPageResponse.class);
+
+    assertThat(page).isNotNull();
+    assertThat(page.data()).isEmpty();
+    assertThat(page.page().hasNext()).isFalse();
+    assertThat(page.page().nextCursor()).isNull();
+  }
+
+  @Test
+  void list_nameOver100Chars_returns400() {
+    RestClient unauthed = RestClient.create("http://localhost:" + port);
+    String tooLong = "x".repeat(101);
+    ResponseEntity<String> resp =
+        unauthed
+            .get()
+            .uri("/api/v1/public/restaurants?name=" + tooLong)
+            .retrieve()
+            .onStatus(s -> s.is4xxClientError(), (req, res) -> {})
+            .toEntity(String.class);
+
+    assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+  }
+
+  @Test
   void list_invalidSlugFormat_returns400() {
     RestClient unauthed = RestClient.create("http://localhost:" + port);
     ResponseEntity<String> resp =

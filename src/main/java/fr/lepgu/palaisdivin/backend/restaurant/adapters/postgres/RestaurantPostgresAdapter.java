@@ -3,6 +3,7 @@ package fr.lepgu.palaisdivin.backend.restaurant.adapters.postgres;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Coordinates;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Restaurant;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantCursor;
+import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantFilter;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantId;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.RestaurantRepositoryPort;
 import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;
@@ -60,20 +61,34 @@ public class RestaurantPostgresAdapter implements RestaurantRepositoryPort {
   }
 
   @Override
-  public CursorPage<Restaurant> findAll(RestaurantCursor cursor, int size, List<String> tagSlugs) {
+  public CursorPage<Restaurant> findAll(
+      RestaurantCursor cursor, int size, RestaurantFilter filter) {
     PageRequest pageable = PageRequest.of(0, size);
+    List<String> slugs = filter.tagSlugs();
+    String namePattern = filter.hasName() ? "%" + filter.name() + "%" : null;
     Slice<RestaurantEntity> slice;
-    if (tagSlugs.isEmpty()) {
+    if (!filter.hasTags() && !filter.hasName()) {
       slice =
           cursor == null
               ? jpa.findFirstPage(pageable)
               : jpa.findAfter(cursor.createdAt(), cursor.id(), pageable);
+    } else if (!filter.hasTags()) {
+      slice =
+          cursor == null
+              ? jpa.findFirstPageFilteredByName(namePattern, pageable)
+              : jpa.findAfterFilteredByName(cursor.createdAt(), cursor.id(), namePattern, pageable);
+    } else if (!filter.hasName()) {
+      slice =
+          cursor == null
+              ? jpa.findFirstPageFilteredByTags(slugs, slugs.size(), pageable)
+              : jpa.findAfterFilteredByTags(
+                  cursor.createdAt(), cursor.id(), slugs, slugs.size(), pageable);
     } else {
       slice =
           cursor == null
-              ? jpa.findFirstPageFilteredByTags(tagSlugs, tagSlugs.size(), pageable)
-              : jpa.findAfterFilteredByTags(
-                  cursor.createdAt(), cursor.id(), tagSlugs, tagSlugs.size(), pageable);
+              ? jpa.findFirstPageFilteredByTagsAndName(slugs, slugs.size(), namePattern, pageable)
+              : jpa.findAfterFilteredByTagsAndName(
+                  cursor.createdAt(), cursor.id(), slugs, slugs.size(), namePattern, pageable);
     }
     return new CursorPage<>(
         slice.getContent().stream().map(RestaurantPostgresAdapter::toDomain).toList(),

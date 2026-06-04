@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import fr.lepgu.palaisdivin.backend.config.security.SecurityConfig;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Coordinates;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Restaurant;
+import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantFilter;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantId;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.FindRestaurantUseCase;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.ListRestaurantsUseCase;
@@ -96,7 +97,7 @@ class PublicRestaurantRestControllerTest {
   void list_noCursor_returnsEnvelope_withoutNextCursorWhenLastPage() throws Exception {
     Restaurant r1 = restaurant("Septime");
     Restaurant r2 = restaurant("Le Train Bleu");
-    when(listRestaurants.list(null, 20, List.of()))
+    when(listRestaurants.list(null, 20, RestaurantFilter.none()))
         .thenReturn(new CursorPage<>(List.of(r1, r2), false));
 
     mockMvc
@@ -115,7 +116,7 @@ class PublicRestaurantRestControllerTest {
   void list_withMoreAvailable_emitsNextCursor() throws Exception {
     Restaurant r1 = restaurant("Septime");
     Restaurant r2 = restaurant("Le Train Bleu");
-    when(listRestaurants.list(null, 2, List.of()))
+    when(listRestaurants.list(null, 2, RestaurantFilter.none()))
         .thenReturn(new CursorPage<>(List.of(r1, r2), true));
 
     mockMvc
@@ -138,7 +139,7 @@ class PublicRestaurantRestControllerTest {
   @Test
   void list_withSingleTag_passesFilterToService() throws Exception {
     Restaurant r = restaurant("Septime");
-    when(listRestaurants.list(null, 20, List.of("burger")))
+    when(listRestaurants.list(null, 20, new RestaurantFilter(List.of("burger"), null)))
         .thenReturn(new CursorPage<>(List.of(r), false));
 
     mockMvc
@@ -151,7 +152,7 @@ class PublicRestaurantRestControllerTest {
   @Test
   void list_withMultipleTags_passesAllSlugsInOrder() throws Exception {
     Restaurant r = restaurant("Septime");
-    when(listRestaurants.list(null, 20, List.of("burger", "vegan")))
+    when(listRestaurants.list(null, 20, new RestaurantFilter(List.of("burger", "vegan"), null)))
         .thenReturn(new CursorPage<>(List.of(r), false));
 
     mockMvc
@@ -187,10 +188,55 @@ class PublicRestaurantRestControllerTest {
   }
 
   @Test
+  void list_filterByName_passesTrimmedNameToUseCase() throws Exception {
+    Restaurant r = restaurant("Le Bistrot");
+    when(listRestaurants.list(null, 20, new RestaurantFilter(List.of(), "pizza")))
+        .thenReturn(new CursorPage<>(List.of(r), false));
+
+    mockMvc
+        .perform(get("/api/v1/public/restaurants").param("name", "  pizza  "))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.length()").value(1));
+  }
+
+  @Test
+  void list_filterByBlankName_treatsAsNoFilter() throws Exception {
+    Restaurant r = restaurant("Septime");
+    when(listRestaurants.list(null, 20, RestaurantFilter.none()))
+        .thenReturn(new CursorPage<>(List.of(r), false));
+
+    mockMvc
+        .perform(get("/api/v1/public/restaurants").param("name", "   "))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.length()").value(1));
+  }
+
+  @Test
+  void list_filterByNameTooLong_returns400() throws Exception {
+    String tooLong = "x".repeat(101);
+    mockMvc
+        .perform(get("/api/v1/public/restaurants").param("name", tooLong))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void list_filterByNameAndTag_passesBothToUseCase() throws Exception {
+    Restaurant r = restaurant("Septime");
+    when(listRestaurants.list(null, 20, new RestaurantFilter(List.of("burger"), "septime")))
+        .thenReturn(new CursorPage<>(List.of(r), false));
+
+    mockMvc
+        .perform(get("/api/v1/public/restaurants").param("tag", "burger").param("name", "septime"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.length()").value(1))
+        .andExpect(jsonPath("$.data[0].name").value("Septime"));
+  }
+
+  @Test
   void list_emitsTagsPerRestaurantItem() throws Exception {
     Restaurant r1 = restaurant("Septime");
     Restaurant r2 = restaurant("Le Train Bleu");
-    when(listRestaurants.list(null, 20, List.of()))
+    when(listRestaurants.list(null, 20, RestaurantFilter.none()))
         .thenReturn(new CursorPage<>(List.of(r1, r2), false));
     Tag food = new Tag(TagId.newId(), TagCategory.FOOD, "burger", "Burger", FIXED_CREATED_AT);
     Tag regime = new Tag(TagId.newId(), TagCategory.REGIME, "vegan", "Vegan", FIXED_CREATED_AT);

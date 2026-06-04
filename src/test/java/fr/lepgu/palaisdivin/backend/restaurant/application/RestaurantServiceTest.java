@@ -17,6 +17,7 @@ import fr.lepgu.palaisdivin.backend.restaurant.domain.events.RestaurantDeleted;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Coordinates;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Restaurant;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantCursor;
+import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantFilter;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantId;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.GeocoderPort;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.RestaurantRepositoryPort;
@@ -189,28 +190,29 @@ class RestaurantServiceTest {
   }
 
   @Test
-  void listPassesTagSlugsThroughToRepository() {
+  void listPassesFilterThroughToRepository() {
     RestaurantCursor cursor = new RestaurantCursor(FIXED_NOW, UUID.randomUUID());
-    List<String> slugs = List.of("burger", "vegan");
+    RestaurantFilter filter = new RestaurantFilter(List.of("burger", "vegan"), "bistrot");
     Restaurant r = new Restaurant(RestaurantId.newId(), "Septime", null, LOCATION, FIXED_NOW, null);
     CursorPage<Restaurant> expected = new CursorPage<>(List.of(r), false);
-    when(repository.findAll(cursor, 5, slugs)).thenReturn(expected);
+    when(repository.findAll(cursor, 5, filter)).thenReturn(expected);
 
-    CursorPage<Restaurant> got = service.list(cursor, 5, slugs);
+    CursorPage<Restaurant> got = service.list(cursor, 5, filter);
 
     assertThat(got).isSameAs(expected);
-    verify(repository).findAll(cursor, 5, slugs);
+    verify(repository).findAll(cursor, 5, filter);
   }
 
   @Test
-  void listWithEmptySlugsCallsRepoWithEmptyList() {
+  void listWithNoneFilterCallsRepoWithNoneFilter() {
+    RestaurantFilter none = RestaurantFilter.none();
     CursorPage<Restaurant> expected = new CursorPage<>(List.of(), false);
-    when(repository.findAll(null, 20, List.of())).thenReturn(expected);
+    when(repository.findAll(null, 20, none)).thenReturn(expected);
 
-    CursorPage<Restaurant> got = service.list(null, 20, List.of());
+    CursorPage<Restaurant> got = service.list(null, 20, none);
 
     assertThat(got).isSameAs(expected);
-    verify(repository).findAll(null, 20, List.of());
+    verify(repository).findAll(null, 20, none);
   }
 
   @Test

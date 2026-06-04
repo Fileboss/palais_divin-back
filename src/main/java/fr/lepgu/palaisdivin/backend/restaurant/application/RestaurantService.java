@@ -6,6 +6,7 @@ import fr.lepgu.palaisdivin.backend.restaurant.domain.events.RestaurantDeleted;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Coordinates;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Restaurant;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantCursor;
+import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantFilter;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantId;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.CreateRestaurantUseCase;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.DeleteRestaurantUseCase;
@@ -17,7 +18,6 @@ import fr.lepgu.palaisdivin.backend.shared.domain.ports.OutboxPublisher;
 import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;
 import java.time.Clock;
 import java.time.Instant;
-import java.util.List;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -72,8 +72,8 @@ public class RestaurantService
   }
 
   @Override
-  public CursorPage<Restaurant> list(RestaurantCursor cursor, int size, List<String> tagSlugs) {
-    return repository.findAll(cursor, size, tagSlugs);
+  public CursorPage<Restaurant> list(RestaurantCursor cursor, int size, RestaurantFilter filter) {
+    return repository.findAll(cursor, size, filter);
   }
 
   @Override
