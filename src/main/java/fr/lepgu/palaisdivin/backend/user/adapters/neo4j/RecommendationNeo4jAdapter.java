@@ -19,11 +19,15 @@ import org.springframework.stereotype.Component;
 @Component
 class RecommendationNeo4jAdapter implements RecommendationGraphPort {
 
+  private static final String RATED_GUARD_TOKEN = "$$RATED_GUARD$$";
+
+  private static final String RATED_GUARD_CLAUSE = "AND NOT (me)-[:RATED]->(rest)";
+
   private static final String FIRST_PAGE_CYPHER =
       """
       MATCH (me:User {id: $userId})-[:KNOWS*1..2]->(rater:User)-[r:RATED]->(rest:Restaurant)
       WHERE rater.id <> $userId
-        AND NOT (me)-[:RATED]->(rest)
+        $$RATED_GUARD$$
       WITH DISTINCT rest, rater, r.score AS score
       WITH rest, sum(score) AS affinity, count(rater) AS recommenderCount
       RETURN rest.id AS id,
@@ -41,7 +45,7 @@ class RecommendationNeo4jAdapter implements RecommendationGraphPort {
       """
       MATCH (me:User {id: $userId})-[:KNOWS*1..2]->(rater:User)-[r:RATED]->(rest:Restaurant)
       WHERE rater.id <> $userId
-        AND NOT (me)-[:RATED]->(rest)
+        $$RATED_GUARD$$
       WITH DISTINCT rest, rater, r.score AS score
       WITH rest, sum(score) AS affinity, count(rater) AS recommenderCount
       WHERE affinity < $cursorAffinity
@@ -75,13 +79,13 @@ class RecommendationNeo4jAdapter implements RecommendationGraphPort {
 
   @Override
   public CursorPage<Recommendation> findRecommendations(
-      UserId requester, RecommendationCursor cursor, int size) {
+      UserId requester, RecommendationCursor cursor, int size, boolean includeOwn) {
     int limit = size + 1;
     Collection<Map<String, Object>> rows;
     if (cursor == null) {
       rows =
           neo4jClient
-              .query(FIRST_PAGE_CYPHER)
+              .query(render(FIRST_PAGE_CYPHER, includeOwn))
               .bindAll(Map.of("userId", requester.value().toString(), "limit", limit))
               .fetch()
               .all();
@@ -91,7 +95,7 @@ class RecommendationNeo4jAdapter implements RecommendationGraphPort {
       params.put("cursorAffinity", cursor.affinity());
       params.put("cursorId", cursor.id().value().toString());
       params.put("limit", limit);
-      rows = neo4jClient.query(KEYSET_CYPHER).bindAll(params).fetch().all();
+      rows = neo4jClient.query(render(KEYSET_CYPHER, includeOwn)).bindAll(params).fetch().all();
     }
 
     List<Recommendation> mapped = new ArrayList<>(rows.size());
@@ -126,6 +130,10 @@ class RecommendationNeo4jAdapter implements RecommendationGraphPort {
         restaurant,
         ((Number) row.get("affinity")).doubleValue(),
         ((Number) row.get("recommenderCount")).intValue());
+  }
+
+  private static String render(String template, boolean includeOwn) {
+    return template.replace(RATED_GUARD_TOKEN, includeOwn ? "" : RATED_GUARD_CLAUSE);
   }
 
   private static Recommendation toDomain(Map<String, Object> row) {

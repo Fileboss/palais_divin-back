@@ -162,6 +162,61 @@ class RecommendationRestIT extends AbstractIntegrationTest {
     assertThat(decoded.id().value()).isEqualTo(page1.data().getLast().id());
   }
 
+  @Test
+  void list_includeOwnDefault_excludesSelfRatedRestaurants() {
+    UserId friend = UserId.newId();
+    mergeUser(friend);
+    mergeKnows(meId, friend);
+
+    RestaurantId rated = RestaurantId.newId();
+    RestaurantId unrated = RestaurantId.newId();
+    mergeRestaurant(rated, "Rated", "addr R", 48.85, 2.30);
+    mergeRestaurant(unrated, "Unrated", "addr U", 48.86, 2.31);
+    mergeRated(friend, rated, 5);
+    mergeRated(friend, unrated, 4);
+    mergeRated(meId, rated, 3);
+
+    RecommendationsPageResponse page =
+        authedClient()
+            .get()
+            .uri("/api/v1/user/recommendations")
+            .retrieve()
+            .body(RecommendationsPageResponse.class);
+
+    assertThat(page).isNotNull();
+    assertThat(page.data()).hasSize(1);
+    assertThat(page.data().getFirst().id()).isEqualTo(unrated.value());
+  }
+
+  @Test
+  void list_includeOwnTrue_returnsSelfRatedRestaurants() {
+    UserId friend = UserId.newId();
+    mergeUser(friend);
+    mergeKnows(meId, friend);
+
+    RestaurantId rated = RestaurantId.newId();
+    RestaurantId unrated = RestaurantId.newId();
+    mergeRestaurant(rated, "Rated", "addr R", 48.85, 2.30);
+    mergeRestaurant(unrated, "Unrated", "addr U", 48.86, 2.31);
+    mergeRated(friend, rated, 5);
+    mergeRated(friend, unrated, 4);
+    mergeRated(meId, rated, 3);
+
+    RecommendationsPageResponse page =
+        authedClient()
+            .get()
+            .uri("/api/v1/user/recommendations?includeOwn=true")
+            .retrieve()
+            .body(RecommendationsPageResponse.class);
+
+    assertThat(page).isNotNull();
+    assertThat(page.data()).hasSize(2);
+    assertThat(page.data().get(0).id()).isEqualTo(rated.value());
+    assertThat(page.data().get(0).affinity()).isEqualTo(5.0);
+    assertThat(page.data().get(1).id()).isEqualTo(unrated.value());
+    assertThat(page.data().get(1).affinity()).isEqualTo(4.0);
+  }
+
   // --- helpers -----------------------------------------------------------
 
   private RestClient authedClient() {

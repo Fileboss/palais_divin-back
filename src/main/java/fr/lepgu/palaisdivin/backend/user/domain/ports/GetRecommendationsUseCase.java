@@ -6,5 +6,6 @@ import fr.lepgu.palaisdivin.backend.user.domain.model.RecommendationCursor;
 
 public interface GetRecommendationsUseCase {
 
-  CursorPage<Recommendation> list(String requesterSubject, RecommendationCursor cursor, int size);
+  CursorPage<Recommendation> list(
+      String requesterSubject, RecommendationCursor cursor, int size, boolean includeOwn);
 }

@@ -32,9 +32,11 @@ class RecommendationRestController {
       @RequestParam(required = false) String cursor,
       @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
       @RequestParam(defaultValue = "AFFINITY_DESC") RecommendationSort sort,
+      @RequestParam(defaultValue = "false") boolean includeOwn,
       @AuthenticationPrincipal Jwt jwt) {
     RecommendationCursor decoded = cursor == null ? null : RecommendationCursorCodec.decode(cursor);
-    CursorPage<Recommendation> page = getRecommendations.list(jwt.getSubject(), decoded, size);
+    CursorPage<Recommendation> page =
+        getRecommendations.list(jwt.getSubject(), decoded, size, includeOwn);
     List<RecommendationResponse> data =
         page.data().stream().map(RecommendationResponse::from).toList();
     String nextCursor =

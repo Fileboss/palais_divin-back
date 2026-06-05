@@ -346,6 +346,12 @@ paths:
           default: AFFINITY_DESC
           enum:
           - AFFINITY_DESC
+      - in: query
+        name: includeOwn
+        required: false
+        schema:
+          type: boolean
+          default: false
       responses:
         "200":
           content:

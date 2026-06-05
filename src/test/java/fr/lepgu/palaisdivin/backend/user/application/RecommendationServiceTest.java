@@ -52,23 +52,34 @@ class RecommendationServiceTest {
     CursorPage<Recommendation> expected = new CursorPage<>(List.of(reco), false);
 
     when(users.requireBySubject(SUBJECT)).thenReturn(requesterId);
-    when(graph.findRecommendations(eq(requesterId), any(), eq(20))).thenReturn(expected);
+    when(graph.findRecommendations(eq(requesterId), any(), eq(20), eq(false))).thenReturn(expected);
 
-    CursorPage<Recommendation> result = service.list(SUBJECT, null, 20);
+    CursorPage<Recommendation> result = service.list(SUBJECT, null, 20, false);
 
     assertThat(result).isSameAs(expected);
-    verify(graph).findRecommendations(requesterId, null, 20);
+    verify(graph).findRecommendations(requesterId, null, 20, false);
   }
 
   @Test
   void list_passesCursorThroughUnchanged() {
     RecommendationCursor cursor = new RecommendationCursor(7.5, RestaurantId.newId());
     when(users.requireBySubject(SUBJECT)).thenReturn(requesterId);
-    when(graph.findRecommendations(requesterId, cursor, 5))
+    when(graph.findRecommendations(requesterId, cursor, 5, false))
         .thenReturn(new CursorPage<>(List.of(), false));
 
-    service.list(SUBJECT, cursor, 5);
+    service.list(SUBJECT, cursor, 5, false);
 
-    verify(graph).findRecommendations(requesterId, cursor, 5);
+    verify(graph).findRecommendations(requesterId, cursor, 5, false);
+  }
+
+  @Test
+  void list_passesIncludeOwnThroughToGraphPort() {
+    when(users.requireBySubject(SUBJECT)).thenReturn(requesterId);
+    when(graph.findRecommendations(requesterId, null, 20, true))
+        .thenReturn(new CursorPage<>(List.of(), false));
+
+    service.list(SUBJECT, null, 20, true);
+
+    verify(graph).findRecommendations(requesterId, null, 20, true);
   }
 }

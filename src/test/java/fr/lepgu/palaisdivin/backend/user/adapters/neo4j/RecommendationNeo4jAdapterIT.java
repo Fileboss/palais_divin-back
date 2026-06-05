@@ -33,7 +33,7 @@ class RecommendationNeo4jAdapterIT extends AbstractIntegrationTest {
 
   @Test
   void noFriends_returnsEmptyPage() {
-    CursorPage<Recommendation> page = adapter.findRecommendations(me, null, 20);
+    CursorPage<Recommendation> page = adapter.findRecommendations(me, null, 20, false);
 
     assertThat(page.data()).isEmpty();
     assertThat(page.hasNext()).isFalse();
@@ -48,7 +48,7 @@ class RecommendationNeo4jAdapterIT extends AbstractIntegrationTest {
     mergeKnows(me, friend);
     mergeRated(friend, rest, 5);
 
-    CursorPage<Recommendation> page = adapter.findRecommendations(me, null, 20);
+    CursorPage<Recommendation> page = adapter.findRecommendations(me, null, 20, false);
 
     assertThat(page.data()).hasSize(1);
     Recommendation r = page.data().getFirst();
@@ -74,7 +74,7 @@ class RecommendationNeo4jAdapterIT extends AbstractIntegrationTest {
     mergeKnows(friend, fof);
     mergeRated(fof, rest, 4);
 
-    CursorPage<Recommendation> page = adapter.findRecommendations(me, null, 20);
+    CursorPage<Recommendation> page = adapter.findRecommendations(me, null, 20, false);
 
     assertThat(page.data()).hasSize(1);
     Recommendation r = page.data().getFirst();
@@ -93,10 +93,82 @@ class RecommendationNeo4jAdapterIT extends AbstractIntegrationTest {
     mergeRated(friend, rest, 5);
     mergeRated(me, rest, 3);
 
-    CursorPage<Recommendation> page = adapter.findRecommendations(me, null, 20);
+    CursorPage<Recommendation> page = adapter.findRecommendations(me, null, 20, false);
 
     assertThat(page.data()).isEmpty();
     assertThat(page.hasNext()).isFalse();
+  }
+
+  @Test
+  void selfRatedRestaurant_isIncluded_whenIncludeOwnTrue() {
+    UserId friend = UserId.newId();
+    RestaurantId rest = RestaurantId.newId();
+    mergeUser(friend);
+    mergeRestaurant(rest, "Chez Aline", "85 Rue de la Roquette", 48.857, 2.378);
+    mergeKnows(me, friend);
+    mergeRated(friend, rest, 5);
+    mergeRated(me, rest, 3);
+
+    CursorPage<Recommendation> page = adapter.findRecommendations(me, null, 20, true);
+
+    assertThat(page.data()).hasSize(1);
+    Recommendation r = page.data().getFirst();
+    assertThat(r.restaurantId()).isEqualTo(rest);
+    // `rater.id <> $userId` keeps the self-rating out of the affinity sum even when
+    // includeOwn=true.
+    assertThat(r.affinity()).isEqualTo(5.0);
+    assertThat(r.recommenderCount()).isEqualTo(1);
+  }
+
+  @Test
+  void walkPagesNoOverlap_visitsEveryRestaurantOnce_whenIncludeOwnTrue() {
+    UserId friend = UserId.newId();
+    mergeUser(friend);
+    mergeKnows(me, friend);
+
+    RestaurantId r5 = RestaurantId.newId();
+    RestaurantId r4 = RestaurantId.newId();
+    RestaurantId r3 = RestaurantId.newId();
+    RestaurantId r2 = RestaurantId.newId();
+    RestaurantId r1 = RestaurantId.newId();
+    mergeRestaurant(r5, "A", "addr A", 48.8, 2.3);
+    mergeRestaurant(r4, "B", "addr B", 48.8, 2.3);
+    mergeRestaurant(r3, "C", "addr C", 48.8, 2.3);
+    mergeRestaurant(r2, "D", "addr D", 48.8, 2.3);
+    mergeRestaurant(r1, "E", "addr E", 48.8, 2.3);
+    mergeRated(friend, r5, 5);
+    mergeRated(friend, r4, 4);
+    mergeRated(friend, r3, 3);
+    mergeRated(friend, r2, 2);
+    mergeRated(friend, r1, 1);
+    // Self-rate two of them — they must still appear in the includeOwn walk.
+    mergeRated(me, r4, 2);
+    mergeRated(me, r2, 1);
+
+    CursorPage<Recommendation> page1 = adapter.findRecommendations(me, null, 2, true);
+    assertThat(page1.data()).hasSize(2);
+    assertThat(page1.hasNext()).isTrue();
+    assertThat(page1.data().get(0).affinity()).isEqualTo(5.0);
+    assertThat(page1.data().get(1).affinity()).isEqualTo(4.0);
+
+    RecommendationCursor cursor1 =
+        new RecommendationCursor(
+            page1.data().getLast().affinity(), page1.data().getLast().restaurantId());
+
+    CursorPage<Recommendation> page2 = adapter.findRecommendations(me, cursor1, 2, true);
+    assertThat(page2.data()).hasSize(2);
+    assertThat(page2.hasNext()).isTrue();
+    assertThat(page2.data().get(0).affinity()).isEqualTo(3.0);
+    assertThat(page2.data().get(1).affinity()).isEqualTo(2.0);
+
+    RecommendationCursor cursor2 =
+        new RecommendationCursor(
+            page2.data().getLast().affinity(), page2.data().getLast().restaurantId());
+
+    CursorPage<Recommendation> page3 = adapter.findRecommendations(me, cursor2, 2, true);
+    assertThat(page3.data()).hasSize(1);
+    assertThat(page3.hasNext()).isFalse();
+    assertThat(page3.data().getFirst().affinity()).isEqualTo(1.0);
   }
 
   @Test
@@ -112,7 +184,7 @@ class RecommendationNeo4jAdapterIT extends AbstractIntegrationTest {
     mergeRated(friend, rest, 5);
     mergeRated(fof, rest, 3);
 
-    CursorPage<Recommendation> page = adapter.findRecommendations(me, null, 20);
+    CursorPage<Recommendation> page = adapter.findRecommendations(me, null, 20, false);
 
     assertThat(page.data()).hasSize(1);
     Recommendation r = page.data().getFirst();
@@ -143,7 +215,7 @@ class RecommendationNeo4jAdapterIT extends AbstractIntegrationTest {
     mergeRated(friend, r2, 2);
     mergeRated(friend, r1, 1);
 
-    CursorPage<Recommendation> page1 = adapter.findRecommendations(me, null, 2);
+    CursorPage<Recommendation> page1 = adapter.findRecommendations(me, null, 2, false);
     assertThat(page1.data()).hasSize(2);
     assertThat(page1.hasNext()).isTrue();
     assertThat(page1.data().get(0).affinity()).isEqualTo(5.0);
@@ -153,7 +225,7 @@ class RecommendationNeo4jAdapterIT extends AbstractIntegrationTest {
         new RecommendationCursor(
             page1.data().getLast().affinity(), page1.data().getLast().restaurantId());
 
-    CursorPage<Recommendation> page2 = adapter.findRecommendations(me, cursor1, 2);
+    CursorPage<Recommendation> page2 = adapter.findRecommendations(me, cursor1, 2, false);
     assertThat(page2.data()).hasSize(2);
     assertThat(page2.hasNext()).isTrue();
     assertThat(page2.data().get(0).affinity()).isEqualTo(3.0);
@@ -163,7 +235,7 @@ class RecommendationNeo4jAdapterIT extends AbstractIntegrationTest {
         new RecommendationCursor(
             page2.data().getLast().affinity(), page2.data().getLast().restaurantId());
 
-    CursorPage<Recommendation> page3 = adapter.findRecommendations(me, cursor2, 2);
+    CursorPage<Recommendation> page3 = adapter.findRecommendations(me, cursor2, 2, false);
     assertThat(page3.data()).hasSize(1);
     assertThat(page3.hasNext()).isFalse();
     assertThat(page3.data().getFirst().affinity()).isEqualTo(1.0);

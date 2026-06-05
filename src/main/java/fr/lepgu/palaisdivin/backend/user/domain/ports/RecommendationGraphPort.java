@@ -10,7 +10,7 @@ import fr.lepgu.palaisdivin.backend.user.domain.model.UserId;
 public interface RecommendationGraphPort {
 
   CursorPage<Recommendation> findRecommendations(
-      UserId requester, RecommendationCursor cursor, int size);
+      UserId requester, RecommendationCursor cursor, int size, boolean includeOwn);
 
   RestaurantAffinity findAffinityFor(UserId requester, RestaurantId restaurant);
 }

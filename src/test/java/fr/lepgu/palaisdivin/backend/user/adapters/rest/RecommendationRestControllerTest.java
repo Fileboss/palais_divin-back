@@ -63,7 +63,7 @@ class RecommendationRestControllerTest {
   void list_default_returnsEnvelope_without_nextCursor_whenLastPage() throws Exception {
     Recommendation r1 = reco(9.0, 2);
     Recommendation r2 = reco(5.0, 1);
-    when(getRecommendations.list(eq(SUBJECT), isNull(), eq(20)))
+    when(getRecommendations.list(eq(SUBJECT), isNull(), eq(20), eq(false)))
         .thenReturn(new CursorPage<>(List.of(r1, r2), false));
 
     mockMvc
@@ -85,7 +85,7 @@ class RecommendationRestControllerTest {
   void list_withMoreAvailable_emitsNextCursor() throws Exception {
     Recommendation r1 = reco(9.0, 2);
     Recommendation r2 = reco(7.0, 1);
-    when(getRecommendations.list(eq(SUBJECT), isNull(), eq(2)))
+    when(getRecommendations.list(eq(SUBJECT), isNull(), eq(2), eq(false)))
         .thenReturn(new CursorPage<>(List.of(r1, r2), true));
 
     mockMvc
@@ -103,7 +103,7 @@ class RecommendationRestControllerTest {
     RecommendationCursor seed = new RecommendationCursor(7.5, RestaurantId.newId());
     String token = RecommendationCursorCodec.encode(seed);
 
-    when(getRecommendations.list(eq(SUBJECT), any(RecommendationCursor.class), eq(5)))
+    when(getRecommendations.list(eq(SUBJECT), any(RecommendationCursor.class), eq(5), eq(false)))
         .thenReturn(new CursorPage<>(List.of(), false));
 
     mockMvc
@@ -116,7 +116,7 @@ class RecommendationRestControllerTest {
 
     ArgumentCaptor<RecommendationCursor> captured =
         ArgumentCaptor.forClass(RecommendationCursor.class);
-    verify(getRecommendations).list(eq(SUBJECT), captured.capture(), eq(5));
+    verify(getRecommendations).list(eq(SUBJECT), captured.capture(), eq(5), eq(false));
     org.assertj.core.api.Assertions.assertThat(captured.getValue()).isEqualTo(seed);
   }
 
@@ -151,6 +151,18 @@ class RecommendationRestControllerTest {
     mockMvc
         .perform(get("/api/v1/user/recommendations").with(userJwt()).param("sort", "RATING_DESC"))
         .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void list_includeOwnTrue_isForwardedToUseCase() throws Exception {
+    when(getRecommendations.list(eq(SUBJECT), isNull(), eq(20), eq(true)))
+        .thenReturn(new CursorPage<>(List.of(), false));
+
+    mockMvc
+        .perform(get("/api/v1/user/recommendations").with(userJwt()).param("includeOwn", "true"))
+        .andExpect(status().isOk());
+
+    verify(getRecommendations).list(eq(SUBJECT), isNull(), eq(20), eq(true));
   }
 
   @Test

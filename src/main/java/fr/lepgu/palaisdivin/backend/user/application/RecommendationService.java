@@ -24,8 +24,8 @@ public class RecommendationService implements GetRecommendationsUseCase {
 
   @Override
   public CursorPage<Recommendation> list(
-      String requesterSubject, RecommendationCursor cursor, int size) {
+      String requesterSubject, RecommendationCursor cursor, int size, boolean includeOwn) {
     UserId requester = users.requireBySubject(requesterSubject);
-    return graph.findRecommendations(requester, cursor, size);
+    return graph.findRecommendations(requester, cursor, size, includeOwn);
   }
 }
