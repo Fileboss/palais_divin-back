@@ -301,6 +301,111 @@ class PublicRestaurantRestControllerTest {
   }
 
   @Test
+  void list_sortByDistance_withAnchor_passesFilterAndSortThrough() throws Exception {
+    Restaurant r = restaurant("Septime");
+    Coordinates anchor = new Coordinates(48.8566, 2.3522);
+    when(listRestaurants.list(
+            null, 20, new RestaurantFilter(List.of(), null, anchor), RestaurantSort.DISTANCE_ASC))
+        .thenReturn(new CursorPage<>(List.of(r), false));
+
+    mockMvc
+        .perform(
+            get("/api/v1/public/restaurants")
+                .param("sort", "DISTANCE_ASC")
+                .param("lat", "48.8566")
+                .param("lng", "2.3522"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.length()").value(1));
+  }
+
+  @Test
+  void list_sortByDistance_withoutLat_returns400_missingAnchor() throws Exception {
+    mockMvc
+        .perform(
+            get("/api/v1/public/restaurants").param("sort", "DISTANCE_ASC").param("lng", "2.3522"))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+        .andExpect(
+            jsonPath("$.type").value("https://palaisdivin.lepgu.fr/problems/missing-anchor"));
+  }
+
+  @Test
+  void list_sortByDistance_withoutLng_returns400_missingAnchor() throws Exception {
+    mockMvc
+        .perform(
+            get("/api/v1/public/restaurants").param("sort", "DISTANCE_ASC").param("lat", "48.8566"))
+        .andExpect(status().isBadRequest())
+        .andExpect(
+            jsonPath("$.type").value("https://palaisdivin.lepgu.fr/problems/missing-anchor"));
+  }
+
+  @Test
+  void list_sortByDistance_neitherLatNorLng_returns400_missingAnchor() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/public/restaurants").param("sort", "DISTANCE_ASC"))
+        .andExpect(status().isBadRequest())
+        .andExpect(
+            jsonPath("$.type").value("https://palaisdivin.lepgu.fr/problems/missing-anchor"));
+  }
+
+  @Test
+  void list_sortByCreatedAt_withAnchor_ignoresAnchor_returns200() throws Exception {
+    Restaurant r = restaurant("Septime");
+    when(listRestaurants.list(
+            null,
+            20,
+            new RestaurantFilter(List.of(), null, new Coordinates(48.8566, 2.3522)),
+            RestaurantSort.CREATED_AT_DESC))
+        .thenReturn(new CursorPage<>(List.of(r), false));
+
+    mockMvc
+        .perform(get("/api/v1/public/restaurants").param("lat", "48.8566").param("lng", "2.3522"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.length()").value(1));
+  }
+
+  @Test
+  void list_latOutOfRange_returns400_validation() throws Exception {
+    mockMvc
+        .perform(
+            get("/api/v1/public/restaurants")
+                .param("sort", "DISTANCE_ASC")
+                .param("lat", "91")
+                .param("lng", "2"))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void list_lngOutOfRange_returns400_validation() throws Exception {
+    mockMvc
+        .perform(
+            get("/api/v1/public/restaurants")
+                .param("sort", "DISTANCE_ASC")
+                .param("lat", "48")
+                .param("lng", "181"))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void list_v4Cursor_withCreatedAtSort_returns400_invalidCursor() throws Exception {
+    String token =
+        java.util.Base64.getUrlEncoder()
+            .withoutPadding()
+            .encodeToString(
+                ("{\"d\":1234.5,\"id\":\"" + java.util.UUID.randomUUID() + "\",\"v\":4}")
+                    .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+
+    mockMvc
+        .perform(
+            get("/api/v1/public/restaurants")
+                .param("sort", "CREATED_AT_DESC")
+                .param("cursor", token))
+        .andExpect(status().isBadRequest())
+        .andExpect(
+            jsonPath("$.type").value("https://palaisdivin.lepgu.fr/problems/invalid-cursor"));
+  }
+
+  @Test
   void list_cursorFromCreatedAt_withRatingSort_returns400_invalidCursor() throws Exception {
     // build a v=1 createdAt cursor token then submit it with sort=RATING_DESC
     String token =

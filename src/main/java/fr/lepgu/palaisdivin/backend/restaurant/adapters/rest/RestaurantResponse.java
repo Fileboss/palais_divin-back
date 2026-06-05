@@ -14,6 +14,7 @@ public record RestaurantResponse(
     CoordinatesDto location,
     Instant createdAt,
     Double avgRating,
+    Double distanceMetres,
     List<TagSummary> tags) {
 
   public static RestaurantResponse from(Restaurant r) {
@@ -28,6 +29,7 @@ public record RestaurantResponse(
         new CoordinatesDto(r.location().latitude(), r.location().longitude()),
         r.createdAt(),
         r.avgRating(),
+        r.distanceMetres(),
         tags.stream().map(TagSummary::from).toList());
   }
 

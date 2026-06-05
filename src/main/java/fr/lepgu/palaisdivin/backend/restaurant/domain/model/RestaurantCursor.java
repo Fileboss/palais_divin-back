@@ -6,7 +6,10 @@ import java.util.Objects;
 import java.util.UUID;
 
 public sealed interface RestaurantCursor
-    permits RestaurantCursor.ByCreatedAt, RestaurantCursor.ByRating, RestaurantCursor.ByName {
+    permits RestaurantCursor.ByCreatedAt,
+        RestaurantCursor.ByRating,
+        RestaurantCursor.ByName,
+        RestaurantCursor.ByDistance {
 
   UUID id();
 
@@ -26,6 +29,12 @@ public sealed interface RestaurantCursor
   record ByName(String name, UUID id) implements RestaurantCursor {
     public ByName {
       Objects.requireNonNull(name, "name");
+      Objects.requireNonNull(id, "id");
+    }
+  }
+
+  record ByDistance(double distanceMetres, UUID id) implements RestaurantCursor {
+    public ByDistance {
       Objects.requireNonNull(id, "id");
     }
   }

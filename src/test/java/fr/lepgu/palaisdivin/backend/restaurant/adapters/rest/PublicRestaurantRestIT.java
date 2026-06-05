@@ -877,6 +877,161 @@ class PublicRestaurantRestIT extends AbstractIntegrationTest {
   }
 
   @Test
+  void list_sortByDistance_returnsNearestFirst_andSurfacesDistanceMetres() {
+    String suffix = UUID.randomUUID().toString().substring(0, 8);
+    String prefix = "zdist-" + suffix;
+    RestClient authed = authedClient();
+    UUID near = postAt(authed, prefix + "-near", "addr-n", 48.8530, 2.3500);
+    UUID mid = postAt(authed, prefix + "-mid", "addr-m", 48.8530, 2.3520);
+    UUID far = postAt(authed, prefix + "-far", "addr-f", 48.8530, 2.3540);
+
+    RestClient unauthed = RestClient.create("http://localhost:" + port);
+    RestaurantsPageResponse page =
+        unauthed
+            .get()
+            .uri(
+                "/api/v1/public/restaurants?size=100&sort=DISTANCE_ASC&lat=48.8530&lng=2.3499&name="
+                    + prefix)
+            .retrieve()
+            .body(RestaurantsPageResponse.class);
+
+    List<UUID> ids = page.data().stream().map(RestaurantResponse::id).toList();
+    assertThat(ids).containsExactly(near, mid, far);
+    assertThat(page.data())
+        .allSatisfy(r -> assertThat(r.distanceMetres()).isNotNull().isGreaterThanOrEqualTo(0.0));
+    for (int i = 1; i < page.data().size(); i++) {
+      assertThat(page.data().get(i).distanceMetres())
+          .isGreaterThan(page.data().get(i - 1).distanceMetres());
+    }
+  }
+
+  @Test
+  void list_sortByDistance_paginatesAcrossPages_noOverlap() {
+    String suffix = UUID.randomUUID().toString().substring(0, 8);
+    String prefix = "zdwalk-" + suffix;
+    RestClient authed = authedClient();
+    Set<UUID> seeded = new HashSet<>();
+    for (int i = 0; i < 7; i++) {
+      seeded.add(postAt(authed, prefix + "-" + i, "addr-" + i, 48.8530, 2.3499 + 0.001 * i));
+    }
+
+    RestClient unauthed = RestClient.create("http://localhost:" + port);
+    List<UUID> collected = new ArrayList<>();
+    String cursor = null;
+    int pages = 0;
+    while (true) {
+      String path =
+          cursor == null
+              ? "/api/v1/public/restaurants?size=2&sort=DISTANCE_ASC&lat=48.8530&lng=2.3499&name="
+                  + prefix
+              : "/api/v1/public/restaurants?size=2&sort=DISTANCE_ASC&lat=48.8530&lng=2.3499&name="
+                  + prefix
+                  + "&cursor="
+                  + cursor;
+      RestaurantsPageResponse body =
+          unauthed.get().uri(path).retrieve().body(RestaurantsPageResponse.class);
+      assertThat(body).isNotNull();
+      body.data().forEach(r -> collected.add(r.id()));
+      pages++;
+      if (!body.page().hasNext()) break;
+      cursor = body.page().nextCursor();
+      assertThat(cursor).isNotBlank();
+      if (pages > 10) throw new AssertionError("paging did not terminate");
+    }
+
+    assertThat(collected).doesNotHaveDuplicates();
+    assertThat(new HashSet<>(collected)).isEqualTo(seeded);
+  }
+
+  @Test
+  void list_sortByDistance_missingLat_returns400_missingAnchorProblemDetail() {
+    RestClient unauthed = RestClient.create("http://localhost:" + port);
+    ResponseEntity<String> resp =
+        unauthed
+            .get()
+            .uri("/api/v1/public/restaurants?sort=DISTANCE_ASC&lng=2.3499")
+            .retrieve()
+            .onStatus(s -> s.is4xxClientError(), (req, res) -> {})
+            .toEntity(String.class);
+
+    assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(resp.getHeaders().getContentType().toString())
+        .startsWith("application/problem+json");
+    assertThat(resp.getBody()).contains("/problems/missing-anchor");
+  }
+
+  @Test
+  void list_sortByDistance_missingLng_returns400_missingAnchorProblemDetail() {
+    RestClient unauthed = RestClient.create("http://localhost:" + port);
+    ResponseEntity<String> resp =
+        unauthed
+            .get()
+            .uri("/api/v1/public/restaurants?sort=DISTANCE_ASC&lat=48.8530")
+            .retrieve()
+            .onStatus(s -> s.is4xxClientError(), (req, res) -> {})
+            .toEntity(String.class);
+
+    assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(resp.getBody()).contains("/problems/missing-anchor");
+  }
+
+  @Test
+  void list_sortByDistance_latOutOfRange_returns400() {
+    RestClient unauthed = RestClient.create("http://localhost:" + port);
+    ResponseEntity<String> resp =
+        unauthed
+            .get()
+            .uri("/api/v1/public/restaurants?sort=DISTANCE_ASC&lat=91&lng=2")
+            .retrieve()
+            .onStatus(s -> s.is4xxClientError(), (req, res) -> {})
+            .toEntity(String.class);
+
+    assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+  }
+
+  @Test
+  void list_v4CursorWithCreatedAtSort_returns400_invalidCursorProblemDetail() {
+    String token =
+        Base64.getUrlEncoder()
+            .withoutPadding()
+            .encodeToString(
+                ("{\"d\":42.0,\"id\":\"" + UUID.randomUUID() + "\",\"v\":4}")
+                    .getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    RestClient unauthed = RestClient.create("http://localhost:" + port);
+    ResponseEntity<String> resp =
+        unauthed
+            .get()
+            .uri("/api/v1/public/restaurants?sort=CREATED_AT_DESC&cursor=" + token)
+            .retrieve()
+            .onStatus(s -> s.is4xxClientError(), (req, res) -> {})
+            .toEntity(String.class);
+
+    assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(resp.getBody()).contains("/problems/invalid-cursor");
+  }
+
+  private UUID postAt(RestClient authed, String name, String address, double lat, double lng) {
+    UUID id =
+        authed
+            .post()
+            .uri("/api/v1/user/restaurants")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new CreateRestaurantRequest(name, address))
+            .retrieve()
+            .body(RestaurantResponse.class)
+            .id();
+    jdbcClient
+        .sql(
+            "UPDATE restaurant SET location = ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography WHERE"
+                + " id = ?")
+        .param(lng)
+        .param(lat)
+        .param(id)
+        .update();
+    return id;
+  }
+
+  @Test
   void list_invalidSortEnum_returns400_badRequestProblemDetail() {
     RestClient unauthed = RestClient.create("http://localhost:" + port);
     ResponseEntity<String> resp =

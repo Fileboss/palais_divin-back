@@ -242,6 +242,22 @@ class RestaurantServiceTest {
   }
 
   @Test
+  void listPropagatesDistanceSortAndAnchor() {
+    RestaurantFilter filter =
+        new RestaurantFilter(
+            List.of(),
+            null,
+            new fr.lepgu.palaisdivin.backend.restaurant.domain.model.Coordinates(48.8566, 2.3522));
+    CursorPage<Restaurant> expected = new CursorPage<>(List.of(), false);
+    when(repository.findAll(null, 20, filter, RestaurantSort.DISTANCE_ASC)).thenReturn(expected);
+
+    CursorPage<Restaurant> got = service.list(null, 20, filter, RestaurantSort.DISTANCE_ASC);
+
+    assertThat(got).isSameAs(expected);
+    verify(repository).findAll(null, 20, filter, RestaurantSort.DISTANCE_ASC);
+  }
+
+  @Test
   void deletePropagatesRepositoryFailureAndDoesNotPublish() {
     RestaurantId id = RestaurantId.newId();
     Restaurant stored = new Restaurant(id, "Septime", null, LOCATION, FIXED_NOW, null);

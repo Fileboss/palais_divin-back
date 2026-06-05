@@ -51,7 +51,8 @@ public class RestaurantService
   public Restaurant create(String name, String address) {
     Coordinates location = geocoder.geocode(address);
     Restaurant restaurant =
-        new Restaurant(RestaurantId.newId(), name, address, location, Instant.now(clock), null);
+        new Restaurant(
+            RestaurantId.newId(), name, address, location, Instant.now(clock), null, null);
     Restaurant saved = repository.save(restaurant);
     outboxPublisher.publish(
         "Restaurant",

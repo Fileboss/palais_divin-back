@@ -9,7 +9,8 @@ public record Restaurant(
     String address,
     Coordinates location,
     Instant createdAt,
-    Double avgRating) {
+    Double avgRating,
+    Double distanceMetres) {
   public Restaurant {
     Objects.requireNonNull(id, "id");
     Objects.requireNonNull(name, "name");
@@ -18,5 +19,15 @@ public record Restaurant(
     }
     Objects.requireNonNull(location, "location");
     Objects.requireNonNull(createdAt, "createdAt");
+  }
+
+  public Restaurant(
+      RestaurantId id,
+      String name,
+      String address,
+      Coordinates location,
+      Instant createdAt,
+      Double avgRating) {
+    this(id, name, address, location, createdAt, avgRating, null);
   }
 }

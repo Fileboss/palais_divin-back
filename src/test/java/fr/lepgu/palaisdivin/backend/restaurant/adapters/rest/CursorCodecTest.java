@@ -159,4 +159,29 @@ class CursorCodecTest {
     assertThatThrownBy(() -> CursorCodec.decode(b64(json), RestaurantSort.RATING_DESC))
         .isInstanceOf(InvalidCursorException.class);
   }
+
+  @Test
+  void encodeDecode_byDistance_roundTrip() {
+    RestaurantCursor original = new RestaurantCursor.ByDistance(1234.56, UUID.randomUUID());
+
+    String token = CursorCodec.encode(original);
+    RestaurantCursor decoded = CursorCodec.decode(token, RestaurantSort.DISTANCE_ASC);
+
+    assertThat(decoded).isEqualTo(original);
+  }
+
+  @Test
+  void decode_v4Cursor_withCreatedAtSort_throws() {
+    String token = CursorCodec.encode(new RestaurantCursor.ByDistance(42.0, UUID.randomUUID()));
+
+    assertThatThrownBy(() -> CursorCodec.decode(token, RestaurantSort.CREATED_AT_DESC))
+        .isInstanceOf(InvalidCursorException.class);
+  }
+
+  @Test
+  void decode_v4DistanceAsString_throws() {
+    String json = "{\"d\":\"not-a-number\",\"id\":\"" + UUID.randomUUID() + "\",\"v\":4}";
+    assertThatThrownBy(() -> CursorCodec.decode(b64(json), RestaurantSort.DISTANCE_ASC))
+        .isInstanceOf(InvalidCursorException.class);
+  }
 }

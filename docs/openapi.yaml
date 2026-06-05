@@ -89,6 +89,7 @@ paths:
           - CREATED_AT_DESC
           - RATING_DESC
           - NAME_ASC
+          - DISTANCE_ASC
       - in: query
         name: tag
         required: false
@@ -108,6 +109,22 @@ paths:
           type: string
           maxLength: 100
           minLength: 0
+      - in: query
+        name: lat
+        required: false
+        schema:
+          type: number
+          format: double
+          maximum: 90.0
+          minimum: -90.0
+      - in: query
+        name: lng
+        required: false
+        schema:
+          type: number
+          format: double
+          maximum: 180.0
+          minimum: -180.0
       responses:
         "200":
           content:
@@ -842,6 +859,9 @@ components:
         createdAt:
           type: string
           format: date-time
+        distanceMetres:
+          type: number
+          format: double
         id:
           type: string
           format: uuid

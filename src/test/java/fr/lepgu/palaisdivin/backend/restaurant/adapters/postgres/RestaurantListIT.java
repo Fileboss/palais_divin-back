@@ -425,6 +425,115 @@ class RestaurantListIT {
         .containsExactly(bistroA.value(), bistroC.value());
   }
 
+  @Test
+  void findAll_sortByDistanceAsc_nearestFirst_andPopulatesDistanceMetres() {
+    Coordinates anchor = new Coordinates(48.8530, 2.3499);
+    Instant base = Instant.parse("2026-05-27T10:00:00Z");
+    RestaurantId r0 = saveRestaurantAt("r0", base, 48.8530, 2.3499); // 0m
+    RestaurantId r1 = saveRestaurantAt("r1", base.plusSeconds(1), 48.8530, 2.3509); // ~73m
+    RestaurantId r2 = saveRestaurantAt("r2", base.plusSeconds(2), 48.8530, 2.3519); // ~146m
+    RestaurantId r3 = saveRestaurantAt("r3", base.plusSeconds(3), 48.8530, 2.3529); // ~219m
+    RestaurantId r4 = saveRestaurantAt("r4", base.plusSeconds(4), 48.8530, 2.3539); // ~293m
+
+    CursorPage<Restaurant> page =
+        adapter.findAll(
+            null, 10, new RestaurantFilter(List.of(), null, anchor), RestaurantSort.DISTANCE_ASC);
+
+    assertThat(page.data().stream().map(r -> r.id().value()))
+        .containsExactly(r0.value(), r1.value(), r2.value(), r3.value(), r4.value());
+    assertThat(page.data())
+        .allSatisfy(r -> assertThat(r.distanceMetres()).isNotNull().isGreaterThanOrEqualTo(0.0));
+    // strictly increasing
+    for (int i = 1; i < page.data().size(); i++) {
+      assertThat(page.data().get(i).distanceMetres())
+          .isGreaterThan(page.data().get(i - 1).distanceMetres());
+    }
+  }
+
+  @Test
+  void findAll_sortByDistanceAsc_keysetPaginates_noOverlap() {
+    Coordinates anchor = new Coordinates(48.8530, 2.3499);
+    Instant base = Instant.parse("2026-05-27T10:00:00Z");
+    Set<UUID> all = new HashSet<>();
+    for (int i = 0; i < 7; i++) {
+      RestaurantId rid =
+          saveRestaurantAt("d-" + i, base.plusSeconds(i), 48.8530, 2.3499 + 0.001 * i);
+      all.add(rid.value());
+    }
+
+    List<UUID> collected = new ArrayList<>();
+    RestaurantCursor cursor = null;
+    int pages = 0;
+    while (true) {
+      CursorPage<Restaurant> page =
+          adapter.findAll(
+              cursor,
+              3,
+              new RestaurantFilter(List.of(), null, anchor),
+              RestaurantSort.DISTANCE_ASC);
+      page.data().forEach(r -> collected.add(r.id().value()));
+      pages++;
+      if (!page.hasNext()) break;
+      Restaurant last = page.data().getLast();
+      cursor = new RestaurantCursor.ByDistance(last.distanceMetres(), last.id().value());
+      if (pages > 5) throw new AssertionError("paging did not terminate");
+    }
+
+    assertThat(collected).doesNotHaveDuplicates();
+    assertThat(new HashSet<>(collected)).isEqualTo(all);
+  }
+
+  @Test
+  void findAll_sortByDistanceAsc_combinedWithTagFilter() {
+    String suffix = UUID.randomUUID().toString().substring(0, 8);
+    Coordinates anchor = new Coordinates(48.8530, 2.3499);
+    Instant base = Instant.parse("2026-05-27T10:00:00Z");
+    RestaurantId near = saveRestaurantAt("near", base, 48.8530, 2.3500);
+    RestaurantId mid = saveRestaurantAt("mid", base.plusSeconds(1), 48.8530, 2.3520);
+    RestaurantId far = saveRestaurantAt("far", base.plusSeconds(2), 48.8530, 2.3540);
+
+    UUID attacher = seedUser(suffix);
+    UUID burger = seedTag("FOOD", "rl-burger-" + suffix, "Burger");
+    attach(near.value(), burger, attacher, base);
+    attach(far.value(), burger, attacher, base);
+
+    CursorPage<Restaurant> page =
+        adapter.findAll(
+            null,
+            10,
+            new RestaurantFilter(List.of("rl-burger-" + suffix), null, anchor),
+            RestaurantSort.DISTANCE_ASC);
+
+    assertThat(page.data().stream().map(r -> r.id().value()))
+        .containsExactly(near.value(), far.value());
+    assertThat(page.data().stream().map(r -> r.id().value())).doesNotContain(mid.value());
+  }
+
+  @Test
+  void findAll_sortByDistanceAsc_combinedWithNameFilter() {
+    Coordinates anchor = new Coordinates(48.8530, 2.3499);
+    Instant base = Instant.parse("2026-05-27T10:00:00Z");
+    RestaurantId bistroNear = saveRestaurantAt("Bistro Near", base, 48.8530, 2.3501);
+    RestaurantId bistroFar = saveRestaurantAt("Bistro Far", base.plusSeconds(1), 48.8530, 2.3540);
+    saveRestaurantAt("Cafe Skip", base.plusSeconds(2), 48.8530, 2.3502);
+
+    CursorPage<Restaurant> page =
+        adapter.findAll(
+            null,
+            10,
+            new RestaurantFilter(List.of(), "bistro", anchor),
+            RestaurantSort.DISTANCE_ASC);
+
+    assertThat(page.data().stream().map(r -> r.id().value()))
+        .containsExactly(bistroNear.value(), bistroFar.value());
+  }
+
+  private RestaurantId saveRestaurantAt(String name, Instant createdAt, double lat, double lng) {
+    RestaurantId id = RestaurantId.newId();
+    adapter.save(new Restaurant(id, name, null, new Coordinates(lat, lng), createdAt, null));
+    return id;
+  }
+
   private void setRating(UUID restaurantId, String rating) {
     em.createNativeQuery("UPDATE restaurant SET avg_rating = :r WHERE id = :id")
         .setParameter("r", new java.math.BigDecimal(rating))

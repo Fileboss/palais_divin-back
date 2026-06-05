@@ -47,4 +47,18 @@ class RestaurantCursorTest {
     assertThatThrownBy(() -> new RestaurantCursor.ByName("Septime", null))
         .isInstanceOf(NullPointerException.class);
   }
+
+  @Test
+  void byDistance_rejectsNullId() {
+    assertThatThrownBy(() -> new RestaurantCursor.ByDistance(1234.5, null))
+        .isInstanceOf(NullPointerException.class);
+  }
+
+  @Test
+  void byDistance_holdsDistanceAndId() {
+    UUID id = UUID.randomUUID();
+    RestaurantCursor.ByDistance cursor = new RestaurantCursor.ByDistance(450.25, id);
+    assertThat(cursor.distanceMetres()).isEqualTo(450.25);
+    assertThat(cursor.id()).isEqualTo(id);
+  }
 }
