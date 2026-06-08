@@ -4,5 +4,6 @@ public enum RestaurantSort {
   CREATED_AT_DESC,
   RATING_DESC,
   NAME_ASC,
-  DISTANCE_ASC
+  DISTANCE_ASC,
+  AFFINITY_DESC
 }

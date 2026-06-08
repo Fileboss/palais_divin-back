@@ -12,11 +12,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import fr.lepgu.palaisdivin.backend.config.security.SecurityConfig;
+import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Coordinates;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantId;
 import fr.lepgu.palaisdivin.backend.shared.adapters.web.GlobalExceptionHandler;
 import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;
 import fr.lepgu.palaisdivin.backend.user.domain.model.Recommendation;
 import fr.lepgu.palaisdivin.backend.user.domain.model.RecommendationCursor;
+import fr.lepgu.palaisdivin.backend.user.domain.model.RecommendationSort;
 import fr.lepgu.palaisdivin.backend.user.domain.ports.GetRecommendationsUseCase;
 import java.util.List;
 import java.util.UUID;
@@ -63,7 +65,13 @@ class RecommendationRestControllerTest {
   void list_default_returnsEnvelope_without_nextCursor_whenLastPage() throws Exception {
     Recommendation r1 = reco(9.0, 2);
     Recommendation r2 = reco(5.0, 1);
-    when(getRecommendations.list(eq(SUBJECT), isNull(), eq(20), eq(false)))
+    when(getRecommendations.list(
+            eq(SUBJECT),
+            isNull(),
+            eq(20),
+            eq(false),
+            eq(RecommendationSort.AFFINITY_DESC),
+            isNull()))
         .thenReturn(new CursorPage<>(List.of(r1, r2), false));
 
     mockMvc
@@ -85,7 +93,13 @@ class RecommendationRestControllerTest {
   void list_withMoreAvailable_emitsNextCursor() throws Exception {
     Recommendation r1 = reco(9.0, 2);
     Recommendation r2 = reco(7.0, 1);
-    when(getRecommendations.list(eq(SUBJECT), isNull(), eq(2), eq(false)))
+    when(getRecommendations.list(
+            eq(SUBJECT),
+            isNull(),
+            eq(2),
+            eq(false),
+            eq(RecommendationSort.AFFINITY_DESC),
+            isNull()))
         .thenReturn(new CursorPage<>(List.of(r1, r2), true));
 
     mockMvc
@@ -100,10 +114,17 @@ class RecommendationRestControllerTest {
 
   @Test
   void list_decodesCursorAndForwardsToUseCase() throws Exception {
-    RecommendationCursor seed = new RecommendationCursor(7.5, RestaurantId.newId());
+    RecommendationCursor.ByAffinity seed =
+        new RecommendationCursor.ByAffinity(7.5, RestaurantId.newId());
     String token = RecommendationCursorCodec.encode(seed);
 
-    when(getRecommendations.list(eq(SUBJECT), any(RecommendationCursor.class), eq(5), eq(false)))
+    when(getRecommendations.list(
+            eq(SUBJECT),
+            any(RecommendationCursor.class),
+            eq(5),
+            eq(false),
+            eq(RecommendationSort.AFFINITY_DESC),
+            isNull()))
         .thenReturn(new CursorPage<>(List.of(), false));
 
     mockMvc
@@ -116,7 +137,14 @@ class RecommendationRestControllerTest {
 
     ArgumentCaptor<RecommendationCursor> captured =
         ArgumentCaptor.forClass(RecommendationCursor.class);
-    verify(getRecommendations).list(eq(SUBJECT), captured.capture(), eq(5), eq(false));
+    verify(getRecommendations)
+        .list(
+            eq(SUBJECT),
+            captured.capture(),
+            eq(5),
+            eq(false),
+            eq(RecommendationSort.AFFINITY_DESC),
+            isNull());
     org.assertj.core.api.Assertions.assertThat(captured.getValue()).isEqualTo(seed);
   }
 
@@ -149,20 +177,87 @@ class RecommendationRestControllerTest {
   @Test
   void list_unknownSortValue_returns400() throws Exception {
     mockMvc
-        .perform(get("/api/v1/user/recommendations").with(userJwt()).param("sort", "RATING_DESC"))
+        .perform(get("/api/v1/user/recommendations").with(userJwt()).param("sort", "NUKE"))
         .andExpect(status().isBadRequest());
   }
 
   @Test
   void list_includeOwnTrue_isForwardedToUseCase() throws Exception {
-    when(getRecommendations.list(eq(SUBJECT), isNull(), eq(20), eq(true)))
+    when(getRecommendations.list(
+            eq(SUBJECT),
+            isNull(),
+            eq(20),
+            eq(true),
+            eq(RecommendationSort.AFFINITY_DESC),
+            isNull()))
         .thenReturn(new CursorPage<>(List.of(), false));
 
     mockMvc
         .perform(get("/api/v1/user/recommendations").with(userJwt()).param("includeOwn", "true"))
         .andExpect(status().isOk());
 
-    verify(getRecommendations).list(eq(SUBJECT), isNull(), eq(20), eq(true));
+    verify(getRecommendations)
+        .list(
+            eq(SUBJECT),
+            isNull(),
+            eq(20),
+            eq(true),
+            eq(RecommendationSort.AFFINITY_DESC),
+            isNull());
+  }
+
+  @Test
+  void list_sortByRating_forwardsToUseCase() throws Exception {
+    Recommendation r =
+        new Recommendation(
+            RestaurantId.newId(), "Septime", "addr", 48.8, 2.3, 5.0, 1, 4.7, null, null);
+    when(getRecommendations.list(
+            eq(SUBJECT),
+            isNull(),
+            eq(20),
+            eq(false),
+            eq(RecommendationSort.RATING_DESC),
+            isNull()))
+        .thenReturn(new CursorPage<>(List.of(r), false));
+
+    mockMvc
+        .perform(get("/api/v1/user/recommendations").with(userJwt()).param("sort", "RATING_DESC"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data[0].avgRating").value(4.7));
+  }
+
+  @Test
+  void list_sortByDistance_missingLatLng_returns400() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/user/recommendations").with(userJwt()).param("sort", "DISTANCE_ASC"))
+        .andExpect(status().isBadRequest())
+        .andExpect(
+            jsonPath("$.type").value("https://palaisdivin.lepgu.fr/problems/missing-anchor"));
+  }
+
+  @Test
+  void list_sortByDistance_withLatLng_forwardsAnchor() throws Exception {
+    Recommendation r =
+        new Recommendation(
+            RestaurantId.newId(), "Septime", "addr", 48.8, 2.3, 5.0, 1, null, 120.0, null);
+    when(getRecommendations.list(
+            eq(SUBJECT),
+            isNull(),
+            eq(20),
+            eq(false),
+            eq(RecommendationSort.DISTANCE_ASC),
+            eq(new Coordinates(48.8566, 2.3522))))
+        .thenReturn(new CursorPage<>(List.of(r), false));
+
+    mockMvc
+        .perform(
+            get("/api/v1/user/recommendations")
+                .with(userJwt())
+                .param("sort", "DISTANCE_ASC")
+                .param("lat", "48.8566")
+                .param("lng", "2.3522"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data[0].distanceMetres").value(120.0));
   }
 
   @Test

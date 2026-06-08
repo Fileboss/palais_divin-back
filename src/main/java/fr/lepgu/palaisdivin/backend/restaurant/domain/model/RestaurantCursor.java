@@ -9,7 +9,8 @@ public sealed interface RestaurantCursor
     permits RestaurantCursor.ByCreatedAt,
         RestaurantCursor.ByRating,
         RestaurantCursor.ByName,
-        RestaurantCursor.ByDistance {
+        RestaurantCursor.ByDistance,
+        RestaurantCursor.ByAffinity {
 
   UUID id();
 
@@ -35,6 +36,12 @@ public sealed interface RestaurantCursor
 
   record ByDistance(double distanceMetres, UUID id) implements RestaurantCursor {
     public ByDistance {
+      Objects.requireNonNull(id, "id");
+    }
+  }
+
+  record ByAffinity(double affinity, UUID id) implements RestaurantCursor {
+    public ByAffinity {
       Objects.requireNonNull(id, "id");
     }
   }

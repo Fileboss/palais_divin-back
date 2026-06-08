@@ -1,0 +1,11 @@
+package fr.lepgu.palaisdivin.backend.restaurant.domain.ports;
+
+import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Restaurant;
+import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantCursor;
+import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;
+
+public interface ListAffinityRankedRestaurantsUseCase {
+
+  CursorPage<Restaurant> list(
+      String requesterSubject, RestaurantCursor.ByAffinity cursor, int size);
+}

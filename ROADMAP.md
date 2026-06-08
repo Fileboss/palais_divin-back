@@ -209,6 +209,20 @@ Goal: the catalog page needs to search by name and reorder by rating, name, dist
 
 ---
 
+## Intermediate phase I7 — Frontend-blocking polish
+
+Goal: unblock three FE flows that have placeholder UI today (`palais_divin-front/doc/missing.md`). Two are cross-store reads, one is a domain-extension on the existing photo slice. No new persistence, no projectors, no migrations.
+
+- [x] **I7.1 — Photos read** — `GET /api/v1/public/restaurants/{id}/photos` paginated gallery + `RestaurantResponse.thumbnail` on every list/detail. New `PhotoQueryService` implements two read-only use cases: `LoadRestaurantThumbnailsUseCase.load(Collection<RestaurantId>) → Map<RestaurantId, PhotoSummary>` for batch enrichment (Postgres `DISTINCT ON (restaurant_id) ORDER BY created_at ASC`) and `ListPublicRestaurantPhotosUseCase.list(RestaurantId, PhotoCursor, size) → PhotoSummaryPage` for the gallery (keyset on `(created_at ASC, id ASC)`). `PhotoSummary` is the 3-field DTO (`id`, `url`, `expiresAt`) embedded in both contexts; presigned GET URLs come from `PhotoStoragePort.presignGet(objectKey, downloadUrlTtl)` so no per-photo browser round-trip. `RestaurantResponse.thumbnail` mapped via a controller-local `ThumbnailSummary` record — no cross-adapter import. `PublicRestaurantRestController` injects `LoadRestaurantThumbnailsUseCase` (restaurant `adapters/rest/` → photo `domain/ports/` is allowed; same M6.3 precedent applies). The existing `/api/v1/user/.../download-url` is untouched. Deferred: a "primary photo" flag (await caller).
+
+- [x] **I7.2 — Recommendations multi-sort** — `GET /api/v1/user/recommendations?sort=RATING_DESC|NAME_ASC|DISTANCE_ASC|CREATED_AT_DESC` plus `?lat`/`?lng`, with `avgRating` + `distanceMetres` on the response. `RecommendationSort` moves to `user/domain/model/`; `RecommendationCursor` becomes a sealed interface with 5 variants mirroring `RestaurantCursor`. Cypher branch unchanged for `AFFINITY_DESC`; other sorts call a new `RecommendationGraphPort.findAllRecommendedAffinities(UserId, includeOwn) → Map<RestaurantId, RestaurantAffinity>` and paginate via `RestaurantPostgresAdapter.findAll` — the existing keyset/sort engine, gated by a new `RestaurantFilter.idsAllowList` (Postgres `r.id IN (:ids)`). Affinity merges back row-by-row at the application layer. `RecommendationService` keeps a single sort switch; `MissingAnchorException` reused for the lat/lng gate. Deferred: combined recommendation + tag/name filters.
+
+- [x] **I7.3 — Affinity sort on `/public/restaurants`** — `GET /api/v1/public/restaurants?sort=AFFINITY_DESC`. Anonymous request → 400 `/problems/affinity-requires-auth`. Authenticated → friend-network restaurants only (same dataset as `/recommendations` with `includeOwn=true`), affinity surfaced as a nullable `Double affinity` field on `RestaurantResponse`. New `RestaurantSort.AFFINITY_DESC` + `RestaurantCursor.ByAffinity(double, UUID)` + `CursorCodec` `v=5`. New `ListAffinityRankedRestaurantsUseCase` in `restaurant/domain/ports/` with a `restaurant/application/` service that reads `user/domain/ports/RecommendationGraphPort` (sync read-only, M6.3 precedent) and joins on Postgres `findByIds` to hydrate full restaurant detail + thumbnail. `Restaurant` gains a nullable `affinity` field — other code paths set it to `null`. Postgres adapter's sort switches throw `IllegalStateException` for `AFFINITY_DESC` (unreachable by construction — controller routes elsewhere). Frontend's "0-1" hint in `missing.md` is set aside; raw `sum(score)` is returned. Deferred: anonymous affinity (semantically impossible), affinity-aware filtering by tag/name.
+
+`MILESTONE I7` — Frontend renders thumbnails, sortable recommendations, and an affinity-ranked home feed. **All `missing.md` entries closed.**
+
+---
+
 ## Phase M10 — Observability & hardening
 
 - [ ] **M10.1 — JSON logging via `logstash-logback-encoder`** — `logback-spring.xml` with `traceId`/`spanId` MDC.

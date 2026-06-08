@@ -19,6 +19,7 @@ final class CursorCodec {
   private static final int V_RATING = 2;
   private static final int V_NAME = 3;
   private static final int V_DISTANCE = 4;
+  private static final int V_AFFINITY = 5;
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
   private CursorCodec() {}
@@ -50,6 +51,11 @@ final class CursorCodec {
           node.put("d", c.distanceMetres());
           node.put("id", c.id().toString());
           node.put("v", V_DISTANCE);
+        }
+        case RestaurantCursor.ByAffinity c -> {
+          node.put("a", c.affinity());
+          node.put("id", c.id().toString());
+          node.put("v", V_AFFINITY);
         }
       }
       return Base64.getUrlEncoder()
@@ -86,6 +92,7 @@ final class CursorCodec {
           case V_RATING -> decodeByRating(node);
           case V_NAME -> decodeByName(node);
           case V_DISTANCE -> decodeByDistance(node);
+          case V_AFFINITY -> decodeByAffinity(node);
           default -> throw new InvalidCursorException();
         };
     if (!matchesSort(decoded, expectedSort)) {
@@ -144,6 +151,15 @@ final class CursorCodec {
     return new RestaurantCursor.ByDistance(d.asDouble(), parseUuid(id.asText()));
   }
 
+  private static RestaurantCursor decodeByAffinity(JsonNode node) {
+    JsonNode a = node.get("a");
+    JsonNode id = node.get("id");
+    if (a == null || !a.isNumber() || id == null || !id.isTextual()) {
+      throw new InvalidCursorException();
+    }
+    return new RestaurantCursor.ByAffinity(a.asDouble(), parseUuid(id.asText()));
+  }
+
   private static UUID parseUuid(String s) {
     try {
       return UUID.fromString(s);
@@ -158,6 +174,7 @@ final class CursorCodec {
       case RATING_DESC -> cursor instanceof RestaurantCursor.ByRating;
       case NAME_ASC -> cursor instanceof RestaurantCursor.ByName;
       case DISTANCE_ASC -> cursor instanceof RestaurantCursor.ByDistance;
+      case AFFINITY_DESC -> cursor instanceof RestaurantCursor.ByAffinity;
     };
   }
 }

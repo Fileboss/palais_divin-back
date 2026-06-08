@@ -9,6 +9,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import fr.lepgu.palaisdivin.backend.config.security.SecurityConfig;
+import fr.lepgu.palaisdivin.backend.photo.domain.ports.LoadRestaurantThumbnailsUseCase;
+import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.ListAffinityRankedRestaurantsUseCase;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Coordinates;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Restaurant;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantFilter;
@@ -49,12 +51,15 @@ class PublicRestaurantRestControllerTest {
   @MockitoBean FindRestaurantUseCase findRestaurant;
   @MockitoBean ListRestaurantsUseCase listRestaurants;
   @MockitoBean ListRestaurantTagsUseCase listRestaurantTags;
+  @MockitoBean LoadRestaurantThumbnailsUseCase loadThumbnails;
+  @MockitoBean ListAffinityRankedRestaurantsUseCase listAffinityRanked;
   @MockitoBean JwtDecoder jwtDecoder;
 
   @BeforeEach
   void stubEmptyTags() {
     when(listRestaurantTags.listFor(any(RestaurantId.class))).thenReturn(List.of());
     when(listRestaurantTags.listFor(anyCollection())).thenReturn(Map.of());
+    when(loadThumbnails.load(anyCollection())).thenReturn(Map.of());
   }
 
   @Test
@@ -384,6 +389,39 @@ class PublicRestaurantRestControllerTest {
                 .param("lat", "48")
                 .param("lng", "181"))
         .andExpect(status().isBadRequest());
+  }
+
+  @Test
+  void list_affinitySort_anonymous_returns400_problemDetail() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/public/restaurants").param("sort", "AFFINITY_DESC"))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+        .andExpect(
+            jsonPath("$.type")
+                .value("https://palaisdivin.lepgu.fr/problems/affinity-requires-auth"));
+  }
+
+  @Test
+  void list_affinitySort_authenticated_delegatesToAffinityUseCase() throws Exception {
+    Restaurant r = restaurant("Septime");
+    when(listAffinityRanked.list(
+            org.mockito.ArgumentMatchers.eq("kc-subject-affinity"),
+            org.mockito.ArgumentMatchers.isNull(),
+            org.mockito.ArgumentMatchers.eq(20)))
+        .thenReturn(new CursorPage<>(List.of(r), false));
+
+    mockMvc
+        .perform(
+            get("/api/v1/public/restaurants")
+                .param("sort", "AFFINITY_DESC")
+                .with(
+                    org.springframework.security.test.web.servlet.request
+                        .SecurityMockMvcRequestPostProcessors.jwt()
+                        .jwt(j -> j.subject("kc-subject-affinity"))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.length()").value(1))
+        .andExpect(jsonPath("$.data[0].name").value("Septime"));
   }
 
   @Test

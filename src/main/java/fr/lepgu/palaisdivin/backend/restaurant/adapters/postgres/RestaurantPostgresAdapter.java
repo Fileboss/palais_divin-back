@@ -95,6 +95,9 @@ public class RestaurantPostgresAdapter implements RestaurantRepositoryPort {
     if (filter.hasName()) {
       sql.append("and r.name ilike :namePattern ");
     }
+    if (filter.hasIdsAllowList()) {
+      sql.append("and r.id in (:idsAllowList) ");
+    }
     appendKeysetPredicate(sql, cursor, sort);
     if (filter.hasTags()) {
       sql.append("group by r.id having count(distinct rt.tag_id) = :slugCount ");
@@ -111,6 +114,10 @@ public class RestaurantPostgresAdapter implements RestaurantRepositoryPort {
     }
     if (filter.hasName()) {
       q.setParameter("namePattern", "%" + filter.name() + "%");
+    }
+    if (filter.hasIdsAllowList()) {
+      q.setParameter(
+          "idsAllowList", filter.idsAllowList().stream().map(RestaurantId::value).toList());
     }
     bindCursorParameters(q, cursor, sort);
     bindAnchorParameters(q, filter, sort);
@@ -153,6 +160,9 @@ public class RestaurantPostgresAdapter implements RestaurantRepositoryPort {
       case NAME_ASC -> sql.append("and (r.name > :ck or (r.name = :ck and r.id > :cid)) ");
       case DISTANCE_ASC ->
           sql.append("and (" + DIST_EXPR + " > :ck or (" + DIST_EXPR + " = :ck and r.id > :cid)) ");
+      case AFFINITY_DESC ->
+          throw new IllegalStateException(
+              "AFFINITY_DESC paginates via the recommendation graph, not Postgres keyset");
     }
   }
 
@@ -183,6 +193,9 @@ public class RestaurantPostgresAdapter implements RestaurantRepositoryPort {
         q.setParameter("ck", c.distanceMetres());
         q.setParameter("cid", c.id());
       }
+      case AFFINITY_DESC ->
+          throw new IllegalStateException(
+              "AFFINITY_DESC paginates via the recommendation graph, not Postgres keyset");
     }
   }
 
@@ -201,6 +214,9 @@ public class RestaurantPostgresAdapter implements RestaurantRepositoryPort {
       case RATING_DESC -> "order by r.avg_rating desc nulls last, r.id desc";
       case NAME_ASC -> "order by r.name asc, r.id asc";
       case DISTANCE_ASC -> "order by " + DIST_EXPR + " asc, r.id asc";
+      case AFFINITY_DESC ->
+          throw new IllegalStateException(
+              "AFFINITY_DESC paginates via the recommendation graph, not Postgres keyset");
     };
   }
 

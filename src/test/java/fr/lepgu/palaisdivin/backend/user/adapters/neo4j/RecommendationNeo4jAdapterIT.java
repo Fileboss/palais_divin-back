@@ -151,8 +151,8 @@ class RecommendationNeo4jAdapterIT extends AbstractIntegrationTest {
     assertThat(page1.data().get(0).affinity()).isEqualTo(5.0);
     assertThat(page1.data().get(1).affinity()).isEqualTo(4.0);
 
-    RecommendationCursor cursor1 =
-        new RecommendationCursor(
+    RecommendationCursor.ByAffinity cursor1 =
+        new RecommendationCursor.ByAffinity(
             page1.data().getLast().affinity(), page1.data().getLast().restaurantId());
 
     CursorPage<Recommendation> page2 = adapter.findRecommendations(me, cursor1, 2, true);
@@ -161,8 +161,8 @@ class RecommendationNeo4jAdapterIT extends AbstractIntegrationTest {
     assertThat(page2.data().get(0).affinity()).isEqualTo(3.0);
     assertThat(page2.data().get(1).affinity()).isEqualTo(2.0);
 
-    RecommendationCursor cursor2 =
-        new RecommendationCursor(
+    RecommendationCursor.ByAffinity cursor2 =
+        new RecommendationCursor.ByAffinity(
             page2.data().getLast().affinity(), page2.data().getLast().restaurantId());
 
     CursorPage<Recommendation> page3 = adapter.findRecommendations(me, cursor2, 2, true);
@@ -221,8 +221,8 @@ class RecommendationNeo4jAdapterIT extends AbstractIntegrationTest {
     assertThat(page1.data().get(0).affinity()).isEqualTo(5.0);
     assertThat(page1.data().get(1).affinity()).isEqualTo(4.0);
 
-    RecommendationCursor cursor1 =
-        new RecommendationCursor(
+    RecommendationCursor.ByAffinity cursor1 =
+        new RecommendationCursor.ByAffinity(
             page1.data().getLast().affinity(), page1.data().getLast().restaurantId());
 
     CursorPage<Recommendation> page2 = adapter.findRecommendations(me, cursor1, 2, false);
@@ -231,8 +231,8 @@ class RecommendationNeo4jAdapterIT extends AbstractIntegrationTest {
     assertThat(page2.data().get(0).affinity()).isEqualTo(3.0);
     assertThat(page2.data().get(1).affinity()).isEqualTo(2.0);
 
-    RecommendationCursor cursor2 =
-        new RecommendationCursor(
+    RecommendationCursor.ByAffinity cursor2 =
+        new RecommendationCursor.ByAffinity(
             page2.data().getLast().affinity(), page2.data().getLast().restaurantId());
 
     CursorPage<Recommendation> page3 = adapter.findRecommendations(me, cursor2, 2, false);

@@ -1,6 +1,7 @@
 package fr.lepgu.palaisdivin.backend.user.domain.model;
 
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantId;
+import java.time.Instant;
 import java.util.Objects;
 
 public record Recommendation(
@@ -10,7 +11,10 @@ public record Recommendation(
     double latitude,
     double longitude,
     double affinity,
-    int recommenderCount) {
+    int recommenderCount,
+    Double avgRating,
+    Double distanceMetres,
+    Instant createdAt) {
   public Recommendation {
     Objects.requireNonNull(restaurantId, "restaurantId");
     Objects.requireNonNull(name, "name");
@@ -24,5 +28,26 @@ public record Recommendation(
     if (recommenderCount < 1) {
       throw new IllegalArgumentException("recommenderCount must be >= 1");
     }
+  }
+
+  public Recommendation(
+      RestaurantId restaurantId,
+      String name,
+      String address,
+      double latitude,
+      double longitude,
+      double affinity,
+      int recommenderCount) {
+    this(
+        restaurantId,
+        name,
+        address,
+        latitude,
+        longitude,
+        affinity,
+        recommenderCount,
+        null,
+        null,
+        null);
   }
 }

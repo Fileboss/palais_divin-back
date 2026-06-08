@@ -10,7 +10,9 @@ public record RecommendationResponse(
     double latitude,
     double longitude,
     double affinity,
-    int recommenderCount) {
+    int recommenderCount,
+    Double avgRating,
+    Double distanceMetres) {
 
   public static RecommendationResponse from(Recommendation r) {
     return new RecommendationResponse(
@@ -20,6 +22,8 @@ public record RecommendationResponse(
         r.latitude(),
         r.longitude(),
         r.affinity(),
-        r.recommenderCount());
+        r.recommenderCount(),
+        r.avgRating(),
+        r.distanceMetres());
   }
 }

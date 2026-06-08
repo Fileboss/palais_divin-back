@@ -157,9 +157,13 @@ class RecommendationRestIT extends AbstractIntegrationTest {
     assertThat(page2.data().getFirst().affinity()).isEqualTo(3.0);
 
     // Cursor sanity: the encoded affinity matches the last item of page1.
-    RecommendationCursor decoded = RecommendationCursorCodec.decode(page1.page().nextCursor());
-    assertThat(decoded.affinity()).isEqualTo(page1.data().getLast().affinity());
-    assertThat(decoded.id().value()).isEqualTo(page1.data().getLast().id());
+    RecommendationCursor decoded =
+        RecommendationCursorCodec.decode(
+            page1.page().nextCursor(),
+            fr.lepgu.palaisdivin.backend.user.domain.model.RecommendationSort.AFFINITY_DESC);
+    RecommendationCursor.ByAffinity byAffinity = (RecommendationCursor.ByAffinity) decoded;
+    assertThat(byAffinity.affinity()).isEqualTo(page1.data().getLast().affinity());
+    assertThat(byAffinity.id().value()).isEqualTo(page1.data().getLast().id());
   }
 
   @Test

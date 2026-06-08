@@ -46,11 +46,18 @@ class OpenApiGenerationIT {
         .contains("/api/v1/public/tags")
         .contains("/api/v1/user/restaurants/{restaurantId}/tags/{tagId}")
         .contains("/api/v1/public/users/{userId}")
-        .contains("/api/v1/public/users/{userId}/reviews");
+        .contains("/api/v1/public/users/{userId}/reviews")
+        .contains("/api/v1/public/restaurants/{restaurantId}/photos");
     // M9.3: tag query param on the public list
     assertThat(yaml).contains("name: tag");
     // I4.1: authorDisplayName on the review response shape
     assertThat(yaml).contains("authorDisplayName");
+    // I7.1: thumbnail on the restaurant response shape
+    assertThat(yaml).contains("thumbnail");
+    // I7.2: avgRating/distanceMetres on the recommendation response shape
+    assertThat(yaml).contains("RecommendationResponse");
+    // I7.3: AFFINITY_DESC sort enum on the public restaurant list
+    assertThat(yaml).contains("AFFINITY_DESC");
 
     String baseDir = System.getProperty("project.basedir", System.getProperty("user.dir"));
     Path output = Path.of(baseDir, "docs", "openapi.yaml");

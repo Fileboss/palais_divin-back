@@ -10,6 +10,7 @@ import fr.lepgu.palaisdivin.backend.user.domain.ports.RecommendationGraphPort;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -61,6 +62,18 @@ class RecommendationNeo4jAdapter implements RecommendationGraphPort {
       LIMIT $limit
       """;
 
+  private static final String ALL_RECOMMENDED_CYPHER =
+      """
+      MATCH (me:User {id: $userId})-[:KNOWS*1..2]->(rater:User)-[r:RATED]->(rest:Restaurant)
+      WHERE rater.id <> $userId
+        $$RATED_GUARD$$
+      WITH DISTINCT rest, rater, r.score AS score
+      WITH rest, sum(score) AS affinity, count(rater) AS recommenderCount
+      RETURN rest.id AS id,
+             affinity,
+             recommenderCount
+      """;
+
   private static final String AFFINITY_CYPHER =
       """
       MATCH (me:User {id: $userId})-[:KNOWS*1..2]->(rater:User)
@@ -79,7 +92,7 @@ class RecommendationNeo4jAdapter implements RecommendationGraphPort {
 
   @Override
   public CursorPage<Recommendation> findRecommendations(
-      UserId requester, RecommendationCursor cursor, int size, boolean includeOwn) {
+      UserId requester, RecommendationCursor.ByAffinity cursor, int size, boolean includeOwn) {
     int limit = size + 1;
     Collection<Map<String, Object>> rows;
     if (cursor == null) {
@@ -110,9 +123,26 @@ class RecommendationNeo4jAdapter implements RecommendationGraphPort {
   }
 
   @Override
+  public Map<RestaurantId, RestaurantAffinity> findAllRecommendedAffinities(
+      UserId requester, boolean includeOwn) {
+    Collection<Map<String, Object>> rows =
+        neo4jClient
+            .query(render(ALL_RECOMMENDED_CYPHER, includeOwn))
+            .bindAll(Map.of("userId", requester.value().toString()))
+            .fetch()
+            .all();
+    Map<RestaurantId, RestaurantAffinity> result = new LinkedHashMap<>(rows.size());
+    for (Map<String, Object> row : rows) {
+      RestaurantId rid = new RestaurantId(UUID.fromString((String) row.get("id")));
+      double affinity = ((Number) row.get("affinity")).doubleValue();
+      int recommenderCount = ((Number) row.get("recommenderCount")).intValue();
+      result.put(rid, new RestaurantAffinity(rid, affinity, recommenderCount));
+    }
+    return Map.copyOf(result);
+  }
+
+  @Override
   public RestaurantAffinity findAffinityFor(UserId requester, RestaurantId restaurant) {
-    // Cypher aggregations on an empty path still produce one row with sum=0, count=0 —
-    // unreachable friend networks naturally surface as a zero-affinity record here.
     Collection<Map<String, Object>> rows =
         neo4jClient
             .query(AFFINITY_CYPHER)

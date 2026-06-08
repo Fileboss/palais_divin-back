@@ -90,6 +90,7 @@ paths:
           - RATING_DESC
           - NAME_ASC
           - DISTANCE_ASC
+          - AFFINITY_DESC
       - in: query
         name: tag
         required: false
@@ -153,6 +154,39 @@ paths:
           description: OK
       tags:
       - public-restaurant-rest-controller
+  /api/v1/public/restaurants/{restaurantId}/photos:
+    get:
+      operationId: list_5
+      parameters:
+      - in: path
+        name: restaurantId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: cursor
+        required: false
+        schema:
+          type: string
+      - in: query
+        name: size
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+          maximum: 100
+          minimum: 1
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/PhotosPageResponse"
+          description: OK
+      tags:
+      - public-photo-rest-controller
   /api/v1/public/restaurants/{restaurantId}/reviews:
     get:
       operationId: list_4
@@ -346,12 +380,32 @@ paths:
           default: AFFINITY_DESC
           enum:
           - AFFINITY_DESC
+          - RATING_DESC
+          - NAME_ASC
+          - DISTANCE_ASC
+          - CREATED_AT_DESC
       - in: query
         name: includeOwn
         required: false
         schema:
           type: boolean
           default: false
+      - in: query
+        name: lat
+        required: false
+        schema:
+          type: number
+          format: double
+          maximum: 90.0
+          minimum: -90.0
+      - in: query
+        name: lng
+        required: false
+        schema:
+          type: number
+          format: double
+          maximum: 180.0
+          minimum: -180.0
       responses:
         "200":
           content:
@@ -768,6 +822,17 @@ components:
         restaurantId:
           type: string
           format: uuid
+    PhotoSummaryResponse:
+      type: object
+      properties:
+        expiresAt:
+          type: string
+          format: date-time
+        id:
+          type: string
+          format: uuid
+        url:
+          type: string
     PhotoUploadUrlResponse:
       type: object
       properties:
@@ -778,6 +843,15 @@ components:
           type: string
         uploadUrl:
           type: string
+    PhotosPageResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/PhotoSummaryResponse"
+        page:
+          $ref: "#/components/schemas/PageMeta"
     PingResponse:
       type: object
       properties:
@@ -803,6 +877,12 @@ components:
         address:
           type: string
         affinity:
+          type: number
+          format: double
+        avgRating:
+          type: number
+          format: double
+        distanceMetres:
           type: number
           format: double
         id:
@@ -859,6 +939,9 @@ components:
       properties:
         address:
           type: string
+        affinity:
+          type: number
+          format: double
         avgRating:
           type: number
           format: double
@@ -879,6 +962,8 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/TagSummary"
+        thumbnail:
+          $ref: "#/components/schemas/ThumbnailSummary"
     RestaurantTagResponse:
       type: object
       properties:
@@ -1008,4 +1093,15 @@ components:
         label:
           type: string
         slug:
+          type: string
+    ThumbnailSummary:
+      type: object
+      properties:
+        expiresAt:
+          type: string
+          format: date-time
+        id:
+          type: string
+          format: uuid
+        url:
           type: string

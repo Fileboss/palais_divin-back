@@ -1,5 +1,7 @@
 package fr.lepgu.palaisdivin.backend.restaurant.adapters.rest;
 
+import fr.lepgu.palaisdivin.backend.photo.domain.model.PhotoSummary;
+import fr.lepgu.palaisdivin.backend.photo.domain.ports.LoadRestaurantThumbnailsUseCase;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.RestaurantNotFoundException;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Coordinates;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Restaurant;
@@ -8,6 +10,7 @@ import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantFilter;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantId;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantSort;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.FindRestaurantUseCase;
+import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.ListAffinityRankedRestaurantsUseCase;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.ListRestaurantsUseCase;
 import fr.lepgu.palaisdivin.backend.shared.adapters.web.PageMeta;
 import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;
@@ -23,6 +26,8 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -38,14 +43,20 @@ class PublicRestaurantRestController {
   private final FindRestaurantUseCase findRestaurant;
   private final ListRestaurantsUseCase listRestaurants;
   private final ListRestaurantTagsUseCase listRestaurantTags;
+  private final LoadRestaurantThumbnailsUseCase loadThumbnails;
+  private final ListAffinityRankedRestaurantsUseCase listAffinityRanked;
 
   PublicRestaurantRestController(
       FindRestaurantUseCase findRestaurant,
       ListRestaurantsUseCase listRestaurants,
-      ListRestaurantTagsUseCase listRestaurantTags) {
+      ListRestaurantTagsUseCase listRestaurantTags,
+      LoadRestaurantThumbnailsUseCase loadThumbnails,
+      ListAffinityRankedRestaurantsUseCase listAffinityRanked) {
     this.findRestaurant = findRestaurant;
     this.listRestaurants = listRestaurants;
     this.listRestaurantTags = listRestaurantTags;
+    this.loadThumbnails = loadThumbnails;
+    this.listAffinityRanked = listAffinityRanked;
   }
 
   @GetMapping("/{id}")
@@ -55,7 +66,9 @@ class PublicRestaurantRestController {
         findRestaurant
             .findById(restaurantId)
             .orElseThrow(() -> new RestaurantNotFoundException(restaurantId));
-    return RestaurantResponse.from(restaurant, listRestaurantTags.listFor(restaurantId));
+    PhotoSummary thumbnail = loadThumbnails.load(List.of(restaurantId)).get(restaurantId);
+    return RestaurantResponse.from(
+        restaurant, listRestaurantTags.listFor(restaurantId), thumbnail);
   }
 
   @GetMapping
@@ -67,7 +80,20 @@ class PublicRestaurantRestController {
           List<@Pattern(regexp = "^[a-z0-9]+(-[a-z0-9]+)*$") @Size(max = 64) String> tag,
       @RequestParam(required = false) @Size(max = 100) String name,
       @RequestParam(required = false) @DecimalMin("-90") @DecimalMax("90") Double lat,
-      @RequestParam(required = false) @DecimalMin("-180") @DecimalMax("180") Double lng) {
+      @RequestParam(required = false) @DecimalMin("-180") @DecimalMax("180") Double lng,
+      @AuthenticationPrincipal Jwt jwt) {
+    if (sort == RestaurantSort.AFFINITY_DESC) {
+      if (jwt == null) {
+        throw new AffinityRequiresAuthException();
+      }
+      RestaurantCursor.ByAffinity decoded =
+          cursor == null
+              ? null
+              : (RestaurantCursor.ByAffinity) CursorCodec.decode(cursor, sort);
+      CursorPage<Restaurant> page = listAffinityRanked.list(jwt.getSubject(), decoded, size);
+      return buildResponse(page, sort, size);
+    }
+
     List<String> tagSlugs = tag == null ? List.of() : tag;
     String trimmedName = (name == null || name.isBlank()) ? null : name.trim();
     Coordinates anchor = (lat != null && lng != null) ? new Coordinates(lat, lng) : null;
@@ -77,11 +103,22 @@ class PublicRestaurantRestController {
     RestaurantFilter filter = new RestaurantFilter(tagSlugs, trimmedName, anchor);
     RestaurantCursor decoded = cursor == null ? null : CursorCodec.decode(cursor, sort);
     CursorPage<Restaurant> page = listRestaurants.list(decoded, size, filter, sort);
+    return buildResponse(page, sort, size);
+  }
+
+  private RestaurantsPageResponse buildResponse(
+      CursorPage<Restaurant> page, RestaurantSort sort, int size) {
     List<RestaurantId> ids = page.data().stream().map(Restaurant::id).toList();
     Map<RestaurantId, List<Tag>> tagsByRestaurant = listRestaurantTags.listFor(ids);
+    Map<RestaurantId, PhotoSummary> thumbnails = loadThumbnails.load(ids);
     List<RestaurantResponse> data =
         page.data().stream()
-            .map(r -> RestaurantResponse.from(r, tagsByRestaurant.getOrDefault(r.id(), List.of())))
+            .map(
+                r ->
+                    RestaurantResponse.from(
+                        r,
+                        tagsByRestaurant.getOrDefault(r.id(), List.of()),
+                        thumbnails.get(r.id())))
             .toList();
     String nextCursor =
         page.hasNext() && !data.isEmpty()
@@ -100,6 +137,9 @@ class PublicRestaurantRestController {
       case NAME_ASC -> new RestaurantCursor.ByName(last.name(), last.id().value());
       case DISTANCE_ASC ->
           new RestaurantCursor.ByDistance(last.distanceMetres(), last.id().value());
+      case AFFINITY_DESC ->
+          new RestaurantCursor.ByAffinity(
+              last.affinity() == null ? 0.0 : last.affinity(), last.id().value());
     };
   }
 }
