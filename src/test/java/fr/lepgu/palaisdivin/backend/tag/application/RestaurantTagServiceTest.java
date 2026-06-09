@@ -68,7 +68,8 @@ class RestaurantTagServiceTest {
     attachedBy = UserId.newId();
     restaurantId = RestaurantId.newId();
     tagId = TagId.newId();
-    tag = new Tag(tagId, TagCategory.FOOD, "natural-wine", "Natural wine", NOW.minusSeconds(60));
+    tag =
+        new Tag(tagId, TagCategory.SPECIALTY, "natural-wine", "Natural wine", NOW.minusSeconds(60));
     restaurant =
         new Restaurant(
             restaurantId,
@@ -107,7 +108,7 @@ class RestaurantTagServiceTest {
     assertThat(event.restaurantId()).isEqualTo(restaurantId.value());
     assertThat(event.tagId()).isEqualTo(tagId.value());
     assertThat(event.tagSlug()).isEqualTo("natural-wine");
-    assertThat(event.tagCategory()).isEqualTo("FOOD");
+    assertThat(event.tagCategory()).isEqualTo("SPECIALTY");
     assertThat(event.tagLabel()).isEqualTo("Natural wine");
     assertThat(event.attachedBy()).isEqualTo(attachedBy.value());
     assertThat(event.attachedAt()).isEqualTo(NOW);

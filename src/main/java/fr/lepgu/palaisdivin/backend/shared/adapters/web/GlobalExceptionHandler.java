@@ -8,6 +8,7 @@ import fr.lepgu.palaisdivin.backend.restaurant.adapters.rest.MissingAnchorExcept
 import fr.lepgu.palaisdivin.backend.restaurant.domain.RestaurantNotFoundException;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.UnresolvableAddressException;
 import fr.lepgu.palaisdivin.backend.review.domain.ReviewNotFoundException;
+import fr.lepgu.palaisdivin.backend.tag.domain.TagImplicationNotFoundException;
 import fr.lepgu.palaisdivin.backend.tag.domain.TagNotFoundException;
 import fr.lepgu.palaisdivin.backend.user.domain.InvitationNotFoundException;
 import fr.lepgu.palaisdivin.backend.user.domain.InvitationNotUsableException;
@@ -270,6 +271,15 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
   @ExceptionHandler(TagNotFoundException.class)
   ResponseEntity<ProblemDetail> handleTagNotFound(TagNotFoundException ex) {
+    ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+    pd.setType(PROBLEM_BASE.resolve("not-found"));
+    pd.setTitle("Resource not found");
+    addTraceId(pd);
+    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(pd);
+  }
+
+  @ExceptionHandler(TagImplicationNotFoundException.class)
+  ResponseEntity<ProblemDetail> handleTagImplicationNotFound(TagImplicationNotFoundException ex) {
     ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
     pd.setType(PROBLEM_BASE.resolve("not-found"));
     pd.setTitle("Resource not found");

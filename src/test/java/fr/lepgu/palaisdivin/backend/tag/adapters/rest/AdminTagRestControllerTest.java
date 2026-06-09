@@ -60,8 +60,8 @@ class AdminTagRestControllerTest {
   @Test
   void post_returns_201_with_location_and_body() throws Exception {
     Tag created =
-        new Tag(TagId.newId(), TagCategory.FOOD, "natural-wine", "Natural wine", CREATED_AT);
-    when(createTag.create(eq(TagCategory.FOOD), eq("natural-wine"), eq("Natural wine")))
+        new Tag(TagId.newId(), TagCategory.SPECIALTY, "natural-wine", "Natural wine", CREATED_AT);
+    when(createTag.create(eq(TagCategory.SPECIALTY), eq("natural-wine"), eq("Natural wine")))
         .thenReturn(created);
 
     mockMvc
@@ -71,7 +71,7 @@ class AdminTagRestControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     """
-                    { "category": "FOOD", "slug": "natural-wine", "label": "Natural wine" }
+                    { "category": "SPECIALTY", "slug": "natural-wine", "label": "Natural wine" }
                     """))
         .andExpect(status().isCreated())
         .andExpect(
@@ -80,7 +80,7 @@ class AdminTagRestControllerTest {
                     "Location", Matchers.endsWith("/api/v1/admin/tags/" + created.id().value())))
         .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$.id").value(created.id().value().toString()))
-        .andExpect(jsonPath("$.category").value("FOOD"))
+        .andExpect(jsonPath("$.category").value("SPECIALTY"))
         .andExpect(jsonPath("$.slug").value("natural-wine"))
         .andExpect(jsonPath("$.label").value("Natural wine"))
         .andExpect(jsonPath("$.createdAt").value(CREATED_AT.toString()));
@@ -95,7 +95,7 @@ class AdminTagRestControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     """
-                    { "category": "FOOD", "slug": "", "label": "Natural wine" }
+                    { "category": "SPECIALTY", "slug": "", "label": "Natural wine" }
                     """))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.type").value("https://palaisdivin.lepgu.fr/problems/validation"))
@@ -113,7 +113,7 @@ class AdminTagRestControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     """
-                    { "category": "FOOD", "slug": "Natural-Wine", "label": "Natural wine" }
+                    { "category": "SPECIALTY", "slug": "Natural-Wine", "label": "Natural wine" }
                     """))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.type").value("https://palaisdivin.lepgu.fr/problems/validation"))
@@ -131,7 +131,7 @@ class AdminTagRestControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     """
-                    { "category": "FOOD", "slug": "natural wine", "label": "Natural wine" }
+                    { "category": "SPECIALTY", "slug": "natural wine", "label": "Natural wine" }
                     """))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.errors[?(@.field == 'slug')]").exists());
@@ -162,7 +162,7 @@ class AdminTagRestControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     """
-                    { "category": "FOOD", "slug": "natural-wine", "label": "" }
+                    { "category": "SPECIALTY", "slug": "natural-wine", "label": "" }
                     """))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.errors[?(@.field == 'label')]").exists());
@@ -178,7 +178,7 @@ class AdminTagRestControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     """
-                    { "category": "FOOD", "slug": "natural-wine", "label": "Natural wine" }
+                    { "category": "SPECIALTY", "slug": "natural-wine", "label": "Natural wine" }
                     """))
         .andExpect(status().isUnauthorized())
         .andExpect(jsonPath("$.type").value("https://palaisdivin.lepgu.fr/problems/unauthorized"));
@@ -195,7 +195,7 @@ class AdminTagRestControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     """
-                    { "category": "FOOD", "slug": "natural-wine", "label": "Natural wine" }
+                    { "category": "SPECIALTY", "slug": "natural-wine", "label": "Natural wine" }
                     """))
         .andExpect(status().isForbidden());
 
@@ -214,12 +214,12 @@ class AdminTagRestControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
                     """
-                    { "category": "FOOD", "slug": "natural-wine", "label": "Natural wine" }
+                    { "category": "SPECIALTY", "slug": "natural-wine", "label": "Natural wine" }
                     """))
         .andExpect(status().isConflict())
         .andExpect(jsonPath("$.type").value("https://palaisdivin.lepgu.fr/problems/conflict"));
 
-    verify(createTag).create(eq(TagCategory.FOOD), eq("natural-wine"), eq("Natural wine"));
+    verify(createTag).create(eq(TagCategory.SPECIALTY), eq("natural-wine"), eq("Natural wine"));
   }
 
   @Test

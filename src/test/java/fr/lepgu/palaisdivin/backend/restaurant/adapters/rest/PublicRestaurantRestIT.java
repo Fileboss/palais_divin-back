@@ -130,7 +130,7 @@ class PublicRestaurantRestIT extends AbstractIntegrationTest {
             .post()
             .uri("/api/v1/admin/tags")
             .contentType(MediaType.APPLICATION_JSON)
-            .body(new TagPayload("FOOD", foodSlug, foodLabel))
+            .body(new TagPayload("SPECIALTY", foodSlug, foodLabel))
             .retrieve()
             .body(TagResponseDto.class)
             .id();
@@ -169,8 +169,8 @@ class PublicRestaurantRestIT extends AbstractIntegrationTest {
             RestaurantResponse.TagSummary::category,
             RestaurantResponse.TagSummary::slug,
             RestaurantResponse.TagSummary::label)
-        .containsExactly(
-            org.assertj.core.groups.Tuple.tuple(TagCategory.FOOD, foodSlug, foodLabel),
+        .containsExactlyInAnyOrder(
+            org.assertj.core.groups.Tuple.tuple(TagCategory.SPECIALTY, foodSlug, foodLabel),
             org.assertj.core.groups.Tuple.tuple(TagCategory.REGIME, regimeSlug, regimeLabel));
   }
 
@@ -225,7 +225,7 @@ class PublicRestaurantRestIT extends AbstractIntegrationTest {
             .post()
             .uri("/api/v1/admin/tags")
             .contentType(MediaType.APPLICATION_JSON)
-            .body(new TagPayload("FOOD", burgerSlug, "Burger"))
+            .body(new TagPayload("SPECIALTY", burgerSlug, "Burger"))
             .retrieve()
             .body(TagResponseDto.class)
             .id();
@@ -280,7 +280,7 @@ class PublicRestaurantRestIT extends AbstractIntegrationTest {
             .post()
             .uri("/api/v1/admin/tags")
             .contentType(MediaType.APPLICATION_JSON)
-            .body(new TagPayload("FOOD", burgerSlug, "Burger"))
+            .body(new TagPayload("SPECIALTY", burgerSlug, "Burger"))
             .retrieve()
             .body(TagResponseDto.class)
             .id();
@@ -371,7 +371,7 @@ class PublicRestaurantRestIT extends AbstractIntegrationTest {
             .post()
             .uri("/api/v1/admin/tags")
             .contentType(MediaType.APPLICATION_JSON)
-            .body(new TagPayload("FOOD", foodSlug, "Food"))
+            .body(new TagPayload("SPECIALTY", foodSlug, "Food"))
             .retrieve()
             .body(TagResponseDto.class)
             .id();
@@ -410,8 +410,8 @@ class PublicRestaurantRestIT extends AbstractIntegrationTest {
             RestaurantResponse.TagSummary::category,
             RestaurantResponse.TagSummary::slug,
             RestaurantResponse.TagSummary::label)
-        .containsExactly(
-            org.assertj.core.groups.Tuple.tuple(TagCategory.FOOD, foodSlug, "Food"),
+        .containsExactlyInAnyOrder(
+            org.assertj.core.groups.Tuple.tuple(TagCategory.SPECIALTY, foodSlug, "Food"),
             org.assertj.core.groups.Tuple.tuple(TagCategory.REGIME, regimeSlug, "Regime"));
   }
 
@@ -527,7 +527,7 @@ class PublicRestaurantRestIT extends AbstractIntegrationTest {
             .post()
             .uri("/api/v1/admin/tags")
             .contentType(MediaType.APPLICATION_JSON)
-            .body(new TagPayload("FOOD", burgerSlug, "Burger"))
+            .body(new TagPayload("SPECIALTY", burgerSlug, "Burger"))
             .retrieve()
             .body(TagResponseDto.class)
             .id();

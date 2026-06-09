@@ -24,6 +24,7 @@ import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.GeocoderPort;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.RestaurantRepositoryPort;
 import fr.lepgu.palaisdivin.backend.shared.domain.ports.OutboxPublisher;
 import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;
+import fr.lepgu.palaisdivin.backend.tag.domain.ports.ExpandTagSlugsUseCase;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -46,13 +47,26 @@ class RestaurantServiceTest {
   @Mock private RestaurantRepositoryPort repository;
   @Mock private GeocoderPort geocoder;
   @Mock private OutboxPublisher outboxPublisher;
+  @Mock private ExpandTagSlugsUseCase expandTagSlugs;
 
   private RestaurantService service;
 
   @BeforeEach
   void setUp() {
     Clock fixedClock = Clock.fixed(FIXED_NOW, ZoneOffset.UTC);
-    service = new RestaurantService(repository, geocoder, outboxPublisher, fixedClock);
+    service =
+        new RestaurantService(repository, geocoder, outboxPublisher, expandTagSlugs, fixedClock);
+    org.mockito.Mockito.lenient()
+        .when(expandTagSlugs.expand(any()))
+        .thenAnswer(
+            inv -> {
+              java.util.Collection<String> slugs = inv.getArgument(0);
+              java.util.Map<String, java.util.Set<String>> map = new java.util.LinkedHashMap<>();
+              for (String s : slugs) {
+                map.put(s, java.util.Set.of(s));
+              }
+              return map;
+            });
   }
 
   @Test
@@ -60,7 +74,7 @@ class RestaurantServiceTest {
     when(geocoder.geocode("80 Rue de Charonne")).thenReturn(LOCATION);
     when(repository.save(any(Restaurant.class))).thenAnswer(inv -> inv.getArgument(0));
 
-    Restaurant created = service.create("Septime", "80 Rue de Charonne");
+    Restaurant created = service.create("Septime", "80 Rue de Charonne", true, false, false);
 
     ArgumentCaptor<Restaurant> captor = ArgumentCaptor.forClass(Restaurant.class);
     verify(repository).save(captor.capture());
@@ -80,7 +94,7 @@ class RestaurantServiceTest {
     when(geocoder.geocode("80 Rue de Charonne")).thenReturn(LOCATION);
     when(repository.save(any(Restaurant.class))).thenAnswer(inv -> inv.getArgument(0));
 
-    Restaurant created = service.create("Septime", "80 Rue de Charonne");
+    Restaurant created = service.create("Septime", "80 Rue de Charonne", true, false, false);
 
     ArgumentCaptor<Object> payloadCaptor = ArgumentCaptor.forClass(Object.class);
     verify(outboxPublisher)
@@ -108,7 +122,7 @@ class RestaurantServiceTest {
             RestaurantId.newId(), "Septime", "80 Rue de Charonne", LOCATION, FIXED_NOW, null);
     when(repository.save(any(Restaurant.class))).thenReturn(fromStore);
 
-    Restaurant returned = service.create("Septime", "80 Rue de Charonne");
+    Restaurant returned = service.create("Septime", "80 Rue de Charonne", true, false, false);
 
     assertThat(returned).isSameAs(fromStore);
   }
@@ -117,7 +131,7 @@ class RestaurantServiceTest {
   void createPropagatesGeocoderFailureAndDoesNotPersistOrPublish() {
     when(geocoder.geocode("nope")).thenThrow(new UnresolvableAddressException("nope"));
 
-    assertThatThrownBy(() -> service.create("Septime", "nope"))
+    assertThatThrownBy(() -> service.create("Septime", "nope", true, false, false))
         .isInstanceOf(UnresolvableAddressException.class);
 
     verifyNoInteractions(repository);
@@ -132,7 +146,7 @@ class RestaurantServiceTest {
         .when(outboxPublisher)
         .publish(any(), any(UUID.class), any(), any());
 
-    assertThatThrownBy(() -> service.create("Septime", "80 Rue de Charonne"))
+    assertThatThrownBy(() -> service.create("Septime", "80 Rue de Charonne", true, false, false))
         .isInstanceOf(RuntimeException.class)
         .hasMessage("outbox down");
 

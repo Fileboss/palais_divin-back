@@ -86,6 +86,9 @@ class PublicRestaurantRestController {
       @RequestParam(required = false) @Size(max = 100) String name,
       @RequestParam(required = false) @DecimalMin("-90") @DecimalMax("90") Double lat,
       @RequestParam(required = false) @DecimalMin("-180") @DecimalMax("180") Double lng,
+      @RequestParam(required = false) Boolean dineIn,
+      @RequestParam(required = false) Boolean takeOut,
+      @RequestParam(required = false) Boolean delivery,
       @AuthenticationPrincipal Jwt jwt) {
     if (sort == RestaurantSort.AFFINITY_DESC) {
       if (jwt == null) {
@@ -103,7 +106,8 @@ class PublicRestaurantRestController {
     if (sort == RestaurantSort.DISTANCE_ASC && anchor == null) {
       throw new MissingAnchorException();
     }
-    RestaurantFilter filter = new RestaurantFilter(tagSlugs, trimmedName, anchor);
+    RestaurantFilter filter =
+        RestaurantFilter.ofTagSlugs(tagSlugs, trimmedName, anchor, null, dineIn, takeOut, delivery);
     RestaurantCursor decoded = cursor == null ? null : CursorCodec.decode(cursor, sort);
     CursorPage<Restaurant> page = listRestaurants.list(decoded, size, filter, sort);
     return buildResponse(page, sort, size);

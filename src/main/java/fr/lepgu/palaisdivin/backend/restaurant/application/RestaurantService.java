@@ -17,9 +17,14 @@ import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.ListRestaurantsUseCa
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.RestaurantRepositoryPort;
 import fr.lepgu.palaisdivin.backend.shared.domain.ports.OutboxPublisher;
 import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;
+import fr.lepgu.palaisdivin.backend.tag.domain.ports.ExpandTagSlugsUseCase;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,26 +38,40 @@ public class RestaurantService
   private final RestaurantRepositoryPort repository;
   private final GeocoderPort geocoder;
   private final OutboxPublisher outboxPublisher;
+  private final ExpandTagSlugsUseCase expandTagSlugs;
   private final Clock clock;
 
   public RestaurantService(
       RestaurantRepositoryPort repository,
       GeocoderPort geocoder,
       OutboxPublisher outboxPublisher,
+      ExpandTagSlugsUseCase expandTagSlugs,
       Clock clock) {
     this.repository = repository;
     this.geocoder = geocoder;
     this.outboxPublisher = outboxPublisher;
+    this.expandTagSlugs = expandTagSlugs;
     this.clock = clock;
   }
 
   @Override
   @Transactional
-  public Restaurant create(String name, String address) {
+  public Restaurant create(
+      String name, String address, boolean dineIn, boolean takeOut, boolean delivery) {
     Coordinates location = geocoder.geocode(address);
     Restaurant restaurant =
         new Restaurant(
-            RestaurantId.newId(), name, address, location, Instant.now(clock), null, null);
+            RestaurantId.newId(),
+            name,
+            address,
+            location,
+            Instant.now(clock),
+            null,
+            null,
+            null,
+            dineIn,
+            takeOut,
+            delivery);
     Restaurant saved = repository.save(restaurant);
     outboxPublisher.publish(
         "Restaurant",
@@ -76,7 +95,36 @@ public class RestaurantService
   @Override
   public CursorPage<Restaurant> list(
       RestaurantCursor cursor, int size, RestaurantFilter filter, RestaurantSort sort) {
-    return repository.findAll(cursor, size, filter, sort);
+    return repository.findAll(cursor, size, expandTags(filter), sort);
+  }
+
+  private RestaurantFilter expandTags(RestaurantFilter filter) {
+    if (!filter.hasTags()) {
+      return filter;
+    }
+    List<String> originalSlugs =
+        filter.tagSlugGroups().stream().filter(g -> g.size() == 1).map(g -> g.get(0)).toList();
+    if (originalSlugs.size() != filter.tagSlugGroups().size()) {
+      return filter;
+    }
+    Map<String, Set<String>> expansion = expandTagSlugs.expand(originalSlugs);
+    boolean changed = expansion.values().stream().anyMatch(s -> s.size() > 1);
+    if (!changed) {
+      return filter;
+    }
+    List<List<String>> expandedGroups = new ArrayList<>(originalSlugs.size());
+    for (String s : originalSlugs) {
+      Set<String> group = expansion.getOrDefault(s, Set.of(s));
+      expandedGroups.add(List.copyOf(group));
+    }
+    return new RestaurantFilter(
+        expandedGroups,
+        filter.name(),
+        filter.anchor(),
+        filter.idsAllowList(),
+        filter.dineIn(),
+        filter.takeOut(),
+        filter.delivery());
   }
 
   @Override

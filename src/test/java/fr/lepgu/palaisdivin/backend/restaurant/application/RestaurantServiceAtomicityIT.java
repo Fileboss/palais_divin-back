@@ -40,7 +40,7 @@ class RestaurantServiceAtomicityIT extends AbstractIntegrationTest {
 
   @Test
   void createPersistsBothRestaurantAndOutboxRowInSameTx() {
-    Restaurant created = service.create("Septime", "80 Rue de Charonne");
+    Restaurant created = service.create("Septime", "80 Rue de Charonne", true, false, false);
 
     Long restaurantCount =
         jdbcClient
@@ -81,7 +81,7 @@ class RestaurantServiceAtomicityIT extends AbstractIntegrationTest {
                 new TransactionTemplate(txManager)
                     .executeWithoutResult(
                         status -> {
-                          service.create("Septime", "80 Rue de Charonne");
+                          service.create("Septime", "80 Rue de Charonne", true, false, false);
                           throw new RuntimeException("force rollback");
                         }))
         .isInstanceOf(RuntimeException.class)

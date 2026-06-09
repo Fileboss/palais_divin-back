@@ -38,14 +38,34 @@ class RestaurantEntity {
       columnDefinition = "numeric(3,2)")
   private Double avgRating;
 
+  @Column(name = "dine_in", nullable = false)
+  private boolean dineIn;
+
+  @Column(name = "take_out", nullable = false)
+  private boolean takeOut;
+
+  @Column(name = "delivery", nullable = false)
+  private boolean delivery;
+
   protected RestaurantEntity() {}
 
-  RestaurantEntity(UUID id, String name, String address, Point location, Instant createdAt) {
+  RestaurantEntity(
+      UUID id,
+      String name,
+      String address,
+      Point location,
+      Instant createdAt,
+      boolean dineIn,
+      boolean takeOut,
+      boolean delivery) {
     this.id = id;
     this.name = name;
     this.address = address;
     this.location = location;
     this.createdAt = createdAt;
+    this.dineIn = dineIn;
+    this.takeOut = takeOut;
+    this.delivery = delivery;
   }
 
   UUID getId() {
@@ -70,5 +90,17 @@ class RestaurantEntity {
 
   Double getAvgRating() {
     return avgRating;
+  }
+
+  boolean isDineIn() {
+    return dineIn;
+  }
+
+  boolean isTakeOut() {
+    return takeOut;
+  }
+
+  boolean isDelivery() {
+    return delivery;
   }
 }

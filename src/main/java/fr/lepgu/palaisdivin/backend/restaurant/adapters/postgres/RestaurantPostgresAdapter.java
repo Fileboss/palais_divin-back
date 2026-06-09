@@ -78,19 +78,33 @@ public class RestaurantPostgresAdapter implements RestaurantRepositoryPort {
           "select r.id, r.name, r.address, "
               + "ST_X(r.location::geometry) as lng, ST_Y(r.location::geometry) as lat, "
               + "r.created_at, r.avg_rating, "
+              + "r.dine_in, r.take_out, r.delivery, "
               + DIST_EXPR
               + " as dist_m "
               + "from restaurant r ");
     } else {
       sql.append("select r.* from restaurant r ");
     }
-    if (filter.hasTags()) {
-      sql.append("join restaurant_tag rt on rt.restaurant_id = r.id ");
-      sql.append("join tag t on rt.tag_id = t.id ");
-    }
     sql.append("where 1=1 ");
     if (filter.hasTags()) {
-      sql.append("and t.slug in (:slugs) ");
+      for (int i = 0; i < filter.tagSlugGroups().size(); i++) {
+        sql.append(
+            "and exists (select 1 from restaurant_tag rt"
+                + i
+                + " join tag t"
+                + i
+                + " on rt"
+                + i
+                + ".tag_id = t"
+                + i
+                + ".id where rt"
+                + i
+                + ".restaurant_id = r.id and t"
+                + i
+                + ".slug in (:slugs"
+                + i
+                + ")) ");
+      }
     }
     if (filter.hasName()) {
       sql.append("and r.name ilike :namePattern ");
@@ -98,10 +112,16 @@ public class RestaurantPostgresAdapter implements RestaurantRepositoryPort {
     if (filter.hasIdsAllowList()) {
       sql.append("and r.id in (:idsAllowList) ");
     }
-    appendKeysetPredicate(sql, cursor, sort);
-    if (filter.hasTags()) {
-      sql.append("group by r.id having count(distinct rt.tag_id) = :slugCount ");
+    if (filter.hasDineIn()) {
+      sql.append("and r.dine_in = :dineIn ");
     }
+    if (filter.hasTakeOut()) {
+      sql.append("and r.take_out = :takeOut ");
+    }
+    if (filter.hasDelivery()) {
+      sql.append("and r.delivery = :delivery ");
+    }
+    appendKeysetPredicate(sql, cursor, sort);
     sql.append(orderByClause(sort));
 
     Query q =
@@ -109,8 +129,9 @@ public class RestaurantPostgresAdapter implements RestaurantRepositoryPort {
             ? em.createNativeQuery(sql.toString())
             : em.createNativeQuery(sql.toString(), RestaurantEntity.class);
     if (filter.hasTags()) {
-      q.setParameter("slugs", filter.tagSlugs());
-      q.setParameter("slugCount", filter.tagSlugs().size());
+      for (int i = 0; i < filter.tagSlugGroups().size(); i++) {
+        q.setParameter("slugs" + i, filter.tagSlugGroups().get(i));
+      }
     }
     if (filter.hasName()) {
       q.setParameter("namePattern", "%" + filter.name() + "%");
@@ -118,6 +139,15 @@ public class RestaurantPostgresAdapter implements RestaurantRepositoryPort {
     if (filter.hasIdsAllowList()) {
       q.setParameter(
           "idsAllowList", filter.idsAllowList().stream().map(RestaurantId::value).toList());
+    }
+    if (filter.hasDineIn()) {
+      q.setParameter("dineIn", filter.dineIn());
+    }
+    if (filter.hasTakeOut()) {
+      q.setParameter("takeOut", filter.takeOut());
+    }
+    if (filter.hasDelivery()) {
+      q.setParameter("delivery", filter.delivery());
     }
     bindCursorParameters(q, cursor, sort);
     bindAnchorParameters(q, filter, sort);
@@ -225,7 +255,15 @@ public class RestaurantPostgresAdapter implements RestaurantRepositoryPort {
         GEOMETRY_FACTORY.createPoint(
             new Coordinate(r.location().longitude(), r.location().latitude()));
     point.setSRID(SRID_WGS84);
-    return new RestaurantEntity(r.id().value(), r.name(), r.address(), point, r.createdAt());
+    return new RestaurantEntity(
+        r.id().value(),
+        r.name(),
+        r.address(),
+        point,
+        r.createdAt(),
+        r.dineIn(),
+        r.takeOut(),
+        r.delivery());
   }
 
   private static Restaurant toDomain(RestaurantEntity e) {
@@ -237,7 +275,11 @@ public class RestaurantPostgresAdapter implements RestaurantRepositoryPort {
         new Coordinates(point.getY(), point.getX()),
         e.getCreatedAt(),
         e.getAvgRating(),
-        null);
+        null,
+        null,
+        e.isDineIn(),
+        e.isTakeOut(),
+        e.isDelivery());
   }
 
   private static Restaurant toDomainWithDistance(Object[] row) {
@@ -249,7 +291,10 @@ public class RestaurantPostgresAdapter implements RestaurantRepositoryPort {
     Instant createdAt = toInstant(row[5]);
     BigDecimal avg = (BigDecimal) row[6];
     Double avgRating = avg == null ? null : avg.doubleValue();
-    double distM = ((Number) row[7]).doubleValue();
+    boolean dineIn = (Boolean) row[7];
+    boolean takeOut = (Boolean) row[8];
+    boolean delivery = (Boolean) row[9];
+    double distM = ((Number) row[10]).doubleValue();
     return new Restaurant(
         new RestaurantId(id),
         name,
@@ -257,7 +302,11 @@ public class RestaurantPostgresAdapter implements RestaurantRepositoryPort {
         new Coordinates(lat, lng),
         createdAt,
         avgRating,
-        distM);
+        distM,
+        null,
+        dineIn,
+        takeOut,
+        delivery);
   }
 
   private static Instant toInstant(Object raw) {

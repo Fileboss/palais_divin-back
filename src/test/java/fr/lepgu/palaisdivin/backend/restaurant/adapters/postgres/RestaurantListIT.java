@@ -25,7 +25,9 @@ import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase.Replace;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.context.ActiveProfiles;
 
+@ActiveProfiles("test")
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = Replace.NONE)
 @Import({TestcontainersConfiguration.class, RestaurantPostgresAdapter.class})
@@ -114,7 +116,7 @@ class RestaurantListIT {
     RestaurantId rC = saveRestaurant("C", base.plusSeconds(2));
 
     UUID attacher = seedUser(suffix);
-    UUID burger = seedTag("FOOD", "rl-burger-" + suffix, "Burger");
+    UUID burger = seedTag("SPECIALTY", "rl-burger-" + suffix, "Burger");
     UUID vegan = seedTag("REGIME", "rl-vegan-" + suffix, "Vegan");
     attach(rA.value(), burger, attacher, base);
     attach(rC.value(), burger, attacher, base);
@@ -140,7 +142,7 @@ class RestaurantListIT {
     RestaurantId rC = saveRestaurant("C", base.plusSeconds(2));
 
     UUID attacher = seedUser(suffix);
-    UUID burger = seedTag("FOOD", "rl-burger-" + suffix, "Burger");
+    UUID burger = seedTag("SPECIALTY", "rl-burger-" + suffix, "Burger");
     UUID vegan = seedTag("REGIME", "rl-vegan-" + suffix, "Vegan");
     attach(rA.value(), burger, attacher, base);
     attach(rA.value(), vegan, attacher, base);
@@ -179,7 +181,7 @@ class RestaurantListIT {
     String suffix = UUID.randomUUID().toString().substring(0, 8);
     Instant base = Instant.parse("2026-05-27T10:00:00Z");
     UUID attacher = seedUser(suffix);
-    UUID burger = seedTag("FOOD", "rl-burger-" + suffix, "Burger");
+    UUID burger = seedTag("SPECIALTY", "rl-burger-" + suffix, "Burger");
 
     Set<UUID> attached = new HashSet<>();
     for (int i = 0; i < 7; i++) {
@@ -238,7 +240,7 @@ class RestaurantListIT {
     RestaurantId regularBistro = saveRestaurant("Regular Bistro", base.plusSeconds(2));
 
     UUID attacher = seedUser(suffix);
-    UUID burger = seedTag("FOOD", "rl-burger-" + suffix, "Burger");
+    UUID burger = seedTag("SPECIALTY", "rl-burger-" + suffix, "Burger");
     attach(burgerBistro.value(), burger, attacher, base);
     attach(burgerHouse.value(), burger, attacher, base);
     // regularBistro tagged not-burger
@@ -353,7 +355,7 @@ class RestaurantListIT {
     setRating(noTagHi.value(), "5.00");
 
     UUID attacher = seedUser(suffix);
-    UUID burger = seedTag("FOOD", "rl-burger-" + suffix, "Burger");
+    UUID burger = seedTag("SPECIALTY", "rl-burger-" + suffix, "Burger");
     attach(withTagHi.value(), burger, attacher, base);
     attach(withTagLo.value(), burger, attacher, base);
 
@@ -493,7 +495,7 @@ class RestaurantListIT {
     RestaurantId far = saveRestaurantAt("far", base.plusSeconds(2), 48.8530, 2.3540);
 
     UUID attacher = seedUser(suffix);
-    UUID burger = seedTag("FOOD", "rl-burger-" + suffix, "Burger");
+    UUID burger = seedTag("SPECIALTY", "rl-burger-" + suffix, "Burger");
     attach(near.value(), burger, attacher, base);
     attach(far.value(), burger, attacher, base);
 

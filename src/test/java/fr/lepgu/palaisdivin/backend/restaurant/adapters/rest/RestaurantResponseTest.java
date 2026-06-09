@@ -34,7 +34,8 @@ class RestaurantResponseTest {
 
   @Test
   void two_arg_factory_maps_tags_preserving_order_and_strips_id() {
-    Tag a = new Tag(TagId.newId(), TagCategory.FOOD, "natural-wine", "Natural wine", CREATED_AT);
+    Tag a =
+        new Tag(TagId.newId(), TagCategory.SPECIALTY, "natural-wine", "Natural wine", CREATED_AT);
     Tag b = new Tag(TagId.newId(), TagCategory.REGIME, "vegan", "Vegan", CREATED_AT);
 
     RestaurantResponse resp = RestaurantResponse.from(restaurant(), List.of(a, b));
@@ -45,7 +46,8 @@ class RestaurantResponseTest {
             RestaurantResponse.TagSummary::slug,
             RestaurantResponse.TagSummary::label)
         .containsExactly(
-            org.assertj.core.groups.Tuple.tuple(TagCategory.FOOD, "natural-wine", "Natural wine"),
+            org.assertj.core.groups.Tuple.tuple(
+                TagCategory.SPECIALTY, "natural-wine", "Natural wine"),
             org.assertj.core.groups.Tuple.tuple(TagCategory.REGIME, "vegan", "Vegan"));
   }
 }

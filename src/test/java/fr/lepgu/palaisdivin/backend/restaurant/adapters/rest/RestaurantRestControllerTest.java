@@ -1,5 +1,6 @@
 package fr.lepgu.palaisdivin.backend.restaurant.adapters.rest;
 
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
@@ -55,7 +56,9 @@ class RestaurantRestControllerTest {
             new Coordinates(48.8536, 2.3795),
             FIXED_CREATED_AT,
             null);
-    when(createRestaurant.create(eq("Septime"), eq("80 Rue de Charonne"))).thenReturn(created);
+    when(createRestaurant.create(
+            eq("Septime"), eq("80 Rue de Charonne"), anyBoolean(), anyBoolean(), anyBoolean()))
+        .thenReturn(created);
 
     mockMvc
         .perform(
@@ -125,7 +128,8 @@ class RestaurantRestControllerTest {
 
   @Test
   void post_unresolvableAddress_returns_422_problem_detail() throws Exception {
-    when(createRestaurant.create(eq("Septime"), eq("nope nope nope")))
+    when(createRestaurant.create(
+            eq("Septime"), eq("nope nope nope"), anyBoolean(), anyBoolean(), anyBoolean()))
         .thenThrow(new UnresolvableAddressException("nope nope nope"));
 
     mockMvc

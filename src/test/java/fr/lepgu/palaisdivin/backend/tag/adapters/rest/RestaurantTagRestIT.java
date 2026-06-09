@@ -91,7 +91,7 @@ class RestaurantTagRestIT extends AbstractIntegrationTest {
             .post()
             .uri("/api/v1/admin/tags")
             .contentType(MediaType.APPLICATION_JSON)
-            .body(new CreateTagPayload("FOOD", "natural-wine", "Natural wine"))
+            .body(new CreateTagPayload("SPECIALTY", "natural-wine", "Natural wine"))
             .retrieve()
             .body(TagResponse.class)
             .id();

@@ -23,7 +23,13 @@ class RestaurantRestController {
 
   @PostMapping
   ResponseEntity<RestaurantResponse> create(@Valid @RequestBody CreateRestaurantRequest req) {
-    Restaurant created = createRestaurant.create(req.name(), req.address());
+    Restaurant created =
+        createRestaurant.create(
+            req.name(),
+            req.address(),
+            req.dineInOrDefault(),
+            req.takeOutOrDefault(),
+            req.deliveryOrDefault());
     URI location =
         ServletUriComponentsBuilder.fromCurrentRequest()
             .path("/{id}")

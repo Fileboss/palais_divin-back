@@ -11,7 +11,10 @@ public record Restaurant(
     Instant createdAt,
     Double avgRating,
     Double distanceMetres,
-    Double affinity) {
+    Double affinity,
+    boolean dineIn,
+    boolean takeOut,
+    boolean delivery) {
   public Restaurant {
     Objects.requireNonNull(id, "id");
     Objects.requireNonNull(name, "name");
@@ -29,8 +32,42 @@ public record Restaurant(
       Coordinates location,
       Instant createdAt,
       Double avgRating,
+      Double distanceMetres,
+      Double affinity) {
+    this(
+        id,
+        name,
+        address,
+        location,
+        createdAt,
+        avgRating,
+        distanceMetres,
+        affinity,
+        true,
+        false,
+        false);
+  }
+
+  public Restaurant(
+      RestaurantId id,
+      String name,
+      String address,
+      Coordinates location,
+      Instant createdAt,
+      Double avgRating,
       Double distanceMetres) {
-    this(id, name, address, location, createdAt, avgRating, distanceMetres, null);
+    this(
+        id,
+        name,
+        address,
+        location,
+        createdAt,
+        avgRating,
+        distanceMetres,
+        null,
+        true,
+        false,
+        false);
   }
 
   public Restaurant(
@@ -40,6 +77,6 @@ public record Restaurant(
       Coordinates location,
       Instant createdAt,
       Double avgRating) {
-    this(id, name, address, location, createdAt, avgRating, null, null);
+    this(id, name, address, location, createdAt, avgRating, null, null, true, false, false);
   }
 }

@@ -21,7 +21,9 @@ import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase.Replace;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.context.ActiveProfiles;
 
+@ActiveProfiles("test")
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = Replace.NONE)
 @Import({
@@ -61,7 +63,7 @@ class RestaurantTagPostgresAdapterIT {
         "kc-attacher-" + suffix,
         "attacher-" + suffix + "@example.test",
         "Attacher");
-    insertTag(foodTagId.value(), "FOOD", "rt-food-" + suffix, "Food tag");
+    insertTag(foodTagId.value(), "SPECIALTY", "rt-food-" + suffix, "Food tag");
     insertTag(regimeTagId.value(), "REGIME", "rt-regime-" + suffix, "Regime tag");
   }
 
@@ -92,7 +94,7 @@ class RestaurantTagPostgresAdapterIT {
   @Test
   void findTagsByRestaurant_orders_by_category_then_slug() {
     TagId foodBurgerId = TagId.newId();
-    insertTag(foodBurgerId.value(), "FOOD", "rt-burger-" + suffix, "Burger");
+    insertTag(foodBurgerId.value(), "SPECIALTY", "rt-burger-" + suffix, "Burger");
 
     adapter.save(new RestaurantTag(restaurantId, regimeTagId, attacherId, CREATED_AT));
     adapter.save(new RestaurantTag(restaurantId, foodTagId, attacherId, CREATED_AT));
@@ -105,7 +107,9 @@ class RestaurantTagPostgresAdapterIT {
     assertThat(tags)
         .extracting(t -> t.category().name() + ":" + t.slug())
         .containsExactly(
-            "FOOD:rt-burger-" + suffix, "FOOD:rt-food-" + suffix, "REGIME:rt-regime-" + suffix);
+            "REGIME:rt-regime-" + suffix,
+            "SPECIALTY:rt-burger-" + suffix,
+            "SPECIALTY:rt-food-" + suffix);
   }
 
   @Test
@@ -113,7 +117,7 @@ class RestaurantTagPostgresAdapterIT {
     RestaurantId other = RestaurantId.newId();
     insertRestaurant(other.value(), "Le Train Bleu", "Gare de Lyon");
     TagId foodBurgerId = TagId.newId();
-    insertTag(foodBurgerId.value(), "FOOD", "rt-burger-" + suffix, "Burger");
+    insertTag(foodBurgerId.value(), "SPECIALTY", "rt-burger-" + suffix, "Burger");
 
     // restaurant 1 -> burger, food, vegan(regime)
     adapter.save(new RestaurantTag(restaurantId, foodTagId, attacherId, CREATED_AT));
@@ -131,7 +135,9 @@ class RestaurantTagPostgresAdapterIT {
     assertThat(grouped.get(restaurantId))
         .extracting(t -> t.category().name() + ":" + t.slug())
         .containsExactly(
-            "FOOD:rt-burger-" + suffix, "FOOD:rt-food-" + suffix, "REGIME:rt-regime-" + suffix);
+            "REGIME:rt-regime-" + suffix,
+            "SPECIALTY:rt-burger-" + suffix,
+            "SPECIALTY:rt-food-" + suffix);
     assertThat(grouped.get(other))
         .extracting(t -> t.category().name() + ":" + t.slug())
         .containsExactly("REGIME:rt-regime-" + suffix);

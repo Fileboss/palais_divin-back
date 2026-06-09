@@ -4,5 +4,5 @@ import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Restaurant;
 
 public interface CreateRestaurantUseCase {
 
-  Restaurant create(String name, String address);
+  Restaurant create(String name, String address, boolean dineIn, boolean takeOut, boolean delivery);
 }

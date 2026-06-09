@@ -19,7 +19,9 @@ import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase.Replace;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.context.ActiveProfiles;
 
+@ActiveProfiles("test")
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = Replace.NONE)
 @Import({
@@ -43,7 +45,7 @@ class TagPostgresAdapterIT {
   @Test
   void save_round_trips_through_postgres() {
     TagId id = TagId.newId();
-    Tag input = new Tag(id, TagCategory.FOOD, "natural-wine", "Natural wine", CREATED_AT);
+    Tag input = new Tag(id, TagCategory.SPECIALTY, "natural-wine", "Natural wine", CREATED_AT);
 
     Tag saved = adapter.save(input);
     Optional<Tag> found = adapter.findById(id);
@@ -52,7 +54,7 @@ class TagPostgresAdapterIT {
     assertThat(found).isPresent();
     Tag out = found.get();
     assertThat(out.id()).isEqualTo(id);
-    assertThat(out.category()).isEqualTo(TagCategory.FOOD);
+    assertThat(out.category()).isEqualTo(TagCategory.SPECIALTY);
     assertThat(out.slug()).isEqualTo("natural-wine");
     assertThat(out.label()).isEqualTo("Natural wine");
     assertThat(out.createdAt()).isEqualTo(CREATED_AT);
@@ -67,27 +69,28 @@ class TagPostgresAdapterIT {
   void findAll_orders_by_category_then_slug() {
     adapter.save(new Tag(TagId.newId(), TagCategory.VENUE_TYPE, "bistro", "Bistrot", CREATED_AT));
     adapter.save(
-        new Tag(TagId.newId(), TagCategory.FOOD, "natural-wine", "Natural wine", CREATED_AT));
-    adapter.save(new Tag(TagId.newId(), TagCategory.FOOD, "burger", "Burger", CREATED_AT));
+        new Tag(TagId.newId(), TagCategory.SPECIALTY, "natural-wine", "Natural wine", CREATED_AT));
+    adapter.save(new Tag(TagId.newId(), TagCategory.SPECIALTY, "burger", "Burger", CREATED_AT));
     adapter.save(new Tag(TagId.newId(), TagCategory.REGIME, "vegan", "Vegan", CREATED_AT));
-    adapter.save(new Tag(TagId.newId(), TagCategory.PLACE, "paris-11", "Paris 11e", CREATED_AT));
+    adapter.save(
+        new Tag(TagId.newId(), TagCategory.SERVICE_AND_PLACE, "paris-11", "Paris 11e", CREATED_AT));
 
     List<Tag> all = adapter.findAll();
 
     assertThat(all)
         .extracting(t -> t.category().name() + ":" + t.slug())
         .containsExactly(
-            "FOOD:burger",
-            "FOOD:natural-wine",
-            "PLACE:paris-11",
             "REGIME:vegan",
+            "SERVICE_AND_PLACE:paris-11",
+            "SPECIALTY:burger",
+            "SPECIALTY:natural-wine",
             "VENUE_TYPE:bistro");
   }
 
   @Test
   void deleteById_removes_row() {
     TagId id = TagId.newId();
-    adapter.save(new Tag(id, TagCategory.FOOD, "natural-wine", "Natural wine", CREATED_AT));
+    adapter.save(new Tag(id, TagCategory.SPECIALTY, "natural-wine", "Natural wine", CREATED_AT));
 
     adapter.deleteById(id);
     em.flush();
@@ -98,7 +101,7 @@ class TagPostgresAdapterIT {
   @Test
   void deleteById_cascades_to_restaurant_tag_rows() {
     TagId tagId = TagId.newId();
-    adapter.save(new Tag(tagId, TagCategory.FOOD, "natural-wine", "Natural wine", CREATED_AT));
+    adapter.save(new Tag(tagId, TagCategory.SPECIALTY, "natural-wine", "Natural wine", CREATED_AT));
 
     java.util.UUID restaurantId = java.util.UUID.randomUUID();
     java.util.UUID userId = java.util.UUID.randomUUID();
@@ -147,7 +150,7 @@ class TagPostgresAdapterIT {
   @Test
   void unique_slug_is_enforced() {
     adapter.save(
-        new Tag(TagId.newId(), TagCategory.FOOD, "natural-wine", "Natural wine", CREATED_AT));
+        new Tag(TagId.newId(), TagCategory.SPECIALTY, "natural-wine", "Natural wine", CREATED_AT));
 
     assertThatThrownBy(
             () -> {

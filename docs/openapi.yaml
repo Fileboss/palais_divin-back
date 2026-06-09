@@ -18,7 +18,7 @@ paths:
       - invitation-rest-controller
   /api/v1/admin/restaurants/{id}:
     delete:
-      operationId: delete_1
+      operationId: delete_2
       parameters:
       - in: path
         name: id
@@ -31,6 +31,45 @@ paths:
           description: OK
       tags:
       - admin-restaurant-rest-controller
+  /api/v1/admin/tag-implications:
+    post:
+      operationId: create_3
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTagImplicationRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/TagImplicationResponse"
+          description: OK
+      tags:
+      - admin-tag-implication-rest-controller
+  /api/v1/admin/tag-implications/{tagId}/{impliesTagId}:
+    delete:
+      operationId: delete_1
+      parameters:
+      - in: path
+        name: tagId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - in: path
+        name: impliesTagId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
+          description: OK
+      tags:
+      - admin-tag-implication-rest-controller
   /api/v1/admin/tags:
     post:
       operationId: create_2
@@ -78,7 +117,7 @@ paths:
       - ping-controller
   /api/v1/public/restaurants:
     get:
-      operationId: list_3
+      operationId: list_4
       parameters:
       - in: query
         name: cursor
@@ -141,6 +180,21 @@ paths:
           format: double
           maximum: 180.0
           minimum: -180.0
+      - in: query
+        name: dineIn
+        required: false
+        schema:
+          type: boolean
+      - in: query
+        name: takeOut
+        required: false
+        schema:
+          type: boolean
+      - in: query
+        name: delivery
+        required: false
+        schema:
+          type: boolean
       responses:
         "200":
           content:
@@ -171,7 +225,7 @@ paths:
       - public-restaurant-rest-controller
   /api/v1/public/restaurants/{restaurantId}/photos:
     get:
-      operationId: list_5
+      operationId: list_6
       parameters:
       - in: path
         name: restaurantId
@@ -204,7 +258,7 @@ paths:
       - public-photo-rest-controller
   /api/v1/public/restaurants/{restaurantId}/reviews:
     get:
-      operationId: list_4
+      operationId: list_5
       parameters:
       - in: path
         name: restaurantId
@@ -286,6 +340,18 @@ paths:
           description: OK
       tags:
       - signup-rest-controller
+  /api/v1/public/tag-implications:
+    get:
+      operationId: list_3
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/TagImplicationsResponse"
+          description: OK
+      tags:
+      - public-tag-implication-rest-controller
   /api/v1/public/tags:
     get:
       operationId: list_2
@@ -701,10 +767,11 @@ components:
         category:
           type: string
           enum:
-          - FOOD
           - REGIME
-          - PLACE
+          - TYPE
+          - SPECIALTY
           - VENUE_TYPE
+          - SERVICE_AND_PLACE
         tags:
           type: array
           items:
@@ -746,9 +813,15 @@ components:
         address:
           type: string
           minLength: 1
+        delivery:
+          type: boolean
+        dineIn:
+          type: boolean
         name:
           type: string
           minLength: 1
+        takeOut:
+          type: boolean
       required:
       - address
       - name
@@ -764,16 +837,29 @@ components:
           format: int32
           maximum: 5
           minimum: 1
+    CreateTagImplicationRequest:
+      type: object
+      properties:
+        impliesTagId:
+          type: string
+          format: uuid
+        tagId:
+          type: string
+          format: uuid
+      required:
+      - impliesTagId
+      - tagId
     CreateTagRequest:
       type: object
       properties:
         category:
           type: string
           enum:
-          - FOOD
           - REGIME
-          - PLACE
+          - TYPE
+          - SPECIALTY
           - VENUE_TYPE
+          - SERVICE_AND_PLACE
         label:
           type: string
           maxLength: 127
@@ -963,6 +1049,10 @@ components:
         createdAt:
           type: string
           format: date-time
+        delivery:
+          type: boolean
+        dineIn:
+          type: boolean
         distanceMetres:
           type: number
           format: double
@@ -980,6 +1070,8 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/TagSummary"
+        takeOut:
+          type: boolean
         thumbnail:
           $ref: "#/components/schemas/ThumbnailSummary"
     RestaurantTagResponse:
@@ -1078,16 +1170,36 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/CategoryGroup"
+    TagImplicationResponse:
+      type: object
+      properties:
+        createdAt:
+          type: string
+          format: date-time
+        impliesTagId:
+          type: string
+          format: uuid
+        tagId:
+          type: string
+          format: uuid
+    TagImplicationsResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/TagImplicationResponse"
     TagResponse:
       type: object
       properties:
         category:
           type: string
           enum:
-          - FOOD
           - REGIME
-          - PLACE
+          - TYPE
+          - SPECIALTY
           - VENUE_TYPE
+          - SERVICE_AND_PLACE
         createdAt:
           type: string
           format: date-time
@@ -1104,10 +1216,11 @@ components:
         category:
           type: string
           enum:
-          - FOOD
           - REGIME
-          - PLACE
+          - TYPE
+          - SPECIALTY
           - VENUE_TYPE
+          - SERVICE_AND_PLACE
         label:
           type: string
         slug:

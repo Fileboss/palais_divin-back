@@ -70,6 +70,9 @@ public class ListAffinityRankedRestaurantsService implements ListAffinityRankedR
         r.createdAt(),
         r.avgRating(),
         r.distanceMetres(),
-        affinity);
+        affinity,
+        r.dineIn(),
+        r.takeOut(),
+        r.delivery());
   }
 }

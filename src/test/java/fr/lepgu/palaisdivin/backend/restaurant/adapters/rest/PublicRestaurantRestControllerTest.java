@@ -261,7 +261,7 @@ class PublicRestaurantRestControllerTest {
     Restaurant r2 = restaurant("Le Train Bleu");
     when(listRestaurants.list(null, 20, RestaurantFilter.none(), RestaurantSort.CREATED_AT_DESC))
         .thenReturn(new CursorPage<>(List.of(r1, r2), false));
-    Tag food = new Tag(TagId.newId(), TagCategory.FOOD, "burger", "Burger", FIXED_CREATED_AT);
+    Tag food = new Tag(TagId.newId(), TagCategory.SPECIALTY, "burger", "Burger", FIXED_CREATED_AT);
     Tag regime = new Tag(TagId.newId(), TagCategory.REGIME, "vegan", "Vegan", FIXED_CREATED_AT);
     when(listRestaurantTags.listFor(anyCollection()))
         .thenReturn(Map.of(r1.id(), List.of(food), r2.id(), List.of(regime)));
@@ -271,7 +271,7 @@ class PublicRestaurantRestControllerTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.data[0].tags.length()").value(1))
         .andExpect(jsonPath("$.data[0].tags[0].slug").value("burger"))
-        .andExpect(jsonPath("$.data[0].tags[0].category").value("FOOD"))
+        .andExpect(jsonPath("$.data[0].tags[0].category").value("SPECIALTY"))
         .andExpect(jsonPath("$.data[1].tags[0].slug").value("vegan"))
         .andExpect(jsonPath("$.data[1].tags[0].category").value("REGIME"));
   }

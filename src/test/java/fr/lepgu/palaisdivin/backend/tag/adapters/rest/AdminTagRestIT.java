@@ -40,7 +40,7 @@ class AdminTagRestIT extends AbstractIntegrationTest {
             .post()
             .uri("/api/v1/admin/tags")
             .contentType(MediaType.APPLICATION_JSON)
-            .body(new CreateTagRequestPayload("FOOD", "natural-wine", "Natural wine"))
+            .body(new CreateTagRequestPayload("SPECIALTY", "natural-wine", "Natural wine"))
             .retrieve()
             .toEntity(TagResponse.class);
 
@@ -70,7 +70,7 @@ class AdminTagRestIT extends AbstractIntegrationTest {
         .post()
         .uri("/api/v1/admin/tags")
         .contentType(MediaType.APPLICATION_JSON)
-        .body(new CreateTagRequestPayload("FOOD", "natural-wine", "Natural wine"))
+        .body(new CreateTagRequestPayload("SPECIALTY", "natural-wine", "Natural wine"))
         .retrieve()
         .toBodilessEntity();
 
@@ -95,7 +95,7 @@ class AdminTagRestIT extends AbstractIntegrationTest {
             .post()
             .uri("/api/v1/admin/tags")
             .contentType(MediaType.APPLICATION_JSON)
-            .body(new CreateTagRequestPayload("FOOD", "Natural Wine", "Natural wine"))
+            .body(new CreateTagRequestPayload("SPECIALTY", "Natural Wine", "Natural wine"))
             .retrieve()
             .onStatus(s -> s.is4xxClientError(), (req, res) -> {})
             .toEntity(String.class);
@@ -118,7 +118,7 @@ class AdminTagRestIT extends AbstractIntegrationTest {
             .post()
             .uri("/api/v1/admin/tags")
             .contentType(MediaType.APPLICATION_JSON)
-            .body(new CreateTagRequestPayload("FOOD", "natural-wine", "Natural wine"))
+            .body(new CreateTagRequestPayload("SPECIALTY", "natural-wine", "Natural wine"))
             .retrieve()
             .onStatus(s -> s.is4xxClientError(), (req, res) -> {})
             .toEntity(String.class);
@@ -134,7 +134,7 @@ class AdminTagRestIT extends AbstractIntegrationTest {
             .post()
             .uri("/api/v1/admin/tags")
             .contentType(MediaType.APPLICATION_JSON)
-            .body(new CreateTagRequestPayload("FOOD", "natural-wine", "Natural wine"))
+            .body(new CreateTagRequestPayload("SPECIALTY", "natural-wine", "Natural wine"))
             .retrieve()
             .onStatus(s -> s.is4xxClientError(), (req, res) -> {})
             .toEntity(String.class);
@@ -150,7 +150,7 @@ class AdminTagRestIT extends AbstractIntegrationTest {
             .post()
             .uri("/api/v1/admin/tags")
             .contentType(MediaType.APPLICATION_JSON)
-            .body(new CreateTagRequestPayload("FOOD", "natural-wine", "Natural wine"))
+            .body(new CreateTagRequestPayload("SPECIALTY", "natural-wine", "Natural wine"))
             .retrieve()
             .body(TagResponse.class);
     jdbcClient.sql("DELETE FROM outbox_event").update();

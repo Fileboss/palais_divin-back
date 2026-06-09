@@ -44,7 +44,7 @@ class RestaurantTagProjectorIT extends AbstractIntegrationTest {
                 restaurantId,
                 tagId,
                 "natural-wine",
-                "FOOD",
+                "SPECIALTY",
                 "Natural wine",
                 attachedBy,
                 attachedAt));
@@ -63,7 +63,7 @@ class RestaurantTagProjectorIT extends AbstractIntegrationTest {
             .orElse(null);
     assertThat(tag).isNotNull();
     assertThat(tag).containsEntry("slug", "natural-wine");
-    assertThat(tag).containsEntry("category", "FOOD");
+    assertThat(tag).containsEntry("category", "SPECIALTY");
     assertThat(tag).containsEntry("label", "Natural wine");
     assertThat(tag).containsEntry("attachedAt", attachedAt.toString());
   }
@@ -112,7 +112,7 @@ class RestaurantTagProjectorIT extends AbstractIntegrationTest {
                 restaurantId,
                 tagId,
                 "burger",
-                "FOOD",
+                "SPECIALTY",
                 "Burger",
                 UUID.randomUUID(),
                 Instant.parse("2026-06-03T10:00:00Z")));

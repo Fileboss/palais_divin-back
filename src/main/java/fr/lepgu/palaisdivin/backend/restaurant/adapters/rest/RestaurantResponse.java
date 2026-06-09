@@ -18,6 +18,9 @@ public record RestaurantResponse(
     Double distanceMetres,
     Double affinity,
     Long reviewCount,
+    boolean dineIn,
+    boolean takeOut,
+    boolean delivery,
     List<TagSummary> tags,
     ThumbnailSummary thumbnail) {
 
@@ -45,6 +48,9 @@ public record RestaurantResponse(
         r.distanceMetres(),
         r.affinity(),
         reviewCount,
+        r.dineIn(),
+        r.takeOut(),
+        r.delivery(),
         tags.stream().map(TagSummary::from).toList(),
         thumbnail == null ? null : ThumbnailSummary.from(thumbnail));
   }

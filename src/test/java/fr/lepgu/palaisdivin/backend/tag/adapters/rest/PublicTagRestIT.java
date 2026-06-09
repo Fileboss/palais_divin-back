@@ -32,7 +32,7 @@ class PublicTagRestIT extends AbstractIntegrationTest {
   }
 
   @Test
-  void empty_catalog_returns_200_with_four_empty_groups() {
+  void empty_catalog_returns_200_with_five_empty_groups() {
     ResponseEntity<TagCatalogResponse> resp =
         RestClient.create("http://localhost:" + port)
             .get()
@@ -43,14 +43,14 @@ class PublicTagRestIT extends AbstractIntegrationTest {
     assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
     TagCatalogResponse body = resp.getBody();
     assertThat(body).isNotNull();
-    assertThat(body.groups()).hasSize(4);
+    assertThat(body.groups()).hasSize(5);
     assertThat(body.groups()).allSatisfy(g -> assertThat(g.tags()).isEmpty());
   }
 
   @Test
   void populated_catalog_groups_by_category_in_enum_order() {
-    seedTag("FOOD", "natural-wine", "Natural wine");
-    seedTag("FOOD", "burger", "Burger");
+    seedTag("SPECIALTY", "natural-wine", "Natural wine");
+    seedTag("SPECIALTY", "burger", "Burger");
     seedTag("REGIME", "vegan", "Vegan");
     seedTag("VENUE_TYPE", "bistro", "Bistrot");
 
@@ -64,21 +64,24 @@ class PublicTagRestIT extends AbstractIntegrationTest {
     assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
     TagCatalogResponse body = resp.getBody();
     assertThat(body).isNotNull();
-    assertThat(body.groups()).hasSize(4);
+    assertThat(body.groups()).hasSize(5);
 
-    assertThat(body.groups().get(0).category().name()).isEqualTo("FOOD");
-    assertThat(body.groups().get(0).tags())
+    assertThat(body.groups().get(0).category().name()).isEqualTo("REGIME");
+    assertThat(body.groups().get(0).tags()).extracting(TagResponse::slug).containsExactly("vegan");
+
+    assertThat(body.groups().get(1).category().name()).isEqualTo("TYPE");
+    assertThat(body.groups().get(1).tags()).isEmpty();
+
+    assertThat(body.groups().get(2).category().name()).isEqualTo("SPECIALTY");
+    assertThat(body.groups().get(2).tags())
         .extracting(TagResponse::slug)
         .containsExactly("burger", "natural-wine");
 
-    assertThat(body.groups().get(1).category().name()).isEqualTo("REGIME");
-    assertThat(body.groups().get(1).tags()).extracting(TagResponse::slug).containsExactly("vegan");
-
-    assertThat(body.groups().get(2).category().name()).isEqualTo("PLACE");
-    assertThat(body.groups().get(2).tags()).isEmpty();
-
     assertThat(body.groups().get(3).category().name()).isEqualTo("VENUE_TYPE");
     assertThat(body.groups().get(3).tags()).extracting(TagResponse::slug).containsExactly("bistro");
+
+    assertThat(body.groups().get(4).category().name()).isEqualTo("SERVICE_AND_PLACE");
+    assertThat(body.groups().get(4).tags()).isEmpty();
   }
 
   @Test
