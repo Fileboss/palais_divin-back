@@ -9,6 +9,7 @@ import fr.lepgu.palaisdivin.backend.review.domain.events.ReviewUpdated;
 import fr.lepgu.palaisdivin.backend.review.domain.model.Review;
 import fr.lepgu.palaisdivin.backend.review.domain.model.ReviewCursor;
 import fr.lepgu.palaisdivin.backend.review.domain.model.ReviewId;
+import fr.lepgu.palaisdivin.backend.review.domain.ports.CountRestaurantReviewsUseCase;
 import fr.lepgu.palaisdivin.backend.review.domain.ports.CreateReviewUseCase;
 import fr.lepgu.palaisdivin.backend.review.domain.ports.FindReviewByAuthorUseCase;
 import fr.lepgu.palaisdivin.backend.review.domain.ports.GetMyReviewUseCase;
@@ -34,7 +35,8 @@ public class ReviewService
         FindReviewByAuthorUseCase,
         GetMyReviewUseCase,
         ListReviewsUseCase,
-        UpdateReviewUseCase {
+        UpdateReviewUseCase,
+        CountRestaurantReviewsUseCase {
 
   private static final String AGGREGATE_TYPE = "Review";
   private static final Duration IDEMPOTENCY_TTL = Duration.ofHours(24);
@@ -120,6 +122,12 @@ public class ReviewService
   @Transactional(readOnly = true)
   public CursorPage<Review> listByAuthor(UserId authorId, ReviewCursor cursor, int size) {
     return reviews.findByAuthor(authorId, cursor, size);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public long countByRestaurant(RestaurantId restaurantId) {
+    return reviews.countByRestaurant(restaurantId);
   }
 
   @Override

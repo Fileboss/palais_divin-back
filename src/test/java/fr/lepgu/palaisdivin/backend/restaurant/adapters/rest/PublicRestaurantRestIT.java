@@ -96,6 +96,7 @@ class PublicRestaurantRestIT extends AbstractIntegrationTest {
     assertThat(fetched.id()).isEqualTo(created.id());
     assertThat(fetched.name()).isEqualTo("Septime");
     assertThat(fetched.tags()).isEmpty();
+    assertThat(fetched.reviewCount()).isEqualTo(0L);
   }
 
   @Test

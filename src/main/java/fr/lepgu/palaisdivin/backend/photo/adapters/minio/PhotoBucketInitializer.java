@@ -25,7 +25,8 @@ class PhotoBucketInitializer {
           log.info("Created MinIO bucket '{}'", bucket);
         }
       } catch (Exception e) {
-        log.warn("Could not ensure MinIO bucket '{}' exists at startup: {}", bucket, e.getMessage());
+        log.warn(
+            "Could not ensure MinIO bucket '{}' exists at startup: {}", bucket, e.getMessage());
       }
     };
   }

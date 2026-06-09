@@ -13,6 +13,8 @@ interface ReviewJpaRepository extends JpaRepository<ReviewEntity, UUID> {
 
   Optional<ReviewEntity> findByRestaurantIdAndAuthorId(UUID restaurantId, UUID authorId);
 
+  long countByRestaurantId(UUID restaurantId);
+
   @Query(
       """
       select r from ReviewEntity r

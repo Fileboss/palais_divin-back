@@ -10,14 +10,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import fr.lepgu.palaisdivin.backend.config.security.SecurityConfig;
 import fr.lepgu.palaisdivin.backend.photo.domain.ports.LoadRestaurantThumbnailsUseCase;
-import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.ListAffinityRankedRestaurantsUseCase;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Coordinates;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Restaurant;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantFilter;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantId;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantSort;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.FindRestaurantUseCase;
+import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.ListAffinityRankedRestaurantsUseCase;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.ListRestaurantsUseCase;
+import fr.lepgu.palaisdivin.backend.review.domain.ports.CountRestaurantReviewsUseCase;
 import fr.lepgu.palaisdivin.backend.shared.adapters.web.GlobalExceptionHandler;
 import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;
 import fr.lepgu.palaisdivin.backend.tag.domain.model.Tag;
@@ -53,6 +54,7 @@ class PublicRestaurantRestControllerTest {
   @MockitoBean ListRestaurantTagsUseCase listRestaurantTags;
   @MockitoBean LoadRestaurantThumbnailsUseCase loadThumbnails;
   @MockitoBean ListAffinityRankedRestaurantsUseCase listAffinityRanked;
+  @MockitoBean CountRestaurantReviewsUseCase countReviews;
   @MockitoBean JwtDecoder jwtDecoder;
 
   @BeforeEach
@@ -74,6 +76,7 @@ class PublicRestaurantRestControllerTest {
             FIXED_CREATED_AT,
             null);
     when(findRestaurant.findById(id)).thenReturn(Optional.of(found));
+    when(countReviews.countByRestaurant(id)).thenReturn(7L);
 
     mockMvc
         .perform(get("/api/v1/public/restaurants/{id}", id.value()))
@@ -82,7 +85,8 @@ class PublicRestaurantRestControllerTest {
         .andExpect(jsonPath("$.id").value(id.value().toString()))
         .andExpect(jsonPath("$.name").value("Septime"))
         .andExpect(jsonPath("$.location.latitude").value(48.8536))
-        .andExpect(jsonPath("$.location.longitude").value(2.3795));
+        .andExpect(jsonPath("$.location.longitude").value(2.3795))
+        .andExpect(jsonPath("$.reviewCount").value(7));
   }
 
   @Test

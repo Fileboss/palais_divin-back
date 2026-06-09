@@ -18,7 +18,7 @@ paths:
       - invitation-rest-controller
   /api/v1/admin/restaurants/{id}:
     delete:
-      operationId: delete
+      operationId: delete_1
       parameters:
       - in: path
         name: id
@@ -46,6 +46,21 @@ paths:
             '*/*':
               schema:
                 $ref: "#/components/schemas/TagResponse"
+          description: OK
+      tags:
+      - admin-tag-rest-controller
+  /api/v1/admin/tags/{tagId}:
+    delete:
+      operationId: delete
+      parameters:
+      - in: path
+        name: tagId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "200":
           description: OK
       tags:
       - admin-tag-rest-controller
@@ -958,6 +973,9 @@ components:
           $ref: "#/components/schemas/CoordinatesDto"
         name:
           type: string
+        reviewCount:
+          type: integer
+          format: int64
         tags:
           type: array
           items:

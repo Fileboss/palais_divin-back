@@ -179,6 +179,14 @@ class ReviewServiceTest {
   }
 
   @Test
+  void countByRestaurantDelegatesToRepository() {
+    when(reviews.countByRestaurant(restaurantId)).thenReturn(42L);
+
+    assertThat(service.countByRestaurant(restaurantId)).isEqualTo(42L);
+    verifyNoInteractions(users, restaurants, idempotency, outbox);
+  }
+
+  @Test
   void listByAuthorDelegatesToRepositoryAndPassesCursorThrough() {
     ReviewCursor cursor = new ReviewCursor(NOW.minusSeconds(30), ReviewId.newId());
     Review r =

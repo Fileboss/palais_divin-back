@@ -64,8 +64,7 @@ class PhotoQueryServiceTest {
     RestaurantId r2 = RestaurantId.newId();
     Photo p1 = photo(r1, "k1", NOW.minusSeconds(60));
     Photo p2 = photo(r2, "k2", NOW.minusSeconds(30));
-    when(photos.findOldestByRestaurantIds(List.of(r1, r2)))
-        .thenReturn(Map.of(r1, p1, r2, p2));
+    when(photos.findOldestByRestaurantIds(List.of(r1, r2))).thenReturn(Map.of(r1, p1, r2, p2));
     when(storage.presignGet(eq("k1"), eq(TTL))).thenReturn(URL_A);
     when(storage.presignGet(eq("k2"), eq(TTL))).thenReturn(URL_B);
 
@@ -119,8 +118,7 @@ class PhotoQueryServiceTest {
   void listForwardsCursor() {
     RestaurantId rid = RestaurantId.newId();
     PhotoCursor cursor = new PhotoCursor(NOW.minusSeconds(3600), java.util.UUID.randomUUID());
-    when(photos.findByRestaurantId(rid, cursor, 20))
-        .thenReturn(new CursorPage<>(List.of(), false));
+    when(photos.findByRestaurantId(rid, cursor, 20)).thenReturn(new CursorPage<>(List.of(), false));
 
     PhotoSummaryPage page = service.list(rid, cursor, 20);
 

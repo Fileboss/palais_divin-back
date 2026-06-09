@@ -60,8 +60,7 @@ class ListAffinityRankedRestaurantsServiceTest {
   @Test
   void mergesAffinityIntoRestaurantPayload() {
     RestaurantId rid = RestaurantId.newId();
-    Recommendation reco =
-        new Recommendation(rid, "Septime", "addr", 48.8, 2.3, 9.5, 2);
+    Recommendation reco = new Recommendation(rid, "Septime", "addr", 48.8, 2.3, 9.5, 2);
     Restaurant restaurant =
         new Restaurant(
             rid,
@@ -112,7 +111,8 @@ class ListAffinityRankedRestaurantsServiceTest {
     when(users.requireBySubject(SUBJECT)).thenReturn(requesterId);
     when(graph.findRecommendations(eq(requesterId), any(), eq(20), eq(true)))
         .thenReturn(new CursorPage<>(List.of(staleReco, liveReco), false));
-    when(restaurants.findByIds(anyCollection())).thenReturn(Map.of(live, restaurantOf(live, "Here")));
+    when(restaurants.findByIds(anyCollection()))
+        .thenReturn(Map.of(live, restaurantOf(live, "Here")));
 
     CursorPage<Restaurant> page = service.list(SUBJECT, null, 20);
 
@@ -152,11 +152,6 @@ class ListAffinityRankedRestaurantsServiceTest {
 
   private static Restaurant restaurantOf(RestaurantId id, String name) {
     return new Restaurant(
-        id,
-        name,
-        "addr",
-        new Coordinates(48.0, 2.0),
-        Instant.parse("2026-05-01T00:00:00Z"),
-        null);
+        id, name, "addr", new Coordinates(48.0, 2.0), Instant.parse("2026-05-01T00:00:00Z"), null);
   }
 }

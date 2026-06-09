@@ -223,6 +223,18 @@ Goal: unblock three FE flows that have placeholder UI today (`palais_divin-front
 
 ---
 
+## Intermediate phase I8 — Frontend handoff: review count + admin tag delete
+
+Goal: close the second `palais_divin-front/doc/missing.md` handoff — review count on the restaurant detail and an admin DELETE for tags. `CreateTagRequest.slug` was the third entry but is already in the spec; FE was reading a stale copy. No new aggregate, no projector rename for the `RestaurantTag` slice, no per-page count.
+
+- [x] **I8.1 — `reviewCount` on restaurant detail** — `GET /api/v1/public/restaurants/{id}` gains a non-null `reviewCount: integer (int64)`. Counted on-demand via new `ReviewRepositoryPort.countByRestaurant` (Spring Data derived `countByRestaurantId`) + `CountRestaurantReviewsUseCase`, called from `PublicRestaurantRestController.get` only — list endpoints keep `reviewCount: null`. Existing V6 `idx_review_restaurant_created_id_desc` covers the count scan; no migration. Index-only count is cheap enough that the denormalized `avg_rating`-on-restaurant pattern wasn't needed.
+- [x] **I8.2 — Admin DELETE `/api/v1/admin/tags/{tagId}`** — 204 on success, 404 on missing. V14 alters `restaurant_tag.tag_id` FK to `ON DELETE CASCADE` (admin convenience over 409-if-attached); existing pk + tag-id index untouched. New `DeleteTagUseCase` + `TagRepositoryPort.deleteById` + `TagDeleted` outbox event (aggregate type `"Tag"`). `TagProjector` renamed → `RestaurantTagProjector` (already handled the `"RestaurantTag"` aggregate); new `TagProjector` claims aggregate type `"Tag"` and runs `DETACH DELETE (:Tag {id})` so HAS_TAG edges to every previously-attached restaurant disappear in one Cypher hit (I5 `RestaurantDeleted` precedent). No per-attachment `RestaurantTagDetached` events on tag purge — the Postgres cascade rows vanish silently and the projector sweep covers the graph in one statement.
+- [x] **I8.3 — Spec sync** — `OpenApiGenerationIT` asserts `reviewCount` and `/api/v1/admin/tags/{tagId}` appear in the generated `docs/openapi.yaml`; `sync-openapi-to-frontend` copies it under `palais_divin-front/doc/openapi.yaml` as before.
+
+`MILESTONE I8` — `missing.md` second handoff closed.
+
+---
+
 ## Phase M10 — Observability & hardening
 
 - [ ] **M10.1 — JSON logging via `logstash-logback-encoder`** — `logback-spring.xml` with `traceId`/`spanId` MDC.

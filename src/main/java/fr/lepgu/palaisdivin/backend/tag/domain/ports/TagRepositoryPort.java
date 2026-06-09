@@ -12,4 +12,6 @@ public interface TagRepositoryPort {
   Optional<Tag> findById(TagId id);
 
   List<Tag> findAll();
+
+  void deleteById(TagId id);
 }

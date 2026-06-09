@@ -125,7 +125,8 @@ class RecommendationServiceTest {
     assertThat(result.data().get(0).affinity()).isEqualTo(9.0);
     assertThat(result.data().get(1).avgRating()).isEqualTo(3.0);
     ArgumentCaptor<RestaurantFilter> filterCaptor = ArgumentCaptor.forClass(RestaurantFilter.class);
-    verify(restaurants).findAll(any(), eq(20), filterCaptor.capture(), eq(RestaurantSort.RATING_DESC));
+    verify(restaurants)
+        .findAll(any(), eq(20), filterCaptor.capture(), eq(RestaurantSort.RATING_DESC));
     assertThat(filterCaptor.getValue().idsAllowList()).containsExactlyInAnyOrder(rid1, rid2);
   }
 
@@ -153,7 +154,8 @@ class RecommendationServiceTest {
 
     assertThat(result.data().getFirst().distanceMetres()).isEqualTo(120.0);
     ArgumentCaptor<RestaurantFilter> filterCaptor = ArgumentCaptor.forClass(RestaurantFilter.class);
-    verify(restaurants).findAll(any(), eq(20), filterCaptor.capture(), eq(RestaurantSort.DISTANCE_ASC));
+    verify(restaurants)
+        .findAll(any(), eq(20), filterCaptor.capture(), eq(RestaurantSort.DISTANCE_ASC));
     assertThat(filterCaptor.getValue().anchor()).isEqualTo(anchor);
   }
 
@@ -184,8 +186,7 @@ class RecommendationServiceTest {
     service.list(SUBJECT, cursor, 20, false, RecommendationSort.NAME_ASC, null);
 
     ArgumentCaptor<RestaurantCursor> cursorCaptor = ArgumentCaptor.forClass(RestaurantCursor.class);
-    verify(restaurants)
-        .findAll(cursorCaptor.capture(), eq(20), any(), eq(RestaurantSort.NAME_ASC));
+    verify(restaurants).findAll(cursorCaptor.capture(), eq(20), any(), eq(RestaurantSort.NAME_ASC));
     assertThat(cursorCaptor.getValue()).isInstanceOf(RestaurantCursor.ByName.class);
     RestaurantCursor.ByName translated = (RestaurantCursor.ByName) cursorCaptor.getValue();
     assertThat(translated.name()).isEqualTo("Foo");

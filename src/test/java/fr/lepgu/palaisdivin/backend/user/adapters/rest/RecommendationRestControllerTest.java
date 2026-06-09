@@ -212,12 +212,7 @@ class RecommendationRestControllerTest {
         new Recommendation(
             RestaurantId.newId(), "Septime", "addr", 48.8, 2.3, 5.0, 1, 4.7, null, null);
     when(getRecommendations.list(
-            eq(SUBJECT),
-            isNull(),
-            eq(20),
-            eq(false),
-            eq(RecommendationSort.RATING_DESC),
-            isNull()))
+            eq(SUBJECT), isNull(), eq(20), eq(false), eq(RecommendationSort.RATING_DESC), isNull()))
         .thenReturn(new CursorPage<>(List.of(r), false));
 
     mockMvc

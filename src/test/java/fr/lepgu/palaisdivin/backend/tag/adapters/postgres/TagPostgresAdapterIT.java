@@ -85,6 +85,66 @@ class TagPostgresAdapterIT {
   }
 
   @Test
+  void deleteById_removes_row() {
+    TagId id = TagId.newId();
+    adapter.save(new Tag(id, TagCategory.FOOD, "natural-wine", "Natural wine", CREATED_AT));
+
+    adapter.deleteById(id);
+    em.flush();
+
+    assertThat(adapter.findById(id)).isEmpty();
+  }
+
+  @Test
+  void deleteById_cascades_to_restaurant_tag_rows() {
+    TagId tagId = TagId.newId();
+    adapter.save(new Tag(tagId, TagCategory.FOOD, "natural-wine", "Natural wine", CREATED_AT));
+
+    java.util.UUID restaurantId = java.util.UUID.randomUUID();
+    java.util.UUID userId = java.util.UUID.randomUUID();
+    em.createNativeQuery(
+            "INSERT INTO restaurant (id, name, address, location, created_at)"
+                + " VALUES (?1, ?2, ?3, ST_SetSRID(ST_MakePoint(?4, ?5), 4326)::geography, ?6)")
+        .setParameter(1, restaurantId)
+        .setParameter(2, "Septime")
+        .setParameter(3, "80 Rue de Charonne")
+        .setParameter(4, 2.38)
+        .setParameter(5, 48.85)
+        .setParameter(6, CREATED_AT)
+        .executeUpdate();
+    em.createNativeQuery(
+            "INSERT INTO app_user (id, subject, email, display_name, created_at)"
+                + " VALUES (?1, ?2, ?3, ?4, ?5)")
+        .setParameter(1, userId)
+        .setParameter(2, "subject-" + userId)
+        .setParameter(3, userId + "@test.local")
+        .setParameter(4, "Test User")
+        .setParameter(5, CREATED_AT)
+        .executeUpdate();
+    em.createNativeQuery(
+            "INSERT INTO restaurant_tag (restaurant_id, tag_id, attached_by, attached_at)"
+                + " VALUES (?1, ?2, ?3, ?4)")
+        .setParameter(1, restaurantId)
+        .setParameter(2, tagId.value())
+        .setParameter(3, userId)
+        .setParameter(4, CREATED_AT)
+        .executeUpdate();
+    em.flush();
+    em.clear();
+
+    adapter.deleteById(tagId);
+    em.flush();
+
+    Long remaining =
+        ((Number)
+                em.createNativeQuery("SELECT count(*) FROM restaurant_tag WHERE tag_id = ?1")
+                    .setParameter(1, tagId.value())
+                    .getSingleResult())
+            .longValue();
+    assertThat(remaining).isZero();
+  }
+
+  @Test
   void unique_slug_is_enforced() {
     adapter.save(
         new Tag(TagId.newId(), TagCategory.FOOD, "natural-wine", "Natural wine", CREATED_AT));

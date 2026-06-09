@@ -46,7 +46,8 @@ class RecommendationRestController {
     if (sort == RecommendationSort.DISTANCE_ASC && anchor == null) {
       throw new MissingAnchorException();
     }
-    RecommendationCursor decoded = cursor == null ? null : RecommendationCursorCodec.decode(cursor, sort);
+    RecommendationCursor decoded =
+        cursor == null ? null : RecommendationCursorCodec.decode(cursor, sort);
     CursorPage<Recommendation> page =
         getRecommendations.list(jwt.getSubject(), decoded, size, includeOwn, sort, anchor);
     List<RecommendationResponse> data =

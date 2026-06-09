@@ -1,10 +1,15 @@
 package fr.lepgu.palaisdivin.backend.tag.adapters.rest;
 
 import fr.lepgu.palaisdivin.backend.tag.domain.model.Tag;
+import fr.lepgu.palaisdivin.backend.tag.domain.model.TagId;
 import fr.lepgu.palaisdivin.backend.tag.domain.ports.CreateTagUseCase;
+import fr.lepgu.palaisdivin.backend.tag.domain.ports.DeleteTagUseCase;
 import jakarta.validation.Valid;
 import java.net.URI;
+import java.util.UUID;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -16,9 +21,11 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 class AdminTagRestController {
 
   private final CreateTagUseCase createTag;
+  private final DeleteTagUseCase deleteTag;
 
-  AdminTagRestController(CreateTagUseCase createTag) {
+  AdminTagRestController(CreateTagUseCase createTag, DeleteTagUseCase deleteTag) {
     this.createTag = createTag;
+    this.deleteTag = deleteTag;
   }
 
   @PostMapping
@@ -30,5 +37,11 @@ class AdminTagRestController {
             .buildAndExpand(created.id().value())
             .toUri();
     return ResponseEntity.created(location).body(TagResponse.from(created));
+  }
+
+  @DeleteMapping("/{tagId}")
+  ResponseEntity<Void> delete(@PathVariable UUID tagId) {
+    deleteTag.delete(new TagId(tagId));
+    return ResponseEntity.noContent().build();
   }
 }

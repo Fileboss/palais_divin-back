@@ -12,6 +12,7 @@ import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantSort;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.FindRestaurantUseCase;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.ListAffinityRankedRestaurantsUseCase;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.ListRestaurantsUseCase;
+import fr.lepgu.palaisdivin.backend.review.domain.ports.CountRestaurantReviewsUseCase;
 import fr.lepgu.palaisdivin.backend.shared.adapters.web.PageMeta;
 import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;
 import fr.lepgu.palaisdivin.backend.tag.domain.model.Tag;
@@ -45,18 +46,21 @@ class PublicRestaurantRestController {
   private final ListRestaurantTagsUseCase listRestaurantTags;
   private final LoadRestaurantThumbnailsUseCase loadThumbnails;
   private final ListAffinityRankedRestaurantsUseCase listAffinityRanked;
+  private final CountRestaurantReviewsUseCase countReviews;
 
   PublicRestaurantRestController(
       FindRestaurantUseCase findRestaurant,
       ListRestaurantsUseCase listRestaurants,
       ListRestaurantTagsUseCase listRestaurantTags,
       LoadRestaurantThumbnailsUseCase loadThumbnails,
-      ListAffinityRankedRestaurantsUseCase listAffinityRanked) {
+      ListAffinityRankedRestaurantsUseCase listAffinityRanked,
+      CountRestaurantReviewsUseCase countReviews) {
     this.findRestaurant = findRestaurant;
     this.listRestaurants = listRestaurants;
     this.listRestaurantTags = listRestaurantTags;
     this.loadThumbnails = loadThumbnails;
     this.listAffinityRanked = listAffinityRanked;
+    this.countReviews = countReviews;
   }
 
   @GetMapping("/{id}")
@@ -67,8 +71,9 @@ class PublicRestaurantRestController {
             .findById(restaurantId)
             .orElseThrow(() -> new RestaurantNotFoundException(restaurantId));
     PhotoSummary thumbnail = loadThumbnails.load(List.of(restaurantId)).get(restaurantId);
+    long reviewCount = countReviews.countByRestaurant(restaurantId);
     return RestaurantResponse.from(
-        restaurant, listRestaurantTags.listFor(restaurantId), thumbnail);
+        restaurant, listRestaurantTags.listFor(restaurantId), thumbnail, reviewCount);
   }
 
   @GetMapping
@@ -87,9 +92,7 @@ class PublicRestaurantRestController {
         throw new AffinityRequiresAuthException();
       }
       RestaurantCursor.ByAffinity decoded =
-          cursor == null
-              ? null
-              : (RestaurantCursor.ByAffinity) CursorCodec.decode(cursor, sort);
+          cursor == null ? null : (RestaurantCursor.ByAffinity) CursorCodec.decode(cursor, sort);
       CursorPage<Restaurant> page = listAffinityRanked.list(jwt.getSubject(), decoded, size);
       return buildResponse(page, sort, size);
     }

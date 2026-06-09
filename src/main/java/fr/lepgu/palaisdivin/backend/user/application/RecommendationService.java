@@ -58,11 +58,11 @@ public class RecommendationService implements GetRecommendationsUseCase {
       return new CursorPage<>(List.of(), false);
     }
 
-    RestaurantFilter filter =
-        new RestaurantFilter(List.of(), null, anchor, affinityMap.keySet());
+    RestaurantFilter filter = new RestaurantFilter(List.of(), null, anchor, affinityMap.keySet());
     RestaurantCursor restaurantCursor = toRestaurantCursor(cursor);
     RestaurantSort restaurantSort = toRestaurantSort(sort);
-    CursorPage<Restaurant> page = restaurants.findAll(restaurantCursor, size, filter, restaurantSort);
+    CursorPage<Restaurant> page =
+        restaurants.findAll(restaurantCursor, size, filter, restaurantSort);
 
     List<Recommendation> enriched =
         page.data().stream().map(r -> enrich(r, affinityMap.get(r.id()))).toList();

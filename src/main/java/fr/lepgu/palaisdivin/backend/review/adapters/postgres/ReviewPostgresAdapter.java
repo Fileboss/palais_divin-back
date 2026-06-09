@@ -51,6 +51,11 @@ public class ReviewPostgresAdapter implements ReviewRepositoryPort {
   }
 
   @Override
+  public long countByRestaurant(RestaurantId restaurantId) {
+    return jpa.countByRestaurantId(restaurantId.value());
+  }
+
+  @Override
   public CursorPage<Review> findByAuthor(UserId authorId, ReviewCursor cursor, int size) {
     PageRequest pageable = PageRequest.of(0, size);
     Slice<ReviewEntity> slice =

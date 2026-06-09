@@ -108,7 +108,8 @@ final class RecommendationCursorCodec {
     if (a == null || !a.isNumber() || id == null || !id.isTextual()) {
       throw new InvalidCursorException();
     }
-    return new RecommendationCursor.ByAffinity(a.asDouble(), new RestaurantId(parseUuid(id.asText())));
+    return new RecommendationCursor.ByAffinity(
+        a.asDouble(), new RestaurantId(parseUuid(id.asText())));
   }
 
   private static RecommendationCursor decodeByRating(JsonNode node) {

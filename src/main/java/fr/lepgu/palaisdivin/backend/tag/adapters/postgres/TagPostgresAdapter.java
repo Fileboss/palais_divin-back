@@ -34,6 +34,11 @@ public class TagPostgresAdapter implements TagRepositoryPort {
         .toList();
   }
 
+  @Override
+  public void deleteById(TagId id) {
+    jpa.deleteById(id.value());
+  }
+
   private static TagEntity toEntity(Tag t) {
     return new TagEntity(t.id().value(), t.category().name(), t.slug(), t.label(), t.createdAt());
   }

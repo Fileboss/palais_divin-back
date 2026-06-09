@@ -74,8 +74,7 @@ class PublicPhotoRestIT extends AbstractIntegrationTest {
   }
 
   @Test
-  void galleryReturnsPhotosOldestFirstWithPresignedUrls()
-      throws IOException, InterruptedException {
+  void galleryReturnsPhotosOldestFirstWithPresignedUrls() throws IOException, InterruptedException {
     UUID first = registerPhoto(restaurantId, "first".getBytes());
     Thread.sleep(20);
     UUID second = registerPhoto(restaurantId, "second".getBytes());
@@ -126,7 +125,8 @@ class PublicPhotoRestIT extends AbstractIntegrationTest {
         anonClient()
             .get()
             .uri(
-                "/api/v1/public/restaurants/{rid}/photos?size=2&cursor=" + pageOne.page().nextCursor(),
+                "/api/v1/public/restaurants/{rid}/photos?size=2&cursor="
+                    + pageOne.page().nextCursor(),
                 restaurantId)
             .retrieve()
             .body(PhotosPageResponse.class);
@@ -154,7 +154,8 @@ class PublicPhotoRestIT extends AbstractIntegrationTest {
     String url = page.data().get(0).url();
     HttpResponse<byte[]> fetched =
         HttpClient.newHttpClient()
-            .send(HttpRequest.newBuilder(URI.create(url)).GET().build(), BodyHandlers.ofByteArray());
+            .send(
+                HttpRequest.newBuilder(URI.create(url)).GET().build(), BodyHandlers.ofByteArray());
 
     assertThat(fetched.statusCode()).isEqualTo(200);
     assertThat(fetched.body()).isEqualTo(payload);

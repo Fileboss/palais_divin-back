@@ -2,10 +2,12 @@ package fr.lepgu.palaisdivin.backend.tag.adapters.rest;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -14,11 +16,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import fr.lepgu.palaisdivin.backend.config.security.SecurityConfig;
 import fr.lepgu.palaisdivin.backend.shared.adapters.web.GlobalExceptionHandler;
+import fr.lepgu.palaisdivin.backend.tag.domain.TagNotFoundException;
 import fr.lepgu.palaisdivin.backend.tag.domain.model.Tag;
 import fr.lepgu.palaisdivin.backend.tag.domain.model.TagCategory;
 import fr.lepgu.palaisdivin.backend.tag.domain.model.TagId;
 import fr.lepgu.palaisdivin.backend.tag.domain.ports.CreateTagUseCase;
+import fr.lepgu.palaisdivin.backend.tag.domain.ports.DeleteTagUseCase;
 import java.time.Instant;
+import java.util.UUID;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +46,7 @@ class AdminTagRestControllerTest {
   @Autowired MockMvc mockMvc;
 
   @MockitoBean CreateTagUseCase createTag;
+  @MockitoBean DeleteTagUseCase deleteTag;
   @MockitoBean JwtDecoder jwtDecoder;
 
   private static RequestPostProcessor adminJwt() {
@@ -214,5 +220,45 @@ class AdminTagRestControllerTest {
         .andExpect(jsonPath("$.type").value("https://palaisdivin.lepgu.fr/problems/conflict"));
 
     verify(createTag).create(eq(TagCategory.FOOD), eq("natural-wine"), eq("Natural wine"));
+  }
+
+  @Test
+  void delete_existing_returns_204() throws Exception {
+    UUID id = UUID.randomUUID();
+
+    mockMvc
+        .perform(delete("/api/v1/admin/tags/{id}", id).with(adminJwt()))
+        .andExpect(status().isNoContent());
+
+    verify(deleteTag).delete(new TagId(id));
+  }
+
+  @Test
+  void delete_missing_returns_404_problem() throws Exception {
+    UUID id = UUID.randomUUID();
+    doThrow(new TagNotFoundException(new TagId(id))).when(deleteTag).delete(new TagId(id));
+
+    mockMvc
+        .perform(delete("/api/v1/admin/tags/{id}", id).with(adminJwt()))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.type").value("https://palaisdivin.lepgu.fr/problems/not-found"));
+  }
+
+  @Test
+  void delete_anonymous_returns_401() throws Exception {
+    mockMvc
+        .perform(delete("/api/v1/admin/tags/{id}", UUID.randomUUID()))
+        .andExpect(status().isUnauthorized());
+
+    verifyNoInteractions(deleteTag);
+  }
+
+  @Test
+  void delete_userRole_returns_403() throws Exception {
+    mockMvc
+        .perform(delete("/api/v1/admin/tags/{id}", UUID.randomUUID()).with(userJwt()))
+        .andExpect(status().isForbidden());
+
+    verifyNoInteractions(deleteTag);
   }
 }

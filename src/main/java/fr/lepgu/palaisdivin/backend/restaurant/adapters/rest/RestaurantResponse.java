@@ -17,18 +17,24 @@ public record RestaurantResponse(
     Double avgRating,
     Double distanceMetres,
     Double affinity,
+    Long reviewCount,
     List<TagSummary> tags,
     ThumbnailSummary thumbnail) {
 
   public static RestaurantResponse from(Restaurant r) {
-    return from(r, List.of(), null);
+    return from(r, List.of(), null, null);
   }
 
   public static RestaurantResponse from(Restaurant r, List<Tag> tags) {
-    return from(r, tags, null);
+    return from(r, tags, null, null);
   }
 
   public static RestaurantResponse from(Restaurant r, List<Tag> tags, PhotoSummary thumbnail) {
+    return from(r, tags, thumbnail, null);
+  }
+
+  public static RestaurantResponse from(
+      Restaurant r, List<Tag> tags, PhotoSummary thumbnail, Long reviewCount) {
     return new RestaurantResponse(
         r.id().value(),
         r.name(),
@@ -38,6 +44,7 @@ public record RestaurantResponse(
         r.avgRating(),
         r.distanceMetres(),
         r.affinity(),
+        reviewCount,
         tags.stream().map(TagSummary::from).toList(),
         thumbnail == null ? null : ThumbnailSummary.from(thumbnail));
   }

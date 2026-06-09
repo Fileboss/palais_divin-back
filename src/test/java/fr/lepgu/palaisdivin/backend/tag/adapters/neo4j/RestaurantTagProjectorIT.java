@@ -17,7 +17,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.neo4j.core.Neo4jClient;
 
-class TagProjectorIT extends AbstractIntegrationTest {
+class RestaurantTagProjectorIT extends AbstractIntegrationTest {
 
   private static final ObjectMapper MAPPER =
       new ObjectMapper()
@@ -25,7 +25,7 @@ class TagProjectorIT extends AbstractIntegrationTest {
           .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
   @Autowired Neo4jClient neo4jClient;
-  @Autowired TagProjector projector;
+  @Autowired RestaurantTagProjector projector;
 
   @BeforeEach
   void clearNeo4j() {

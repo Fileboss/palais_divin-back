@@ -36,7 +36,8 @@ class RecommendationCursorCodecTest {
   @Test
   void decode_invalidBase64_throws() {
     assertThatThrownBy(
-            () -> RecommendationCursorCodec.decode("not!base64!!", RecommendationSort.AFFINITY_DESC))
+            () ->
+                RecommendationCursorCodec.decode("not!base64!!", RecommendationSort.AFFINITY_DESC))
         .isInstanceOf(InvalidCursorException.class);
   }
 

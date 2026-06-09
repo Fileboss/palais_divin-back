@@ -3,9 +3,14 @@ package fr.lepgu.palaisdivin.backend.tag.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import fr.lepgu.palaisdivin.backend.shared.domain.ports.OutboxPublisher;
+import fr.lepgu.palaisdivin.backend.tag.domain.TagNotFoundException;
+import fr.lepgu.palaisdivin.backend.tag.domain.events.TagDeleted;
 import fr.lepgu.palaisdivin.backend.tag.domain.model.Tag;
 import fr.lepgu.palaisdivin.backend.tag.domain.model.TagCategory;
 import fr.lepgu.palaisdivin.backend.tag.domain.model.TagId;
@@ -14,6 +19,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,13 +34,14 @@ class TagServiceTest {
   private static final Instant NOW = Instant.parse("2026-06-03T12:00:00Z");
 
   @Mock TagRepositoryPort tags;
+  @Mock OutboxPublisher outbox;
 
   TagService service;
 
   @BeforeEach
   void setUp() {
     Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
-    service = new TagService(tags, clock);
+    service = new TagService(tags, outbox, clock);
   }
 
   @Test
@@ -74,5 +81,29 @@ class TagServiceTest {
 
     assertThat(result).containsExactly(a, b);
     verify(tags).findAll();
+  }
+
+  @Test
+  void delete_persists_then_publishes_TagDeleted_event() {
+    TagId id = TagId.newId();
+    Tag existing = new Tag(id, TagCategory.FOOD, "natural-wine", "Natural wine", NOW);
+    when(tags.findById(id)).thenReturn(Optional.of(existing));
+
+    service.delete(id);
+
+    verify(tags).deleteById(id);
+    verify(outbox)
+        .publish(eq("Tag"), eq(id.value()), eq("TagDeleted"), eq(new TagDeleted(id.value(), NOW)));
+  }
+
+  @Test
+  void delete_throws_TagNotFound_when_missing_and_does_not_publish() {
+    TagId id = TagId.newId();
+    when(tags.findById(id)).thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> service.delete(id)).isInstanceOf(TagNotFoundException.class);
+
+    verify(tags, never()).deleteById(any());
+    verify(outbox, never()).publish(any(), any(), any(), any());
   }
 }

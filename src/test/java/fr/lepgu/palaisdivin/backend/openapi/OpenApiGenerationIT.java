@@ -58,6 +58,10 @@ class OpenApiGenerationIT {
     assertThat(yaml).contains("RecommendationResponse");
     // I7.3: AFFINITY_DESC sort enum on the public restaurant list
     assertThat(yaml).contains("AFFINITY_DESC");
+    // I8.1: reviewCount on the restaurant detail response
+    assertThat(yaml).contains("reviewCount");
+    // I8.3: admin DELETE on /admin/tags/{tagId}
+    assertThat(yaml).contains("/api/v1/admin/tags/{tagId}");
 
     String baseDir = System.getProperty("project.basedir", System.getProperty("user.dir"));
     Path output = Path.of(baseDir, "docs", "openapi.yaml");

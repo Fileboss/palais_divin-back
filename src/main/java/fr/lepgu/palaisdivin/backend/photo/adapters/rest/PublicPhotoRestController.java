@@ -43,8 +43,7 @@ class PublicPhotoRestController {
     }
     PhotoCursor decoded = cursor == null ? null : PhotoCursorCodec.decode(cursor);
     PhotoSummaryPage page = listPhotos.list(rid, decoded, size);
-    List<PhotoSummaryResponse> data =
-        page.data().stream().map(PhotoSummaryResponse::from).toList();
+    List<PhotoSummaryResponse> data = page.data().stream().map(PhotoSummaryResponse::from).toList();
     String nextCursor =
         page.nextCursor() == null ? null : PhotoCursorCodec.encode(page.nextCursor());
     return new PhotosPageResponse(data, new PageMeta(size, page.hasNext(), nextCursor));
