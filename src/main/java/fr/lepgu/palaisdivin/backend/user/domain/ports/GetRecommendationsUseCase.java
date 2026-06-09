@@ -1,6 +1,7 @@
 package fr.lepgu.palaisdivin.backend.user.domain.ports;
 
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Coordinates;
+import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantFilter;
 import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;
 import fr.lepgu.palaisdivin.backend.user.domain.model.Recommendation;
 import fr.lepgu.palaisdivin.backend.user.domain.model.RecommendationCursor;
@@ -14,5 +15,6 @@ public interface GetRecommendationsUseCase {
       int size,
       boolean includeOwn,
       RecommendationSort sort,
-      Coordinates anchor);
+      Coordinates anchor,
+      RestaurantFilter filter);
 }

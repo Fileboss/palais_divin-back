@@ -75,6 +75,12 @@ public class TagService
   }
 
   @Override
+  @Transactional(readOnly = true)
+  public List<Tag> list(TagCategory category) {
+    return tags.findAllByCategory(category);
+  }
+
+  @Override
   public void delete(TagId id) {
     tags.findById(id).orElseThrow(() -> new TagNotFoundException(id));
     tags.deleteById(id);

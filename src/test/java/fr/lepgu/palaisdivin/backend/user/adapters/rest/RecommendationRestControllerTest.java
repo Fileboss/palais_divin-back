@@ -13,6 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import fr.lepgu.palaisdivin.backend.config.security.SecurityConfig;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Coordinates;
+import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantFilter;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantId;
 import fr.lepgu.palaisdivin.backend.shared.adapters.web.GlobalExceptionHandler;
 import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;
@@ -71,7 +72,8 @@ class RecommendationRestControllerTest {
             eq(20),
             eq(false),
             eq(RecommendationSort.AFFINITY_DESC),
-            isNull()))
+            isNull(),
+            any(RestaurantFilter.class)))
         .thenReturn(new CursorPage<>(List.of(r1, r2), false));
 
     mockMvc
@@ -99,7 +101,8 @@ class RecommendationRestControllerTest {
             eq(2),
             eq(false),
             eq(RecommendationSort.AFFINITY_DESC),
-            isNull()))
+            isNull(),
+            any(RestaurantFilter.class)))
         .thenReturn(new CursorPage<>(List.of(r1, r2), true));
 
     mockMvc
@@ -124,7 +127,8 @@ class RecommendationRestControllerTest {
             eq(5),
             eq(false),
             eq(RecommendationSort.AFFINITY_DESC),
-            isNull()))
+            isNull(),
+            any(RestaurantFilter.class)))
         .thenReturn(new CursorPage<>(List.of(), false));
 
     mockMvc
@@ -144,7 +148,8 @@ class RecommendationRestControllerTest {
             eq(5),
             eq(false),
             eq(RecommendationSort.AFFINITY_DESC),
-            isNull());
+            isNull(),
+            any(RestaurantFilter.class));
     org.assertj.core.api.Assertions.assertThat(captured.getValue()).isEqualTo(seed);
   }
 
@@ -189,7 +194,8 @@ class RecommendationRestControllerTest {
             eq(20),
             eq(true),
             eq(RecommendationSort.AFFINITY_DESC),
-            isNull()))
+            isNull(),
+            any(RestaurantFilter.class)))
         .thenReturn(new CursorPage<>(List.of(), false));
 
     mockMvc
@@ -203,7 +209,8 @@ class RecommendationRestControllerTest {
             eq(20),
             eq(true),
             eq(RecommendationSort.AFFINITY_DESC),
-            isNull());
+            isNull(),
+            any(RestaurantFilter.class));
   }
 
   @Test
@@ -212,7 +219,13 @@ class RecommendationRestControllerTest {
         new Recommendation(
             RestaurantId.newId(), "Septime", "addr", 48.8, 2.3, 5.0, 1, 4.7, null, null);
     when(getRecommendations.list(
-            eq(SUBJECT), isNull(), eq(20), eq(false), eq(RecommendationSort.RATING_DESC), isNull()))
+            eq(SUBJECT),
+            isNull(),
+            eq(20),
+            eq(false),
+            eq(RecommendationSort.RATING_DESC),
+            isNull(),
+            any(RestaurantFilter.class)))
         .thenReturn(new CursorPage<>(List.of(r), false));
 
     mockMvc
@@ -241,7 +254,8 @@ class RecommendationRestControllerTest {
             eq(20),
             eq(false),
             eq(RecommendationSort.DISTANCE_ASC),
-            eq(new Coordinates(48.8566, 2.3522))))
+            eq(new Coordinates(48.8566, 2.3522)),
+            any(RestaurantFilter.class)))
         .thenReturn(new CursorPage<>(List.of(r), false));
 
     mockMvc

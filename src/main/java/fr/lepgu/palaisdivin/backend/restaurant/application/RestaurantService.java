@@ -21,6 +21,7 @@ import fr.lepgu.palaisdivin.backend.tag.domain.ports.ExpandTagSlugsUseCase;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -102,20 +103,22 @@ public class RestaurantService
     if (!filter.hasTags()) {
       return filter;
     }
-    List<String> originalSlugs =
-        filter.tagSlugGroups().stream().filter(g -> g.size() == 1).map(g -> g.get(0)).toList();
-    if (originalSlugs.size() != filter.tagSlugGroups().size()) {
-      return filter;
+    Set<String> distinctSlugs = new LinkedHashSet<>();
+    for (List<String> group : filter.tagSlugGroups()) {
+      distinctSlugs.addAll(group);
     }
-    Map<String, Set<String>> expansion = expandTagSlugs.expand(originalSlugs);
+    Map<String, Set<String>> expansion = expandTagSlugs.expand(distinctSlugs);
     boolean changed = expansion.values().stream().anyMatch(s -> s.size() > 1);
     if (!changed) {
       return filter;
     }
-    List<List<String>> expandedGroups = new ArrayList<>(originalSlugs.size());
-    for (String s : originalSlugs) {
-      Set<String> group = expansion.getOrDefault(s, Set.of(s));
-      expandedGroups.add(List.copyOf(group));
+    List<List<String>> expandedGroups = new ArrayList<>(filter.tagSlugGroups().size());
+    for (List<String> group : filter.tagSlugGroups()) {
+      Set<String> expanded = new LinkedHashSet<>();
+      for (String slug : group) {
+        expanded.addAll(expansion.getOrDefault(slug, Set.of(slug)));
+      }
+      expandedGroups.add(List.copyOf(expanded));
     }
     return new RestaurantFilter(
         expandedGroups,

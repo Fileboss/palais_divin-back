@@ -36,6 +36,13 @@ public class TagPostgresAdapter implements TagRepositoryPort {
   }
 
   @Override
+  public List<Tag> findAllByCategory(TagCategory category) {
+    return jpa.findAllByCategoryOrderBySlugAsc(category.name()).stream()
+        .map(TagPostgresAdapter::toDomain)
+        .toList();
+  }
+
+  @Override
   public List<Tag> findBySlugs(Collection<String> slugs) {
     if (slugs.isEmpty()) {
       return List.of();

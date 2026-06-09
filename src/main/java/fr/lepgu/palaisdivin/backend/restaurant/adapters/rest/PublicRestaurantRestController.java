@@ -14,6 +14,7 @@ import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.ListAffinityRankedRe
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.ListRestaurantsUseCase;
 import fr.lepgu.palaisdivin.backend.review.domain.ports.CountRestaurantReviewsUseCase;
 import fr.lepgu.palaisdivin.backend.shared.adapters.web.PageMeta;
+import fr.lepgu.palaisdivin.backend.shared.adapters.web.TagGroupParser;
 import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;
 import fr.lepgu.palaisdivin.backend.tag.domain.model.Tag;
 import fr.lepgu.palaisdivin.backend.tag.domain.ports.ListRestaurantTagsUseCase;
@@ -82,7 +83,10 @@ class PublicRestaurantRestController {
       @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
       @RequestParam(defaultValue = "CREATED_AT_DESC") RestaurantSort sort,
       @RequestParam(name = "tag", required = false) @Size(max = 10)
-          List<@Pattern(regexp = "^[a-z0-9]+(-[a-z0-9]+)*$") @Size(max = 64) String> tag,
+          List<
+                  @Pattern(regexp = "^[a-z0-9]+(-[a-z0-9]+)*(,[a-z0-9]+(-[a-z0-9]+)*)*$")
+                  @Size(max = 650) String>
+              tag,
       @RequestParam(required = false) @Size(max = 100) String name,
       @RequestParam(required = false) @DecimalMin("-90") @DecimalMax("90") Double lat,
       @RequestParam(required = false) @DecimalMin("-180") @DecimalMax("180") Double lng,
@@ -100,14 +104,14 @@ class PublicRestaurantRestController {
       return buildResponse(page, sort, size);
     }
 
-    List<String> tagSlugs = tag == null ? List.of() : tag;
+    List<List<String>> tagSlugGroups = TagGroupParser.parse(tag);
     String trimmedName = (name == null || name.isBlank()) ? null : name.trim();
     Coordinates anchor = (lat != null && lng != null) ? new Coordinates(lat, lng) : null;
     if (sort == RestaurantSort.DISTANCE_ASC && anchor == null) {
       throw new MissingAnchorException();
     }
     RestaurantFilter filter =
-        RestaurantFilter.ofTagSlugs(tagSlugs, trimmedName, anchor, null, dineIn, takeOut, delivery);
+        new RestaurantFilter(tagSlugGroups, trimmedName, anchor, null, dineIn, takeOut, delivery);
     RestaurantCursor decoded = cursor == null ? null : CursorCodec.decode(cursor, sort);
     CursorPage<Restaurant> page = listRestaurants.list(decoded, size, filter, sort);
     return buildResponse(page, sort, size);

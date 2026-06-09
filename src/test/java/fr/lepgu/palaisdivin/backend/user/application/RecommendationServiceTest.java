@@ -2,6 +2,8 @@ package fr.lepgu.palaisdivin.backend.user.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -15,6 +17,7 @@ import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantId;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantSort;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.RestaurantRepositoryPort;
 import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;
+import fr.lepgu.palaisdivin.backend.tag.domain.ports.ExpandTagSlugsUseCase;
 import fr.lepgu.palaisdivin.backend.user.domain.model.Recommendation;
 import fr.lepgu.palaisdivin.backend.user.domain.model.RecommendationCursor;
 import fr.lepgu.palaisdivin.backend.user.domain.model.RecommendationSort;
@@ -41,6 +44,7 @@ class RecommendationServiceTest {
   @Mock UserRepositoryPort users;
   @Mock RecommendationGraphPort graph;
   @Mock RestaurantRepositoryPort restaurants;
+  @Mock ExpandTagSlugsUseCase expandTagSlugs;
 
   RecommendationService service;
 
@@ -49,7 +53,7 @@ class RecommendationServiceTest {
 
   @BeforeEach
   void setUp() {
-    service = new RecommendationService(users, graph, restaurants);
+    service = new RecommendationService(users, graph, restaurants, expandTagSlugs);
     requesterId = UserId.newId();
     requester =
         new User(
@@ -66,7 +70,14 @@ class RecommendationServiceTest {
     when(graph.findRecommendations(eq(requesterId), any(), eq(20), eq(false))).thenReturn(expected);
 
     CursorPage<Recommendation> result =
-        service.list(SUBJECT, null, 20, false, RecommendationSort.AFFINITY_DESC, null);
+        service.list(
+            SUBJECT,
+            null,
+            20,
+            false,
+            RecommendationSort.AFFINITY_DESC,
+            null,
+            RestaurantFilter.none());
 
     assertThat(result).isSameAs(expected);
     verify(graph).findRecommendations(requesterId, null, 20, false);
@@ -81,7 +92,8 @@ class RecommendationServiceTest {
     when(graph.findRecommendations(requesterId, cursor, 5, false))
         .thenReturn(new CursorPage<>(List.of(), false));
 
-    service.list(SUBJECT, cursor, 5, false, RecommendationSort.AFFINITY_DESC, null);
+    service.list(
+        SUBJECT, cursor, 5, false, RecommendationSort.AFFINITY_DESC, null, RestaurantFilter.none());
 
     verify(graph).findRecommendations(requesterId, cursor, 5, false);
   }
@@ -118,7 +130,14 @@ class RecommendationServiceTest {
         .thenReturn(new CursorPage<>(List.of(r1, r2), false));
 
     CursorPage<Recommendation> result =
-        service.list(SUBJECT, null, 20, false, RecommendationSort.RATING_DESC, null);
+        service.list(
+            SUBJECT,
+            null,
+            20,
+            false,
+            RecommendationSort.RATING_DESC,
+            null,
+            RestaurantFilter.none());
 
     assertThat(result.data()).hasSize(2);
     assertThat(result.data().get(0).avgRating()).isEqualTo(4.5);
@@ -150,7 +169,14 @@ class RecommendationServiceTest {
         .thenReturn(new CursorPage<>(List.of(r), false));
 
     CursorPage<Recommendation> result =
-        service.list(SUBJECT, null, 20, false, RecommendationSort.DISTANCE_ASC, anchor);
+        service.list(
+            SUBJECT,
+            null,
+            20,
+            false,
+            RecommendationSort.DISTANCE_ASC,
+            anchor,
+            RestaurantFilter.none());
 
     assertThat(result.data().getFirst().distanceMetres()).isEqualTo(120.0);
     ArgumentCaptor<RestaurantFilter> filterCaptor = ArgumentCaptor.forClass(RestaurantFilter.class);
@@ -165,7 +191,8 @@ class RecommendationServiceTest {
     when(graph.findAllRecommendedAffinities(requesterId, false)).thenReturn(Map.of());
 
     CursorPage<Recommendation> result =
-        service.list(SUBJECT, null, 20, false, RecommendationSort.NAME_ASC, null);
+        service.list(
+            SUBJECT, null, 20, false, RecommendationSort.NAME_ASC, null, RestaurantFilter.none());
 
     assertThat(result.data()).isEmpty();
     assertThat(result.hasNext()).isFalse();
@@ -183,7 +210,8 @@ class RecommendationServiceTest {
     when(restaurants.findAll(any(), eq(20), any(), eq(RestaurantSort.NAME_ASC)))
         .thenReturn(new CursorPage<>(List.of(), false));
 
-    service.list(SUBJECT, cursor, 20, false, RecommendationSort.NAME_ASC, null);
+    service.list(
+        SUBJECT, cursor, 20, false, RecommendationSort.NAME_ASC, null, RestaurantFilter.none());
 
     ArgumentCaptor<RestaurantCursor> cursorCaptor = ArgumentCaptor.forClass(RestaurantCursor.class);
     verify(restaurants).findAll(cursorCaptor.capture(), eq(20), any(), eq(RestaurantSort.NAME_ASC));
@@ -191,5 +219,103 @@ class RecommendationServiceTest {
     RestaurantCursor.ByName translated = (RestaurantCursor.ByName) cursorCaptor.getValue();
     assertThat(translated.name()).isEqualTo("Foo");
     assertThat(translated.id()).isEqualTo(cursor.id().value());
+  }
+
+  @Test
+  void ratingSort_propagatesCallerFilterDims() {
+    RestaurantId rid = RestaurantId.newId();
+    when(users.requireBySubject(SUBJECT)).thenReturn(requesterId);
+    when(graph.findAllRecommendedAffinities(requesterId, false))
+        .thenReturn(Map.of(rid, new RestaurantAffinity(rid, 5.0, 1)));
+    when(restaurants.findAll(any(), eq(20), any(), eq(RestaurantSort.RATING_DESC)))
+        .thenReturn(new CursorPage<>(List.of(), false));
+    when(expandTagSlugs.expand(any()))
+        .thenAnswer(
+            inv -> {
+              java.util.Collection<String> slugs = inv.getArgument(0);
+              java.util.Map<String, java.util.Set<String>> m = new java.util.LinkedHashMap<>();
+              for (String s : slugs) {
+                m.put(s, java.util.Set.of(s));
+              }
+              return m;
+            });
+    RestaurantFilter caller =
+        new RestaurantFilter(
+            List.of(List.of("vegan")), "bistrot", null, null, Boolean.TRUE, null, null);
+
+    service.list(SUBJECT, null, 20, false, RecommendationSort.RATING_DESC, null, caller);
+
+    ArgumentCaptor<RestaurantFilter> captor = ArgumentCaptor.forClass(RestaurantFilter.class);
+    verify(restaurants).findAll(any(), eq(20), captor.capture(), eq(RestaurantSort.RATING_DESC));
+    RestaurantFilter merged = captor.getValue();
+    assertThat(merged.tagSlugGroups()).containsExactly(List.of("vegan"));
+    assertThat(merged.name()).isEqualTo("bistrot");
+    assertThat(merged.dineIn()).isTrue();
+    assertThat(merged.idsAllowList()).containsExactly(rid);
+  }
+
+  @Test
+  void affinitySort_withCallerFilter_paginatesInMemoryByAffinity() {
+    RestaurantId rid1 = RestaurantId.newId();
+    RestaurantId rid2 = RestaurantId.newId();
+    RestaurantId rid3 = RestaurantId.newId();
+    Restaurant r1 = restaurantWith(rid1, "A");
+    Restaurant r2 = restaurantWith(rid2, "B");
+    Restaurant r3 = restaurantWith(rid3, "C");
+    when(users.requireBySubject(SUBJECT)).thenReturn(requesterId);
+    when(graph.findAllRecommendedAffinities(requesterId, false))
+        .thenReturn(
+            Map.of(
+                rid1, new RestaurantAffinity(rid1, 9.0, 2),
+                rid2, new RestaurantAffinity(rid2, 5.0, 1),
+                rid3, new RestaurantAffinity(rid3, 7.0, 1)));
+    when(restaurants.findAll(any(), eq(5000), any(), eq(RestaurantSort.CREATED_AT_DESC)))
+        .thenReturn(new CursorPage<>(List.of(r1, r2, r3), false));
+    when(expandTagSlugs.expand(any())).thenReturn(Map.of("vegan", java.util.Set.of("vegan")));
+    RestaurantFilter caller =
+        new RestaurantFilter(List.of(List.of("vegan")), null, null, null, null, null, null);
+
+    CursorPage<Recommendation> page =
+        service.list(SUBJECT, null, 2, false, RecommendationSort.AFFINITY_DESC, null, caller);
+
+    assertThat(page.data()).hasSize(2);
+    assertThat(page.data().get(0).affinity()).isEqualTo(9.0);
+    assertThat(page.data().get(1).affinity()).isEqualTo(7.0);
+    assertThat(page.hasNext()).isTrue();
+    verify(graph, org.mockito.Mockito.never())
+        .findRecommendations(any(), any(), anyInt(), anyBoolean());
+  }
+
+  @Test
+  void affinitySort_withoutFilter_keepsCypherFastPath() {
+    Recommendation reco =
+        new Recommendation(RestaurantId.newId(), "Septime", "addr", 48.8, 2.3, 9.0, 2);
+    CursorPage<Recommendation> expected = new CursorPage<>(List.of(reco), false);
+    when(users.requireBySubject(SUBJECT)).thenReturn(requesterId);
+    when(graph.findRecommendations(eq(requesterId), any(), eq(20), eq(false))).thenReturn(expected);
+
+    CursorPage<Recommendation> result =
+        service.list(
+            SUBJECT,
+            null,
+            20,
+            false,
+            RecommendationSort.AFFINITY_DESC,
+            null,
+            RestaurantFilter.none());
+
+    assertThat(result).isSameAs(expected);
+    verifyNoInteractions(restaurants);
+  }
+
+  private static Restaurant restaurantWith(RestaurantId id, String name) {
+    return new Restaurant(
+        id,
+        name,
+        "addr",
+        new Coordinates(48.8, 2.3),
+        Instant.parse("2026-05-01T00:00:00Z"),
+        null,
+        null);
   }
 }

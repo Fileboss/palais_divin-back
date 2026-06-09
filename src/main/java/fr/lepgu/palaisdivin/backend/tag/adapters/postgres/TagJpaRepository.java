@@ -9,6 +9,8 @@ interface TagJpaRepository extends JpaRepository<TagEntity, UUID> {
 
   List<TagEntity> findAllByOrderByCategoryAscSlugAsc();
 
+  List<TagEntity> findAllByCategoryOrderBySlugAsc(String category);
+
   List<TagEntity> findBySlugIn(Collection<String> slugs);
 
   List<TagEntity> findByIdIn(Collection<UUID> ids);

@@ -2,7 +2,9 @@ package fr.lepgu.palaisdivin.backend.user.adapters.rest;
 
 import fr.lepgu.palaisdivin.backend.restaurant.adapters.rest.MissingAnchorException;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Coordinates;
+import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantFilter;
 import fr.lepgu.palaisdivin.backend.shared.adapters.web.PageMeta;
+import fr.lepgu.palaisdivin.backend.shared.adapters.web.TagGroupParser;
 import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;
 import fr.lepgu.palaisdivin.backend.user.domain.model.Recommendation;
 import fr.lepgu.palaisdivin.backend.user.domain.model.RecommendationCursor;
@@ -12,6 +14,8 @@ import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.util.List;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -41,15 +45,28 @@ class RecommendationRestController {
       @RequestParam(defaultValue = "false") boolean includeOwn,
       @RequestParam(required = false) @DecimalMin("-90") @DecimalMax("90") Double lat,
       @RequestParam(required = false) @DecimalMin("-180") @DecimalMax("180") Double lng,
+      @RequestParam(name = "tag", required = false) @Size(max = 10)
+          List<
+                  @Pattern(regexp = "^[a-z0-9]+(-[a-z0-9]+)*(,[a-z0-9]+(-[a-z0-9]+)*)*$")
+                  @Size(max = 650) String>
+              tag,
+      @RequestParam(required = false) @Size(max = 100) String name,
+      @RequestParam(required = false) Boolean dineIn,
+      @RequestParam(required = false) Boolean takeOut,
+      @RequestParam(required = false) Boolean delivery,
       @AuthenticationPrincipal Jwt jwt) {
     Coordinates anchor = (lat != null && lng != null) ? new Coordinates(lat, lng) : null;
     if (sort == RecommendationSort.DISTANCE_ASC && anchor == null) {
       throw new MissingAnchorException();
     }
+    List<List<String>> tagSlugGroups = TagGroupParser.parse(tag);
+    String trimmedName = (name == null || name.isBlank()) ? null : name.trim();
+    RestaurantFilter filter =
+        new RestaurantFilter(tagSlugGroups, trimmedName, null, null, dineIn, takeOut, delivery);
     RecommendationCursor decoded =
         cursor == null ? null : RecommendationCursorCodec.decode(cursor, sort);
     CursorPage<Recommendation> page =
-        getRecommendations.list(jwt.getSubject(), decoded, size, includeOwn, sort, anchor);
+        getRecommendations.list(jwt.getSubject(), decoded, size, includeOwn, sort, anchor, filter);
     List<RecommendationResponse> data =
         page.data().stream().map(RecommendationResponse::from).toList();
     String nextCursor =

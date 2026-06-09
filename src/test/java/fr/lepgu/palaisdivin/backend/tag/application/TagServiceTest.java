@@ -92,6 +92,18 @@ class TagServiceTest {
   }
 
   @Test
+  void list_byCategory_delegates_to_repository() {
+    Tag vegan = new Tag(TagId.newId(), TagCategory.REGIME, "vegan", "Vegan", NOW);
+    when(tags.findAllByCategory(TagCategory.REGIME)).thenReturn(List.of(vegan));
+
+    List<Tag> result = service.list(TagCategory.REGIME);
+
+    assertThat(result).containsExactly(vegan);
+    verify(tags).findAllByCategory(TagCategory.REGIME);
+    verify(tags, never()).findAll();
+  }
+
+  @Test
   void delete_persists_then_publishes_TagDeleted_event() {
     TagId id = TagId.newId();
     Tag existing = new Tag(id, TagCategory.SPECIALTY, "natural-wine", "Natural wine", NOW);

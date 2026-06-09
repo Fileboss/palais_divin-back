@@ -62,6 +62,9 @@ class RestaurantServiceTest {
             inv -> {
               java.util.Collection<String> slugs = inv.getArgument(0);
               java.util.Map<String, java.util.Set<String>> map = new java.util.LinkedHashMap<>();
+              if (slugs == null) {
+                return map;
+              }
               for (String s : slugs) {
                 map.put(s, java.util.Set.of(s));
               }
@@ -269,6 +272,38 @@ class RestaurantServiceTest {
 
     assertThat(got).isSameAs(expected);
     verify(repository).findAll(null, 20, filter, RestaurantSort.DISTANCE_ASC);
+  }
+
+  @Test
+  void listExpandsTagsPerGroupIndependently() {
+    when(expandTagSlugs.expand(any()))
+        .thenReturn(
+            java.util.Map.of(
+                "vegan", java.util.Set.of("vegan", "great-vegan-option"),
+                "vegan-friendly", java.util.Set.of("vegan-friendly"),
+                "terrace", java.util.Set.of("terrace")));
+    RestaurantFilter input =
+        new RestaurantFilter(
+            List.of(List.of("vegan", "vegan-friendly"), List.of("terrace")),
+            null,
+            null,
+            null,
+            null,
+            null,
+            null);
+    CursorPage<Restaurant> expected = new CursorPage<>(List.of(), false);
+    when(repository.findAll(eq(null), eq(20), any(), eq(RestaurantSort.CREATED_AT_DESC)))
+        .thenReturn(expected);
+
+    service.list(null, 20, input, RestaurantSort.CREATED_AT_DESC);
+
+    ArgumentCaptor<RestaurantFilter> captor = ArgumentCaptor.forClass(RestaurantFilter.class);
+    verify(repository)
+        .findAll(eq(null), eq(20), captor.capture(), eq(RestaurantSort.CREATED_AT_DESC));
+    assertThat(captor.getValue().tagSlugGroups()).hasSize(2);
+    assertThat(captor.getValue().tagSlugGroups().get(0))
+        .containsExactlyInAnyOrder("vegan", "vegan-friendly", "great-vegan-option");
+    assertThat(captor.getValue().tagSlugGroups().get(1)).containsExactly("terrace");
   }
 
   @Test
