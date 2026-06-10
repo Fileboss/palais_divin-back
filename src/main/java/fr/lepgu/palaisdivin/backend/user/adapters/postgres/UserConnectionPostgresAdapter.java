@@ -55,6 +55,11 @@ public class UserConnectionPostgresAdapter implements ConnectionRepositoryPort {
             });
   }
 
+  @Override
+  public boolean existsBy(UserId sourceUserId, UserId targetUserId) {
+    return jpa.existsBySourceUserIdAndTargetUserId(sourceUserId.value(), targetUserId.value());
+  }
+
   private static UserConnectionEntity toEntity(Connection c) {
     return new UserConnectionEntity(
         c.id().value(), c.sourceUserId().value(), c.targetUserId().value(), c.createdAt());

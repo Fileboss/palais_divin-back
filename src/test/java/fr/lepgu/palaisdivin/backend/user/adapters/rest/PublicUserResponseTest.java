@@ -14,7 +14,7 @@ class PublicUserResponseTest {
   private static final Instant FIXED_CREATED_AT = Instant.parse("2026-05-27T10:15:30Z");
 
   @Test
-  void from_mapsAllFields() {
+  void from_mapsAllFields_legacyFactorySetsFollowedNull() {
     UserId id = UserId.newId();
     User user = new User(id, "kc-subj", "alice@example.test", "Alice", FIXED_CREATED_AT);
 
@@ -23,15 +23,26 @@ class PublicUserResponseTest {
     assertThat(response.id()).isEqualTo(id.value());
     assertThat(response.displayName()).isEqualTo("Alice");
     assertThat(response.createdAt()).isEqualTo(FIXED_CREATED_AT);
+    assertThat(response.isFollowedByMe()).isNull();
   }
 
   @Test
-  void responseShape_exposesOnlyThreeComponents_neverSubjectOrEmail() {
+  void from_withFollowedFlag_roundTrips() {
+    UserId id = UserId.newId();
+    User user = new User(id, "kc-subj", "alice@example.test", "Alice", FIXED_CREATED_AT);
+
+    assertThat(PublicUserResponse.from(user, Boolean.TRUE).isFollowedByMe()).isTrue();
+    assertThat(PublicUserResponse.from(user, Boolean.FALSE).isFollowedByMe()).isFalse();
+    assertThat(PublicUserResponse.from(user, null).isFollowedByMe()).isNull();
+  }
+
+  @Test
+  void responseShape_exposesOnlyFourComponents_neverSubjectOrEmail() {
     Set<String> names =
         Stream.of(PublicUserResponse.class.getRecordComponents())
             .map(java.lang.reflect.RecordComponent::getName)
             .collect(java.util.stream.Collectors.toUnmodifiableSet());
 
-    assertThat(names).containsExactlyInAnyOrder("id", "displayName", "createdAt");
+    assertThat(names).containsExactlyInAnyOrder("id", "displayName", "createdAt", "isFollowedByMe");
   }
 }

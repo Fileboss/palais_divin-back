@@ -14,6 +14,8 @@ interface UserConnectionJpaRepository extends JpaRepository<UserConnectionEntity
   Optional<UserConnectionEntity> findBySourceUserIdAndTargetUserId(
       UUID sourceUserId, UUID targetUserId);
 
+  boolean existsBySourceUserIdAndTargetUserId(UUID sourceUserId, UUID targetUserId);
+
   @Query(
       """
       select c from UserConnectionEntity c

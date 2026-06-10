@@ -1080,6 +1080,8 @@ components:
         id:
           type: string
           format: uuid
+        isFollowedByMe:
+          type: boolean
     RecommendationResponse:
       type: object
       properties:

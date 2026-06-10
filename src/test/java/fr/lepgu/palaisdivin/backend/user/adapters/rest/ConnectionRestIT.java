@@ -212,7 +212,9 @@ class ConnectionRestIT extends AbstractIntegrationTest {
     assertThat(body.data()).hasSize(2);
     assertThat(body.data().get(0).user().id()).isEqualTo(secondTarget.id().value());
     assertThat(body.data().get(0).user().displayName()).isEqualTo("Third User");
+    assertThat(body.data().get(0).user().isFollowedByMe()).isTrue();
     assertThat(body.data().get(1).user().id()).isEqualTo(targetUserId.value());
+    assertThat(body.data().get(1).user().isFollowedByMe()).isTrue();
     assertThat(body.page().size()).isEqualTo(20);
     assertThat(body.page().hasNext()).isFalse();
     assertThat(body.page().nextCursor()).isNull();

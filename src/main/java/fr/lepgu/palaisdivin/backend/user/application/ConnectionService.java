@@ -10,7 +10,9 @@ import fr.lepgu.palaisdivin.backend.user.domain.model.Connection;
 import fr.lepgu.palaisdivin.backend.user.domain.model.ConnectionCursor;
 import fr.lepgu.palaisdivin.backend.user.domain.model.ConnectionId;
 import fr.lepgu.palaisdivin.backend.user.domain.model.ConnectionResult;
+import fr.lepgu.palaisdivin.backend.user.domain.model.User;
 import fr.lepgu.palaisdivin.backend.user.domain.model.UserId;
+import fr.lepgu.palaisdivin.backend.user.domain.ports.CheckFollowUseCase;
 import fr.lepgu.palaisdivin.backend.user.domain.ports.ConnectionRepositoryPort;
 import fr.lepgu.palaisdivin.backend.user.domain.ports.CreateConnectionUseCase;
 import fr.lepgu.palaisdivin.backend.user.domain.ports.ListMyConnectionsUseCase;
@@ -24,7 +26,10 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional
 public class ConnectionService
-    implements CreateConnectionUseCase, ListMyConnectionsUseCase, RemoveConnectionUseCase {
+    implements CreateConnectionUseCase,
+        ListMyConnectionsUseCase,
+        RemoveConnectionUseCase,
+        CheckFollowUseCase {
 
   private static final String AGGREGATE_TYPE = "Connection";
 
@@ -105,5 +110,16 @@ public class ConnectionService
         "ConnectionRemoved",
         new ConnectionRemoved(
             c.id().value(), c.sourceUserId().value(), c.targetUserId().value(), clock.instant()));
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public Boolean isFollowedByViewer(String viewerSubject, UserId targetId) {
+    return users
+        .findBySubject(viewerSubject)
+        .map(User::id)
+        .filter(viewerId -> !viewerId.equals(targetId))
+        .map(viewerId -> connections.existsBy(viewerId, targetId))
+        .orElse(null);
   }
 }

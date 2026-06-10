@@ -83,7 +83,8 @@ class ConnectionRestController {
                   User u = usersById.get(c.targetUserId());
                   return u == null
                       ? null
-                      : new MyConnectionResponse(PublicUserResponse.from(u), c.createdAt());
+                      : new MyConnectionResponse(
+                          PublicUserResponse.from(u, Boolean.TRUE), c.createdAt());
                 })
             .filter(Objects::nonNull)
             .toList();

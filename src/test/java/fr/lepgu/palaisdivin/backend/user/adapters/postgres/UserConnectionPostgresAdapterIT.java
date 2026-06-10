@@ -214,4 +214,16 @@ class UserConnectionPostgresAdapterIT {
 
     assertThat(deleted).isEmpty();
   }
+
+  @Test
+  void existsBy_returnsTrue_whenRowPresent() {
+    adapter.save(new Connection(ConnectionId.newId(), SOURCE_ID, TARGET_ID, FIXED_CREATED_AT));
+
+    assertThat(adapter.existsBy(SOURCE_ID, TARGET_ID)).isTrue();
+  }
+
+  @Test
+  void existsBy_returnsFalse_whenRowAbsent() {
+    assertThat(adapter.existsBy(SOURCE_ID, TARGET_ID)).isFalse();
+  }
 }

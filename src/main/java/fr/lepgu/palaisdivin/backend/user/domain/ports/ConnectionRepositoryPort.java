@@ -15,4 +15,6 @@ public interface ConnectionRepositoryPort {
   CursorPage<Connection> findBySource(UserId sourceUserId, ConnectionCursor cursor, int size);
 
   Optional<Connection> deleteBySourceAndTarget(UserId sourceUserId, UserId targetUserId);
+
+  boolean existsBy(UserId sourceUserId, UserId targetUserId);
 }

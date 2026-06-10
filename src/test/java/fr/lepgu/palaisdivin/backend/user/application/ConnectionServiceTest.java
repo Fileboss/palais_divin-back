@@ -215,4 +215,38 @@ class ConnectionServiceTest {
     verify(connections, never()).deleteBySourceAndTarget(any(), any());
     verifyNoInteractions(outbox);
   }
+
+  @Test
+  void isFollowedByViewer_returnsTrue_whenViewerFollowsTarget() {
+    when(users.findBySubject(SUBJECT)).thenReturn(Optional.of(sourceUser));
+    when(connections.existsBy(sourceId, targetId)).thenReturn(true);
+
+    assertThat(service.isFollowedByViewer(SUBJECT, targetId)).isTrue();
+  }
+
+  @Test
+  void isFollowedByViewer_returnsFalse_whenViewerDoesNotFollowTarget() {
+    when(users.findBySubject(SUBJECT)).thenReturn(Optional.of(sourceUser));
+    when(connections.existsBy(sourceId, targetId)).thenReturn(false);
+
+    assertThat(service.isFollowedByViewer(SUBJECT, targetId)).isFalse();
+  }
+
+  @Test
+  void isFollowedByViewer_returnsNull_onSelfLookup() {
+    when(users.findBySubject(SUBJECT)).thenReturn(Optional.of(sourceUser));
+
+    assertThat(service.isFollowedByViewer(SUBJECT, sourceId)).isNull();
+
+    verify(connections, never()).existsBy(any(), any());
+  }
+
+  @Test
+  void isFollowedByViewer_returnsNull_onOrphanSubject() {
+    when(users.findBySubject(SUBJECT)).thenReturn(Optional.empty());
+
+    assertThat(service.isFollowedByViewer(SUBJECT, targetId)).isNull();
+
+    verify(connections, never()).existsBy(any(), any());
+  }
 }

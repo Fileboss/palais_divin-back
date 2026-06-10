@@ -178,6 +178,7 @@ class ConnectionRestControllerTest {
         .andExpect(jsonPath("$.data.length()").value(1))
         .andExpect(jsonPath("$.data[0].user.id").value(targetUuid.toString()))
         .andExpect(jsonPath("$.data[0].user.displayName").value("Alice"))
+        .andExpect(jsonPath("$.data[0].user.isFollowedByMe").value(true))
         .andExpect(jsonPath("$.data[0].createdAt").value(FIXED_CREATED_AT.toString()))
         .andExpect(jsonPath("$.page.hasNext").value(false))
         .andExpect(jsonPath("$.page.nextCursor").doesNotExist());
