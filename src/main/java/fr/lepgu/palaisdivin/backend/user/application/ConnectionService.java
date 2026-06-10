@@ -5,6 +5,7 @@ import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;
 import fr.lepgu.palaisdivin.backend.user.domain.SelfConnectionException;
 import fr.lepgu.palaisdivin.backend.user.domain.UserNotFoundException;
 import fr.lepgu.palaisdivin.backend.user.domain.events.ConnectionCreated;
+import fr.lepgu.palaisdivin.backend.user.domain.events.ConnectionRemoved;
 import fr.lepgu.palaisdivin.backend.user.domain.model.Connection;
 import fr.lepgu.palaisdivin.backend.user.domain.model.ConnectionCursor;
 import fr.lepgu.palaisdivin.backend.user.domain.model.ConnectionId;
@@ -13,6 +14,7 @@ import fr.lepgu.palaisdivin.backend.user.domain.model.UserId;
 import fr.lepgu.palaisdivin.backend.user.domain.ports.ConnectionRepositoryPort;
 import fr.lepgu.palaisdivin.backend.user.domain.ports.CreateConnectionUseCase;
 import fr.lepgu.palaisdivin.backend.user.domain.ports.ListMyConnectionsUseCase;
+import fr.lepgu.palaisdivin.backend.user.domain.ports.RemoveConnectionUseCase;
 import fr.lepgu.palaisdivin.backend.user.domain.ports.UserRepositoryPort;
 import java.time.Clock;
 import java.util.Optional;
@@ -21,7 +23,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Transactional
-public class ConnectionService implements CreateConnectionUseCase, ListMyConnectionsUseCase {
+public class ConnectionService
+    implements CreateConnectionUseCase, ListMyConnectionsUseCase, RemoveConnectionUseCase {
 
   private static final String AGGREGATE_TYPE = "Connection";
 
@@ -80,5 +83,27 @@ public class ConnectionService implements CreateConnectionUseCase, ListMyConnect
   public CursorPage<Connection> listMine(String subject, ConnectionCursor cursor, int size) {
     UserId sourceId = users.requireBySubject(subject);
     return connections.findBySource(sourceId, cursor, size);
+  }
+
+  @Override
+  public void remove(String subject, UserId targetId) {
+    UserId sourceId = users.requireBySubject(subject);
+
+    if (sourceId.equals(targetId)) {
+      throw new SelfConnectionException(sourceId);
+    }
+
+    Optional<Connection> deleted = connections.deleteBySourceAndTarget(sourceId, targetId);
+    if (deleted.isEmpty()) {
+      return;
+    }
+
+    Connection c = deleted.get();
+    outbox.publish(
+        AGGREGATE_TYPE,
+        c.id().value(),
+        "ConnectionRemoved",
+        new ConnectionRemoved(
+            c.id().value(), c.sourceUserId().value(), c.targetUserId().value(), clock.instant()));
   }
 }

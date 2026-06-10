@@ -18,7 +18,7 @@ paths:
       - invitation-rest-controller
   /api/v1/admin/restaurants/{id}:
     delete:
-      operationId: delete_2
+      operationId: delete_3
       parameters:
       - in: path
         name: id
@@ -51,7 +51,7 @@ paths:
       - admin-tag-implication-rest-controller
   /api/v1/admin/tag-implications/{tagId}/{impliesTagId}:
     delete:
-      operationId: delete_1
+      operationId: delete_2
       parameters:
       - in: path
         name: tagId
@@ -90,7 +90,7 @@ paths:
       - admin-tag-rest-controller
   /api/v1/admin/tags/{tagId}:
     delete:
-      operationId: delete
+      operationId: delete_1
       parameters:
       - in: path
         name: tagId
@@ -456,6 +456,20 @@ paths:
       tags:
       - connection-rest-controller
   /api/v1/user/connections/{targetId}:
+    delete:
+      operationId: delete
+      parameters:
+      - in: path
+        name: targetId
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        "204":
+          description: No Content
+      tags:
+      - connection-rest-controller
     post:
       operationId: connect
       parameters:

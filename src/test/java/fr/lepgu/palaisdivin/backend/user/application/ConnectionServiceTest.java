@@ -16,6 +16,7 @@ import fr.lepgu.palaisdivin.backend.user.domain.OrphanSubjectException;
 import fr.lepgu.palaisdivin.backend.user.domain.SelfConnectionException;
 import fr.lepgu.palaisdivin.backend.user.domain.UserNotFoundException;
 import fr.lepgu.palaisdivin.backend.user.domain.events.ConnectionCreated;
+import fr.lepgu.palaisdivin.backend.user.domain.events.ConnectionRemoved;
 import fr.lepgu.palaisdivin.backend.user.domain.model.Connection;
 import fr.lepgu.palaisdivin.backend.user.domain.model.ConnectionCursor;
 import fr.lepgu.palaisdivin.backend.user.domain.model.ConnectionId;
@@ -156,6 +157,62 @@ class ConnectionServiceTest {
         .isInstanceOf(OrphanSubjectException.class);
 
     verify(connections, never()).findBySource(any(), any(), anyInt());
+    verifyNoInteractions(outbox);
+  }
+
+  @Test
+  void remove_existingConnection_publishesRemovedEvent() {
+    ConnectionId existingId = ConnectionId.newId();
+    Connection existing = new Connection(existingId, sourceId, targetId, NOW.minusSeconds(3600));
+    when(users.requireBySubject(SUBJECT)).thenReturn(sourceId);
+    when(connections.deleteBySourceAndTarget(sourceId, targetId)).thenReturn(Optional.of(existing));
+
+    service.remove(SUBJECT, targetId);
+
+    ArgumentCaptor<ConnectionRemoved> eventCaptor =
+        ArgumentCaptor.forClass(ConnectionRemoved.class);
+    verify(outbox)
+        .publish(
+            eq("Connection"),
+            eq(existingId.value()),
+            eq("ConnectionRemoved"),
+            eventCaptor.capture());
+    ConnectionRemoved event = eventCaptor.getValue();
+    assertThat(event.id()).isEqualTo(existingId.value());
+    assertThat(event.sourceUserId()).isEqualTo(sourceId.value());
+    assertThat(event.targetUserId()).isEqualTo(targetId.value());
+    assertThat(event.removedAt()).isEqualTo(NOW);
+  }
+
+  @Test
+  void remove_absentConnection_doesNothing() {
+    when(users.requireBySubject(SUBJECT)).thenReturn(sourceId);
+    when(connections.deleteBySourceAndTarget(sourceId, targetId)).thenReturn(Optional.empty());
+
+    service.remove(SUBJECT, targetId);
+
+    verifyNoInteractions(outbox);
+  }
+
+  @Test
+  void remove_self_throwsSelfConnectionException() {
+    when(users.requireBySubject(SUBJECT)).thenReturn(sourceId);
+
+    assertThatThrownBy(() -> service.remove(SUBJECT, sourceId))
+        .isInstanceOf(SelfConnectionException.class);
+
+    verify(connections, never()).deleteBySourceAndTarget(any(), any());
+    verifyNoInteractions(outbox);
+  }
+
+  @Test
+  void remove_propagatesOrphanSubject() {
+    when(users.requireBySubject(SUBJECT)).thenThrow(new OrphanSubjectException(SUBJECT));
+
+    assertThatThrownBy(() -> service.remove(SUBJECT, targetId))
+        .isInstanceOf(OrphanSubjectException.class);
+
+    verify(connections, never()).deleteBySourceAndTarget(any(), any());
     verifyNoInteractions(outbox);
   }
 }

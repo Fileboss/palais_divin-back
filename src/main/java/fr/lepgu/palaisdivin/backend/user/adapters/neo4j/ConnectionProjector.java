@@ -17,6 +17,12 @@ class ConnectionProjector implements Projector {
       SET k.createdAt = $createdAt
       """;
 
+  private static final String DELETE_CYPHER =
+      """
+      MATCH (s:User {id: $sourceUserId})-[k:KNOWS]->(t:User {id: $targetUserId})
+      DELETE k
+      """;
+
   private final Neo4jClient neo4jClient;
 
   ConnectionProjector(Neo4jClient neo4jClient) {
@@ -30,13 +36,25 @@ class ConnectionProjector implements Projector {
 
   @Override
   public void project(String eventType, JsonNode payload) {
-    neo4jClient
-        .query(MERGE_CYPHER)
-        .bindAll(
-            Map.of(
-                "sourceUserId", payload.get("sourceUserId").asText(),
-                "targetUserId", payload.get("targetUserId").asText(),
-                "createdAt", payload.get("createdAt").asText()))
-        .run();
+    switch (eventType) {
+      case "ConnectionCreated" ->
+          neo4jClient
+              .query(MERGE_CYPHER)
+              .bindAll(
+                  Map.of(
+                      "sourceUserId", payload.get("sourceUserId").asText(),
+                      "targetUserId", payload.get("targetUserId").asText(),
+                      "createdAt", payload.get("createdAt").asText()))
+              .run();
+      case "ConnectionRemoved" ->
+          neo4jClient
+              .query(DELETE_CYPHER)
+              .bindAll(
+                  Map.of(
+                      "sourceUserId", payload.get("sourceUserId").asText(),
+                      "targetUserId", payload.get("targetUserId").asText()))
+              .run();
+      default -> throw new IllegalArgumentException("Unknown Connection event type: " + eventType);
+    }
   }
 }

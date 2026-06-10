@@ -3,8 +3,12 @@ package fr.lepgu.palaisdivin.backend.user.adapters.rest;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -25,6 +29,7 @@ import fr.lepgu.palaisdivin.backend.user.domain.model.UserId;
 import fr.lepgu.palaisdivin.backend.user.domain.ports.CreateConnectionUseCase;
 import fr.lepgu.palaisdivin.backend.user.domain.ports.ListMyConnectionsUseCase;
 import fr.lepgu.palaisdivin.backend.user.domain.ports.LookupUsersUseCase;
+import fr.lepgu.palaisdivin.backend.user.domain.ports.RemoveConnectionUseCase;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -53,6 +58,7 @@ class ConnectionRestControllerTest {
   @MockitoBean CreateConnectionUseCase createConnection;
   @MockitoBean ListMyConnectionsUseCase listMyConnections;
   @MockitoBean LookupUsersUseCase lookupUsers;
+  @MockitoBean RemoveConnectionUseCase removeConnection;
   @MockitoBean JwtDecoder jwtDecoder;
 
   private static RequestPostProcessor userJwt() {
@@ -237,6 +243,54 @@ class ConnectionRestControllerTest {
   void list_anonymous_returns401() throws Exception {
     mockMvc
         .perform(get("/api/v1/user/connections"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+        .andExpect(jsonPath("$.type").value("https://palaisdivin.lepgu.fr/problems/unauthorized"));
+  }
+
+  @Test
+  void delete_existing_returns204() throws Exception {
+    UUID targetId = UUID.randomUUID();
+    doNothing().when(removeConnection).remove(eq(SUBJECT), eq(new UserId(targetId)));
+
+    mockMvc
+        .perform(delete("/api/v1/user/connections/{targetId}", targetId).with(userJwt()))
+        .andExpect(status().isNoContent())
+        .andExpect(content().string(""));
+
+    verify(removeConnection).remove(SUBJECT, new UserId(targetId));
+  }
+
+  @Test
+  void delete_absent_returns204() throws Exception {
+    UUID targetId = UUID.randomUUID();
+    doNothing().when(removeConnection).remove(eq(SUBJECT), eq(new UserId(targetId)));
+
+    mockMvc
+        .perform(delete("/api/v1/user/connections/{targetId}", targetId).with(userJwt()))
+        .andExpect(status().isNoContent())
+        .andExpect(content().string(""));
+  }
+
+  @Test
+  void delete_self_returns422() throws Exception {
+    UUID selfId = UUID.randomUUID();
+    doThrow(new SelfConnectionException(new UserId(selfId)))
+        .when(removeConnection)
+        .remove(eq(SUBJECT), eq(new UserId(selfId)));
+
+    mockMvc
+        .perform(delete("/api/v1/user/connections/{targetId}", selfId).with(userJwt()))
+        .andExpect(status().isUnprocessableEntity())
+        .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+        .andExpect(
+            jsonPath("$.type").value("https://palaisdivin.lepgu.fr/problems/self-connection"));
+  }
+
+  @Test
+  void delete_anonymous_returns401() throws Exception {
+    mockMvc
+        .perform(delete("/api/v1/user/connections/{targetId}", UUID.randomUUID()))
         .andExpect(status().isUnauthorized())
         .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
         .andExpect(jsonPath("$.type").value("https://palaisdivin.lepgu.fr/problems/unauthorized"));

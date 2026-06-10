@@ -10,6 +10,7 @@ import fr.lepgu.palaisdivin.backend.user.domain.model.UserId;
 import fr.lepgu.palaisdivin.backend.user.domain.ports.CreateConnectionUseCase;
 import fr.lepgu.palaisdivin.backend.user.domain.ports.ListMyConnectionsUseCase;
 import fr.lepgu.palaisdivin.backend.user.domain.ports.LookupUsersUseCase;
+import fr.lepgu.palaisdivin.backend.user.domain.ports.RemoveConnectionUseCase;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import java.net.URI;
@@ -17,15 +18,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -36,14 +40,17 @@ class ConnectionRestController {
   private final CreateConnectionUseCase createConnection;
   private final ListMyConnectionsUseCase listMyConnections;
   private final LookupUsersUseCase lookupUsers;
+  private final RemoveConnectionUseCase removeConnection;
 
   ConnectionRestController(
       CreateConnectionUseCase createConnection,
       ListMyConnectionsUseCase listMyConnections,
-      LookupUsersUseCase lookupUsers) {
+      LookupUsersUseCase lookupUsers,
+      RemoveConnectionUseCase removeConnection) {
     this.createConnection = createConnection;
     this.listMyConnections = listMyConnections;
     this.lookupUsers = lookupUsers;
+    this.removeConnection = removeConnection;
   }
 
   @PostMapping("/{targetId}")
@@ -88,5 +95,11 @@ class ConnectionRestController {
             : null;
 
     return new MyConnectionsPageResponse(rows, new PageMeta(size, page.hasNext(), nextCursor));
+  }
+
+  @DeleteMapping("/{targetId}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  void delete(@PathVariable UUID targetId, @AuthenticationPrincipal Jwt jwt) {
+    removeConnection.remove(jwt.getSubject(), new UserId(targetId));
   }
 }

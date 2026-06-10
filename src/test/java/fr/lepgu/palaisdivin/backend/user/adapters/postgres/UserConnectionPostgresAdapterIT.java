@@ -188,4 +188,30 @@ class UserConnectionPostgresAdapterIT {
 
     assertThat(mine.data()).extracting(Connection::id).containsExactly(myFollow.id());
   }
+
+  @Test
+  void deleteBySourceAndTarget_returnsDeletedRow_andRemovesFromDb() {
+    ConnectionId id = ConnectionId.newId();
+    Connection input = new Connection(id, SOURCE_ID, TARGET_ID, FIXED_CREATED_AT);
+    adapter.save(input);
+
+    Optional<Connection> deleted = adapter.deleteBySourceAndTarget(SOURCE_ID, TARGET_ID);
+
+    assertThat(deleted).isPresent();
+    assertThat(deleted.get().id()).isEqualTo(id);
+    assertThat(deleted.get().sourceUserId()).isEqualTo(SOURCE_ID);
+    assertThat(deleted.get().targetUserId()).isEqualTo(TARGET_ID);
+    assertThat(deleted.get().createdAt()).isEqualTo(FIXED_CREATED_AT);
+
+    em.flush();
+    em.clear();
+    assertThat(adapter.findBySourceAndTarget(SOURCE_ID, TARGET_ID)).isEmpty();
+  }
+
+  @Test
+  void deleteBySourceAndTarget_absent_returnsEmptyOptional() {
+    Optional<Connection> deleted = adapter.deleteBySourceAndTarget(SOURCE_ID, TARGET_ID);
+
+    assertThat(deleted).isEmpty();
+  }
 }

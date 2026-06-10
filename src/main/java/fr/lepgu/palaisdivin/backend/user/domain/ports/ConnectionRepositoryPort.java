@@ -13,4 +13,6 @@ public interface ConnectionRepositoryPort {
   Optional<Connection> findBySourceAndTarget(UserId sourceUserId, UserId targetUserId);
 
   CursorPage<Connection> findBySource(UserId sourceUserId, ConnectionCursor cursor, int size);
+
+  Optional<Connection> deleteBySourceAndTarget(UserId sourceUserId, UserId targetUserId);
 }

@@ -70,6 +70,8 @@ class OpenApiGenerationIT {
     assertThat(yaml).contains("/api/v1/user/connections");
     assertThat(yaml).contains("MyConnectionsPageResponse");
     assertThat(yaml).contains("MyConnectionResponse");
+    // I9.3: DELETE /api/v1/user/connections/{targetId}
+    assertThat(yaml).containsPattern("(?s)/api/v1/user/connections/\\{targetId\\}:.*?delete:");
 
     String baseDir = System.getProperty("project.basedir", System.getProperty("user.dir"));
     Path output = Path.of(baseDir, "docs", "openapi.yaml");

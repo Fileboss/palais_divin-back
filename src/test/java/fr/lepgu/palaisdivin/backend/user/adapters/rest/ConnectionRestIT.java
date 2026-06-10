@@ -345,6 +345,90 @@ class ConnectionRestIT extends AbstractIntegrationTest {
             });
   }
 
+  @Test
+  void deleteRemovesRowAndProjectsRemovalToNeo4j() {
+    authedClient()
+        .post()
+        .uri("/api/v1/user/connections/{targetId}", targetUserId.value())
+        .retrieve()
+        .toBodilessEntity();
+    new TransactionTemplate(txManager).executeWithoutResult(s -> worker.drainBatch());
+
+    ResponseEntity<Void> resp =
+        authedClient()
+            .delete()
+            .uri("/api/v1/user/connections/{targetId}", targetUserId.value())
+            .retrieve()
+            .toBodilessEntity();
+
+    assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+
+    Integer postgresRows =
+        jdbcClient
+            .sql(
+                "SELECT count(*) FROM user_connection WHERE source_user_id = ? AND target_user_id ="
+                    + " ?")
+            .params(sourceUserId.value(), targetUserId.value())
+            .query(Integer.class)
+            .single();
+    assertThat(postgresRows).isZero();
+
+    new TransactionTemplate(txManager).executeWithoutResult(s -> worker.drainBatch());
+
+    await()
+        .atMost(Duration.ofSeconds(2))
+        .pollInterval(Duration.ofMillis(50))
+        .untilAsserted(
+            () -> {
+              Long edgeCount =
+                  neo4jClient
+                      .query(
+                          "MATCH (s:User {id: $sourceId})-[k:KNOWS]->(t:User {id: $targetId})"
+                              + " RETURN count(k) AS c")
+                      .bindAll(
+                          Map.of(
+                              "sourceId", sourceUserId.value().toString(),
+                              "targetId", targetUserId.value().toString()))
+                      .fetchAs(Long.class)
+                      .one()
+                      .orElse(0L);
+              assertThat(edgeCount).isZero();
+            });
+  }
+
+  @Test
+  void deleteAbsent_returns204_noOutboxRow() {
+    ResponseEntity<Void> resp =
+        authedClient()
+            .delete()
+            .uri("/api/v1/user/connections/{targetId}", targetUserId.value())
+            .retrieve()
+            .toBodilessEntity();
+
+    assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+
+    Integer outboxRows =
+        jdbcClient
+            .sql("SELECT count(*) FROM outbox_event WHERE event_type = 'ConnectionRemoved'")
+            .query(Integer.class)
+            .single();
+    assertThat(outboxRows).isZero();
+  }
+
+  @Test
+  void deleteAnonymous_returns401() {
+    ResponseEntity<String> resp =
+        RestClient.create("http://localhost:" + port)
+            .delete()
+            .uri("/api/v1/user/connections/{targetId}", targetUserId.value())
+            .retrieve()
+            .onStatus(s -> s.is4xxClientError(), (req, res) -> {})
+            .toEntity(String.class);
+
+    assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    assertThat(resp.getBody()).contains("/problems/unauthorized");
+  }
+
   private RestClient authedClient() {
     return RestClient.builder()
         .baseUrl("http://localhost:" + port)

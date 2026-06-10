@@ -45,6 +45,16 @@ public class UserConnectionPostgresAdapter implements ConnectionRepositoryPort {
         slice.hasNext());
   }
 
+  @Override
+  public Optional<Connection> deleteBySourceAndTarget(UserId sourceUserId, UserId targetUserId) {
+    return jpa.findBySourceUserIdAndTargetUserId(sourceUserId.value(), targetUserId.value())
+        .map(
+            e -> {
+              jpa.delete(e);
+              return toDomain(e);
+            });
+  }
+
   private static UserConnectionEntity toEntity(Connection c) {
     return new UserConnectionEntity(
         c.id().value(), c.sourceUserId().value(), c.targetUserId().value(), c.createdAt());
