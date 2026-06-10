@@ -13,6 +13,7 @@ import fr.lepgu.palaisdivin.backend.tag.domain.model.TagId;
 import fr.lepgu.palaisdivin.backend.tag.domain.ports.ListTagsUseCase;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -54,7 +55,9 @@ class PublicTagRestControllerTest {
 
   @Test
   void get_partial_returns_other_groups_empty() throws Exception {
-    Tag t = new Tag(TagId.newId(), TagCategory.SPECIALTY, "natural-wine", "Natural wine", NOW);
+    Tag t =
+        new Tag(
+            TagId.newId(), TagCategory.SPECIALTY, "natural-wine", "Natural wine", Map.of(), NOW);
     when(listTags.list()).thenReturn(List.of(t));
 
     mockMvc
@@ -65,6 +68,8 @@ class PublicTagRestControllerTest {
         .andExpect(jsonPath("$.groups[2].tags", org.hamcrest.Matchers.hasSize(1)))
         .andExpect(jsonPath("$.groups[2].tags[0].slug").value("natural-wine"))
         .andExpect(jsonPath("$.groups[2].tags[0].label").value("Natural wine"))
+        .andExpect(jsonPath("$.groups[2].tags[0].labelI18n").isMap())
+        .andExpect(jsonPath("$.groups[2].tags[0].labelI18n").isEmpty())
         .andExpect(jsonPath("$.groups[0].tags", org.hamcrest.Matchers.hasSize(0)))
         .andExpect(jsonPath("$.groups[1].tags", org.hamcrest.Matchers.hasSize(0)))
         .andExpect(jsonPath("$.groups[3].tags", org.hamcrest.Matchers.hasSize(0)))
@@ -73,12 +78,13 @@ class PublicTagRestControllerTest {
 
   @Test
   void get_full_returns_one_per_category_in_enum_order() throws Exception {
-    Tag regime = new Tag(TagId.newId(), TagCategory.REGIME, "vegan", "Vegan", NOW);
-    Tag type = new Tag(TagId.newId(), TagCategory.TYPE, "japonais", "Japonais", NOW);
-    Tag specialty = new Tag(TagId.newId(), TagCategory.SPECIALTY, "sushi", "Sushi", NOW);
-    Tag venue = new Tag(TagId.newId(), TagCategory.VENUE_TYPE, "bistro", "Bistrot", NOW);
+    Tag regime = new Tag(TagId.newId(), TagCategory.REGIME, "vegan", "Vegan", Map.of(), NOW);
+    Tag type = new Tag(TagId.newId(), TagCategory.TYPE, "japonais", "Japonais", Map.of(), NOW);
+    Tag specialty = new Tag(TagId.newId(), TagCategory.SPECIALTY, "sushi", "Sushi", Map.of(), NOW);
+    Tag venue = new Tag(TagId.newId(), TagCategory.VENUE_TYPE, "bistro", "Bistrot", Map.of(), NOW);
     Tag service =
-        new Tag(TagId.newId(), TagCategory.SERVICE_AND_PLACE, "terrasse", "Terrasse", NOW);
+        new Tag(
+            TagId.newId(), TagCategory.SERVICE_AND_PLACE, "terrasse", "Terrasse", Map.of(), NOW);
     when(listTags.list()).thenReturn(List.of(regime, type, specialty, venue, service));
 
     mockMvc

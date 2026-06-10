@@ -46,6 +46,7 @@ class RestaurantTagProjectorIT extends AbstractIntegrationTest {
                 "natural-wine",
                 "SPECIALTY",
                 "Natural wine",
+                Map.of(),
                 attachedBy,
                 attachedAt));
 
@@ -56,6 +57,7 @@ class RestaurantTagProjectorIT extends AbstractIntegrationTest {
             .query(
                 "MATCH (:Restaurant {id: $r})-[h:HAS_TAG]->(t:Tag {id: $t})"
                     + " RETURN t.slug AS slug, t.category AS category, t.label AS label,"
+                    + " t.labelI18nLocales AS locales, t.labelI18nValues AS values,"
                     + " h.attachedAt AS attachedAt")
             .bindAll(Map.of("r", restaurantId.toString(), "t", tagId.toString()))
             .fetch()
@@ -65,7 +67,53 @@ class RestaurantTagProjectorIT extends AbstractIntegrationTest {
     assertThat(tag).containsEntry("slug", "natural-wine");
     assertThat(tag).containsEntry("category", "SPECIALTY");
     assertThat(tag).containsEntry("label", "Natural wine");
+    assertThat((Iterable<?>) tag.get("locales")).isEmpty();
+    assertThat((Iterable<?>) tag.get("values")).isEmpty();
     assertThat(tag).containsEntry("attachedAt", attachedAt.toString());
+  }
+
+  @Test
+  void attach_event_stores_labelI18n_as_parallel_arrays_on_tag_node() {
+    UUID restaurantId = UUID.randomUUID();
+    UUID tagId = UUID.randomUUID();
+    Instant attachedAt = Instant.parse("2026-06-03T10:00:00Z");
+    JsonNode payload =
+        MAPPER.valueToTree(
+            new RestaurantTagAttached(
+                restaurantId,
+                tagId,
+                "vegan",
+                "REGIME",
+                "Végétalien",
+                new java.util.LinkedHashMap<>(Map.of("en", "Vegan", "es", "Vegano", "de", "Vegan")),
+                UUID.randomUUID(),
+                attachedAt));
+
+    projector.project("RestaurantTagAttached", payload);
+
+    Map<String, Object> tag =
+        neo4jClient
+            .query(
+                "MATCH (t:Tag {id: $t})"
+                    + " RETURN t.labelI18nLocales AS locales, t.labelI18nValues AS values")
+            .bindAll(Map.of("t", tagId.toString()))
+            .fetch()
+            .one()
+            .orElseThrow();
+    @SuppressWarnings("unchecked")
+    java.util.List<String> locales = (java.util.List<String>) tag.get("locales");
+    @SuppressWarnings("unchecked")
+    java.util.List<String> values = (java.util.List<String>) tag.get("values");
+    assertThat(locales).hasSize(3);
+    assertThat(values).hasSize(3);
+    java.util.Map<String, String> reassembled = new java.util.HashMap<>();
+    for (int i = 0; i < locales.size(); i++) {
+      reassembled.put(locales.get(i), values.get(i));
+    }
+    assertThat(reassembled)
+        .containsEntry("en", "Vegan")
+        .containsEntry("es", "Vegano")
+        .containsEntry("de", "Vegan");
   }
 
   @Test
@@ -78,7 +126,14 @@ class RestaurantTagProjectorIT extends AbstractIntegrationTest {
         "RestaurantTagAttached",
         MAPPER.valueToTree(
             new RestaurantTagAttached(
-                restaurantId, tagId, "vegan", "REGIME", "Vegan", attachedBy, attachedAt)));
+                restaurantId,
+                tagId,
+                "vegan",
+                "REGIME",
+                "Vegan",
+                Map.of(),
+                attachedBy,
+                attachedAt)));
 
     projector.project(
         "RestaurantTagDetached",
@@ -114,6 +169,7 @@ class RestaurantTagProjectorIT extends AbstractIntegrationTest {
                 "burger",
                 "SPECIALTY",
                 "Burger",
+                Map.of(),
                 UUID.randomUUID(),
                 Instant.parse("2026-06-03T10:00:00Z")));
 

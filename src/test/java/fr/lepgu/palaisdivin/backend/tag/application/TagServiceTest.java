@@ -56,7 +56,7 @@ class TagServiceTest {
   void create_persists_with_generated_id_and_clock_instant() {
     when(tags.save(any(Tag.class))).thenAnswer(inv -> inv.getArgument(0));
 
-    Tag result = service.create(TagCategory.SPECIALTY, "natural-wine", "Natural wine");
+    Tag result = service.create(TagCategory.SPECIALTY, "natural-wine", "Natural wine", Map.of());
 
     ArgumentCaptor<Tag> captor = ArgumentCaptor.forClass(Tag.class);
     verify(tags).save(captor.capture());
@@ -66,23 +66,47 @@ class TagServiceTest {
     assertThat(persisted.category()).isEqualTo(TagCategory.SPECIALTY);
     assertThat(persisted.slug()).isEqualTo("natural-wine");
     assertThat(persisted.label()).isEqualTo("Natural wine");
+    assertThat(persisted.labelI18n()).isEmpty();
     assertThat(persisted.createdAt()).isEqualTo(NOW);
     assertThat(result).isEqualTo(persisted);
+  }
+
+  @Test
+  void create_persists_labelI18n_when_provided() {
+    when(tags.save(any(Tag.class))).thenAnswer(inv -> inv.getArgument(0));
+
+    Tag result =
+        service.create(
+            TagCategory.REGIME,
+            "vegan",
+            "Végétalien",
+            Map.of("en", "Vegan", "es", "Vegano", "de", "Vegan"));
+
+    ArgumentCaptor<Tag> captor = ArgumentCaptor.forClass(Tag.class);
+    verify(tags).save(captor.capture());
+    assertThat(captor.getValue().labelI18n())
+        .containsEntry("en", "Vegan")
+        .containsEntry("es", "Vegano")
+        .containsEntry("de", "Vegan");
+    assertThat(result.labelI18n()).hasSize(3);
   }
 
   @Test
   void create_propagates_repository_failure() {
     when(tags.save(any(Tag.class))).thenThrow(new DataIntegrityViolationException("uq_tag_slug"));
 
-    assertThatThrownBy(() -> service.create(TagCategory.SPECIALTY, "natural-wine", "Natural wine"))
+    assertThatThrownBy(
+            () -> service.create(TagCategory.SPECIALTY, "natural-wine", "Natural wine", Map.of()))
         .isInstanceOf(DataIntegrityViolationException.class)
         .hasMessageContaining("uq_tag_slug");
   }
 
   @Test
   void list_delegates_to_repository() {
-    Tag a = new Tag(TagId.newId(), TagCategory.SPECIALTY, "natural-wine", "Natural wine", NOW);
-    Tag b = new Tag(TagId.newId(), TagCategory.REGIME, "vegan", "Vegan", NOW);
+    Tag a =
+        new Tag(
+            TagId.newId(), TagCategory.SPECIALTY, "natural-wine", "Natural wine", Map.of(), NOW);
+    Tag b = new Tag(TagId.newId(), TagCategory.REGIME, "vegan", "Vegan", Map.of(), NOW);
     when(tags.findAll()).thenReturn(List.of(a, b));
 
     List<Tag> result = service.list();
@@ -93,7 +117,7 @@ class TagServiceTest {
 
   @Test
   void list_byCategory_delegates_to_repository() {
-    Tag vegan = new Tag(TagId.newId(), TagCategory.REGIME, "vegan", "Vegan", NOW);
+    Tag vegan = new Tag(TagId.newId(), TagCategory.REGIME, "vegan", "Vegan", Map.of(), NOW);
     when(tags.findAllByCategory(TagCategory.REGIME)).thenReturn(List.of(vegan));
 
     List<Tag> result = service.list(TagCategory.REGIME);
@@ -106,7 +130,8 @@ class TagServiceTest {
   @Test
   void delete_persists_then_publishes_TagDeleted_event() {
     TagId id = TagId.newId();
-    Tag existing = new Tag(id, TagCategory.SPECIALTY, "natural-wine", "Natural wine", NOW);
+    Tag existing =
+        new Tag(id, TagCategory.SPECIALTY, "natural-wine", "Natural wine", Map.of(), NOW);
     when(tags.findById(id)).thenReturn(Optional.of(existing));
 
     service.delete(id);
@@ -131,8 +156,8 @@ class TagServiceTest {
   void createImplication_persists_and_publishes_event() {
     TagId src = TagId.newId();
     TagId dst = TagId.newId();
-    Tag srcTag = new Tag(src, TagCategory.REGIME, "vegan-100", "100% vegan", NOW);
-    Tag dstTag = new Tag(dst, TagCategory.REGIME, "vegan-option", "Vegan option", NOW);
+    Tag srcTag = new Tag(src, TagCategory.REGIME, "vegan-100", "100% vegan", Map.of(), NOW);
+    Tag dstTag = new Tag(dst, TagCategory.REGIME, "vegan-option", "Vegan option", Map.of(), NOW);
     when(tags.findById(src)).thenReturn(Optional.of(srcTag));
     when(tags.findById(dst)).thenReturn(Optional.of(dstTag));
     when(implications.save(any(TagImplication.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -201,8 +226,10 @@ class TagServiceTest {
   void expand_includes_implicant_slugs() {
     TagId optionId = TagId.newId();
     TagId vegan100Id = TagId.newId();
-    Tag option = new Tag(optionId, TagCategory.REGIME, "vegan-option", "Vegan option", NOW);
-    Tag vegan100 = new Tag(vegan100Id, TagCategory.REGIME, "vegan-100", "100% vegan", NOW);
+    Tag option =
+        new Tag(optionId, TagCategory.REGIME, "vegan-option", "Vegan option", Map.of(), NOW);
+    Tag vegan100 =
+        new Tag(vegan100Id, TagCategory.REGIME, "vegan-100", "100% vegan", Map.of(), NOW);
     when(tags.findBySlugs(List.of("vegan-option"))).thenReturn(List.of(option));
     when(implications.findByImpliedIn(List.of(optionId)))
         .thenReturn(List.of(new TagImplication(vegan100Id, optionId, NOW)));

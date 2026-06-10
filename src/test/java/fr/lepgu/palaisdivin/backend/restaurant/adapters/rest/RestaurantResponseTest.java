@@ -10,6 +10,7 @@ import fr.lepgu.palaisdivin.backend.tag.domain.model.TagCategory;
 import fr.lepgu.palaisdivin.backend.tag.domain.model.TagId;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class RestaurantResponseTest {
@@ -35,8 +36,14 @@ class RestaurantResponseTest {
   @Test
   void two_arg_factory_maps_tags_preserving_order_and_strips_id() {
     Tag a =
-        new Tag(TagId.newId(), TagCategory.SPECIALTY, "natural-wine", "Natural wine", CREATED_AT);
-    Tag b = new Tag(TagId.newId(), TagCategory.REGIME, "vegan", "Vegan", CREATED_AT);
+        new Tag(
+            TagId.newId(),
+            TagCategory.SPECIALTY,
+            "natural-wine",
+            "Natural wine",
+            Map.of(),
+            CREATED_AT);
+    Tag b = new Tag(TagId.newId(), TagCategory.REGIME, "vegan", "Vegan", Map.of(), CREATED_AT);
 
     RestaurantResponse resp = RestaurantResponse.from(restaurant(), List.of(a, b));
 

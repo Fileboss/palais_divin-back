@@ -152,9 +152,9 @@ paths:
           type: array
           items:
             type: string
-            maxLength: 64
+            maxLength: 650
             minLength: 0
-            pattern: "^[a-z0-9]+(-[a-z0-9]+)*$"
+            pattern: "^[a-z0-9]+(-[a-z0-9]+)*(,[a-z0-9]+(-[a-z0-9]+)*)*$"
           maxItems: 10
           minItems: 0
       - in: query
@@ -355,6 +355,18 @@ paths:
   /api/v1/public/tags:
     get:
       operationId: list_2
+      parameters:
+      - in: query
+        name: category
+        required: false
+        schema:
+          type: string
+          enum:
+          - REGIME
+          - TYPE
+          - SPECIALTY
+          - VENUE_TYPE
+          - SERVICE_AND_PLACE
       responses:
         "200":
           content:
@@ -487,6 +499,40 @@ paths:
           format: double
           maximum: 180.0
           minimum: -180.0
+      - in: query
+        name: tag
+        required: false
+        schema:
+          type: array
+          items:
+            type: string
+            maxLength: 650
+            minLength: 0
+            pattern: "^[a-z0-9]+(-[a-z0-9]+)*(,[a-z0-9]+(-[a-z0-9]+)*)*$"
+          maxItems: 10
+          minItems: 0
+      - in: query
+        name: name
+        required: false
+        schema:
+          type: string
+          maxLength: 100
+          minLength: 0
+      - in: query
+        name: dineIn
+        required: false
+        schema:
+          type: boolean
+      - in: query
+        name: takeOut
+        required: false
+        schema:
+          type: boolean
+      - in: query
+        name: delivery
+        required: false
+        schema:
+          type: boolean
       responses:
         "200":
           content:
@@ -864,6 +910,10 @@ components:
           type: string
           maxLength: 127
           minLength: 0
+        labelI18n:
+          type: object
+          additionalProperties:
+            type: string
         slug:
           type: string
           maxLength: 64
@@ -1208,6 +1258,10 @@ components:
           format: uuid
         label:
           type: string
+        labelI18n:
+          type: object
+          additionalProperties:
+            type: string
         slug:
           type: string
     TagSummary:

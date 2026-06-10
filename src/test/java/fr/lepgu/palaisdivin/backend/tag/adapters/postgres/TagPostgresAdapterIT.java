@@ -11,6 +11,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -45,7 +46,8 @@ class TagPostgresAdapterIT {
   @Test
   void save_round_trips_through_postgres() {
     TagId id = TagId.newId();
-    Tag input = new Tag(id, TagCategory.SPECIALTY, "natural-wine", "Natural wine", CREATED_AT);
+    Tag input =
+        new Tag(id, TagCategory.SPECIALTY, "natural-wine", "Natural wine", Map.of(), CREATED_AT);
 
     Tag saved = adapter.save(input);
     Optional<Tag> found = adapter.findById(id);
@@ -57,7 +59,42 @@ class TagPostgresAdapterIT {
     assertThat(out.category()).isEqualTo(TagCategory.SPECIALTY);
     assertThat(out.slug()).isEqualTo("natural-wine");
     assertThat(out.label()).isEqualTo("Natural wine");
+    assertThat(out.labelI18n()).isEmpty();
     assertThat(out.createdAt()).isEqualTo(CREATED_AT);
+  }
+
+  @Test
+  void empty_labelI18n_is_persisted_as_null_and_read_back_as_empty_map() {
+    TagId id = TagId.newId();
+    adapter.save(
+        new Tag(id, TagCategory.SPECIALTY, "natural-wine", "Natural wine", Map.of(), CREATED_AT));
+    em.flush();
+    em.clear();
+
+    Object raw =
+        em.createNativeQuery("SELECT label_i18n FROM tag WHERE id = ?1")
+            .setParameter(1, id.value())
+            .getSingleResult();
+    assertThat(raw).isNull();
+
+    Tag readBack = adapter.findById(id).orElseThrow();
+    assertThat(readBack.labelI18n()).isEmpty();
+  }
+
+  @Test
+  void labelI18n_round_trips_through_jsonb_column() {
+    TagId id = TagId.newId();
+    Map<String, String> i18n = Map.of("en", "Vegan", "es", "Vegano", "de", "Vegan");
+    adapter.save(new Tag(id, TagCategory.REGIME, "vegan", "Végétalien", i18n, CREATED_AT));
+    em.flush();
+    em.clear();
+
+    Tag readBack = adapter.findById(id).orElseThrow();
+    assertThat(readBack.labelI18n())
+        .containsEntry("en", "Vegan")
+        .containsEntry("es", "Vegano")
+        .containsEntry("de", "Vegan")
+        .hasSize(3);
   }
 
   @Test
@@ -67,13 +104,28 @@ class TagPostgresAdapterIT {
 
   @Test
   void findAll_orders_by_category_then_slug() {
-    adapter.save(new Tag(TagId.newId(), TagCategory.VENUE_TYPE, "bistro", "Bistrot", CREATED_AT));
     adapter.save(
-        new Tag(TagId.newId(), TagCategory.SPECIALTY, "natural-wine", "Natural wine", CREATED_AT));
-    adapter.save(new Tag(TagId.newId(), TagCategory.SPECIALTY, "burger", "Burger", CREATED_AT));
-    adapter.save(new Tag(TagId.newId(), TagCategory.REGIME, "vegan", "Vegan", CREATED_AT));
+        new Tag(TagId.newId(), TagCategory.VENUE_TYPE, "bistro", "Bistrot", Map.of(), CREATED_AT));
     adapter.save(
-        new Tag(TagId.newId(), TagCategory.SERVICE_AND_PLACE, "paris-11", "Paris 11e", CREATED_AT));
+        new Tag(
+            TagId.newId(),
+            TagCategory.SPECIALTY,
+            "natural-wine",
+            "Natural wine",
+            Map.of(),
+            CREATED_AT));
+    adapter.save(
+        new Tag(TagId.newId(), TagCategory.SPECIALTY, "burger", "Burger", Map.of(), CREATED_AT));
+    adapter.save(
+        new Tag(TagId.newId(), TagCategory.REGIME, "vegan", "Vegan", Map.of(), CREATED_AT));
+    adapter.save(
+        new Tag(
+            TagId.newId(),
+            TagCategory.SERVICE_AND_PLACE,
+            "paris-11",
+            "Paris 11e",
+            Map.of(),
+            CREATED_AT));
 
     List<Tag> all = adapter.findAll();
 
@@ -90,7 +142,8 @@ class TagPostgresAdapterIT {
   @Test
   void deleteById_removes_row() {
     TagId id = TagId.newId();
-    adapter.save(new Tag(id, TagCategory.SPECIALTY, "natural-wine", "Natural wine", CREATED_AT));
+    adapter.save(
+        new Tag(id, TagCategory.SPECIALTY, "natural-wine", "Natural wine", Map.of(), CREATED_AT));
 
     adapter.deleteById(id);
     em.flush();
@@ -101,7 +154,9 @@ class TagPostgresAdapterIT {
   @Test
   void deleteById_cascades_to_restaurant_tag_rows() {
     TagId tagId = TagId.newId();
-    adapter.save(new Tag(tagId, TagCategory.SPECIALTY, "natural-wine", "Natural wine", CREATED_AT));
+    adapter.save(
+        new Tag(
+            tagId, TagCategory.SPECIALTY, "natural-wine", "Natural wine", Map.of(), CREATED_AT));
 
     java.util.UUID restaurantId = java.util.UUID.randomUUID();
     java.util.UUID userId = java.util.UUID.randomUUID();
@@ -150,7 +205,13 @@ class TagPostgresAdapterIT {
   @Test
   void unique_slug_is_enforced() {
     adapter.save(
-        new Tag(TagId.newId(), TagCategory.SPECIALTY, "natural-wine", "Natural wine", CREATED_AT));
+        new Tag(
+            TagId.newId(),
+            TagCategory.SPECIALTY,
+            "natural-wine",
+            "Natural wine",
+            Map.of(),
+            CREATED_AT));
 
     assertThatThrownBy(
             () -> {
@@ -160,6 +221,7 @@ class TagPostgresAdapterIT {
                       TagCategory.REGIME,
                       "natural-wine",
                       "Natural wine bis",
+                      Map.of(),
                       CREATED_AT));
               em.flush();
             })

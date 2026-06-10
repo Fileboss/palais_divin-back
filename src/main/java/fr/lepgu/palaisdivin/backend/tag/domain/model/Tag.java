@@ -1,9 +1,16 @@
 package fr.lepgu.palaisdivin.backend.tag.domain.model;
 
 import java.time.Instant;
+import java.util.Map;
 import java.util.Objects;
 
-public record Tag(TagId id, TagCategory category, String slug, String label, Instant createdAt) {
+public record Tag(
+    TagId id,
+    TagCategory category,
+    String slug,
+    String label,
+    Map<String, String> labelI18n,
+    Instant createdAt) {
   public Tag {
     Objects.requireNonNull(id, "id");
     Objects.requireNonNull(category, "category");
@@ -15,6 +22,8 @@ public record Tag(TagId id, TagCategory category, String slug, String label, Ins
     if (label.isBlank()) {
       throw new IllegalArgumentException("label must not be blank");
     }
+    Objects.requireNonNull(labelI18n, "labelI18n");
+    labelI18n = Map.copyOf(labelI18n);
     Objects.requireNonNull(createdAt, "createdAt");
   }
 }

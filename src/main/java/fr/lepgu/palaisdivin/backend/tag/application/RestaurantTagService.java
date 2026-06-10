@@ -81,6 +81,7 @@ public class RestaurantTagService
             tag.slug(),
             tag.category().name(),
             tag.label(),
+            tag.labelI18n(),
             attachedBy.value(),
             saved.attachedAt()));
     return new AttachResult(saved, true);

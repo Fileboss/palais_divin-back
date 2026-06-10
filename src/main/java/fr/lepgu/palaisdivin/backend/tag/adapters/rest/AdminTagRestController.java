@@ -30,7 +30,7 @@ class AdminTagRestController {
 
   @PostMapping
   ResponseEntity<TagResponse> create(@Valid @RequestBody CreateTagRequest req) {
-    Tag created = createTag.create(req.category(), req.slug(), req.label());
+    Tag created = createTag.create(req.category(), req.slug(), req.label(), req.labelI18n());
     URI location =
         ServletUriComponentsBuilder.fromCurrentRequest()
             .path("/{id}")

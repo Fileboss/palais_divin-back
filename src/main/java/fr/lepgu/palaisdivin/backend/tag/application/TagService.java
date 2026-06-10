@@ -63,8 +63,9 @@ public class TagService
   }
 
   @Override
-  public Tag create(TagCategory category, String slug, String label) {
-    Tag tag = new Tag(TagId.newId(), category, slug, label, clock.instant());
+  public Tag create(
+      TagCategory category, String slug, String label, Map<String, String> labelI18n) {
+    Tag tag = new Tag(TagId.newId(), category, slug, label, labelI18n, clock.instant());
     return tags.save(tag);
   }
 

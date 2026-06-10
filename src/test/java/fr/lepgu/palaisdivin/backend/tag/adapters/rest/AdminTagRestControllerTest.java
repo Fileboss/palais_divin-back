@@ -23,6 +23,7 @@ import fr.lepgu.palaisdivin.backend.tag.domain.model.TagId;
 import fr.lepgu.palaisdivin.backend.tag.domain.ports.CreateTagUseCase;
 import fr.lepgu.palaisdivin.backend.tag.domain.ports.DeleteTagUseCase;
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;
@@ -60,8 +61,15 @@ class AdminTagRestControllerTest {
   @Test
   void post_returns_201_with_location_and_body() throws Exception {
     Tag created =
-        new Tag(TagId.newId(), TagCategory.SPECIALTY, "natural-wine", "Natural wine", CREATED_AT);
-    when(createTag.create(eq(TagCategory.SPECIALTY), eq("natural-wine"), eq("Natural wine")))
+        new Tag(
+            TagId.newId(),
+            TagCategory.SPECIALTY,
+            "natural-wine",
+            "Natural wine",
+            Map.of(),
+            CREATED_AT);
+    when(createTag.create(
+            eq(TagCategory.SPECIALTY), eq("natural-wine"), eq("Natural wine"), eq(Map.of())))
         .thenReturn(created);
 
     mockMvc
@@ -83,7 +91,89 @@ class AdminTagRestControllerTest {
         .andExpect(jsonPath("$.category").value("SPECIALTY"))
         .andExpect(jsonPath("$.slug").value("natural-wine"))
         .andExpect(jsonPath("$.label").value("Natural wine"))
+        .andExpect(jsonPath("$.labelI18n").isMap())
+        .andExpect(jsonPath("$.labelI18n").isEmpty())
         .andExpect(jsonPath("$.createdAt").value(CREATED_AT.toString()));
+  }
+
+  @Test
+  void post_persists_labelI18n_when_provided() throws Exception {
+    Tag created =
+        new Tag(
+            TagId.newId(),
+            TagCategory.REGIME,
+            "vegan",
+            "Végétalien",
+            Map.of("en", "Vegan", "es", "Vegano"),
+            CREATED_AT);
+    when(createTag.create(
+            eq(TagCategory.REGIME),
+            eq("vegan"),
+            eq("Végétalien"),
+            eq(Map.of("en", "Vegan", "es", "Vegano"))))
+        .thenReturn(created);
+
+    mockMvc
+        .perform(
+            post("/api/v1/admin/tags")
+                .with(adminJwt())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "category": "REGIME",
+                      "slug": "vegan",
+                      "label": "Végétalien",
+                      "labelI18n": { "en": "Vegan", "es": "Vegano" }
+                    }
+                    """))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.labelI18n.en").value("Vegan"))
+        .andExpect(jsonPath("$.labelI18n.es").value("Vegano"));
+  }
+
+  @Test
+  void post_badLocaleKey_returns_400_validation_problem() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/admin/tags")
+                .with(adminJwt())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "category": "REGIME",
+                      "slug": "vegan",
+                      "label": "Végétalien",
+                      "labelI18n": { "EN": "Vegan" }
+                    }
+                    """))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.type").value("https://palaisdivin.lepgu.fr/problems/validation"));
+
+    verifyNoInteractions(createTag);
+  }
+
+  @Test
+  void post_blankLocaleValue_returns_400_validation_problem() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/admin/tags")
+                .with(adminJwt())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "category": "REGIME",
+                      "slug": "vegan",
+                      "label": "Végétalien",
+                      "labelI18n": { "en": "" }
+                    }
+                    """))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.type").value("https://palaisdivin.lepgu.fr/problems/validation"));
+
+    verifyNoInteractions(createTag);
   }
 
   @Test
@@ -204,7 +294,7 @@ class AdminTagRestControllerTest {
 
   @Test
   void post_duplicateSlug_returns_409_conflict() throws Exception {
-    when(createTag.create(any(), any(), any()))
+    when(createTag.create(any(), any(), any(), any()))
         .thenThrow(new DataIntegrityViolationException("uq_tag_slug"));
 
     mockMvc
@@ -219,7 +309,8 @@ class AdminTagRestControllerTest {
         .andExpect(status().isConflict())
         .andExpect(jsonPath("$.type").value("https://palaisdivin.lepgu.fr/problems/conflict"));
 
-    verify(createTag).create(eq(TagCategory.SPECIALTY), eq("natural-wine"), eq("Natural wine"));
+    verify(createTag)
+        .create(eq(TagCategory.SPECIALTY), eq("natural-wine"), eq("Natural wine"), eq(Map.of()));
   }
 
   @Test

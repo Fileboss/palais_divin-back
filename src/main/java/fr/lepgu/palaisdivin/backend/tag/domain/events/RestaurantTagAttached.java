@@ -1,6 +1,7 @@
 package fr.lepgu.palaisdivin.backend.tag.domain.events;
 
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 
 public record RestaurantTagAttached(
@@ -9,5 +10,6 @@ public record RestaurantTagAttached(
     String tagSlug,
     String tagCategory,
     String tagLabel,
+    Map<String, String> tagLabelI18n,
     UUID attachedBy,
     Instant attachedAt) {}

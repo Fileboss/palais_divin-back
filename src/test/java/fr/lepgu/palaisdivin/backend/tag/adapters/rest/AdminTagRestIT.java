@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import dasniko.testcontainers.keycloak.KeycloakContainer;
 import fr.lepgu.palaisdivin.backend.AbstractIntegrationTest;
 import fr.lepgu.palaisdivin.backend.TestKeycloakTokens;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -49,6 +50,7 @@ class AdminTagRestIT extends AbstractIntegrationTest {
     assertThat(body).isNotNull();
     assertThat(body.slug()).isEqualTo("natural-wine");
     assertThat(body.label()).isEqualTo("Natural wine");
+    assertThat(body.labelI18n()).isEmpty();
     assertThat(resp.getHeaders().getLocation())
         .isNotNull()
         .satisfies(
@@ -62,6 +64,49 @@ class AdminTagRestIT extends AbstractIntegrationTest {
             .query(Long.class)
             .single();
     assertThat(count).isEqualTo(1L);
+  }
+
+  @Test
+  void post_with_labelI18n_persists_and_echoes_map() {
+    ResponseEntity<TagResponse> resp =
+        adminClient()
+            .post()
+            .uri("/api/v1/admin/tags")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(
+                new CreateTagRequestPayload(
+                    "REGIME",
+                    "vegan",
+                    "Végétalien",
+                    Map.of("en", "Vegan", "es", "Vegano", "de", "Vegan")))
+            .retrieve()
+            .toEntity(TagResponse.class);
+
+    assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+    TagResponse body = resp.getBody();
+    assertThat(body).isNotNull();
+    assertThat(body.labelI18n())
+        .containsEntry("en", "Vegan")
+        .containsEntry("es", "Vegano")
+        .containsEntry("de", "Vegan");
+  }
+
+  @Test
+  void post_badLocaleKey_returns_400_validation_problem() {
+    ResponseEntity<String> resp =
+        adminClient()
+            .post()
+            .uri("/api/v1/admin/tags")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(
+                new CreateTagRequestPayload(
+                    "REGIME", "vegan", "Végétalien", Map.of("english", "Vegan")))
+            .retrieve()
+            .onStatus(s -> s.is4xxClientError(), (req, res) -> {})
+            .toEntity(String.class);
+
+    assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(resp.getBody()).contains("/problems/validation");
   }
 
   @Test
@@ -240,5 +285,10 @@ class AdminTagRestIT extends AbstractIntegrationTest {
         .build();
   }
 
-  private record CreateTagRequestPayload(String category, String slug, String label) {}
+  private record CreateTagRequestPayload(
+      String category, String slug, String label, Map<String, String> labelI18n) {
+    CreateTagRequestPayload(String category, String slug, String label) {
+      this(category, slug, label, Map.of());
+    }
+  }
 }

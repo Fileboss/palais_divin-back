@@ -235,6 +235,20 @@ Goal: close the second `palais_divin-front/doc/missing.md` handoff — review co
 
 ---
 
+## Intermediate phase I9 — Frontend handoff: i18n tags + follow graph
+
+Goal: close the third `palais_divin-front/doc/missing.md` handoff. Tag labels are French-only today, so five UI locales (en/es/de/zh/ko/ja) render "Végétarien" verbatim. The connection slice (M7.1) ships only `POST` — there is no way to list one's followings, no way to unfollow, and `PublicUserResponse` carries no follow-status hint so the toggle UI either always starts in "Follow" or has to make a separate per-profile probe. All four are FE-blocking but small, additive changes on existing slices.
+
+- [x] **I9.1 — Localized tag labels** — `TagResponse` + `CreateTagRequest` gain `labelI18n: Map<String, String>` (RFC 5646 keys validated `^[a-z]{2}(-[A-Z]{2})?$` via JSR-380 container-element constraints + `@Size(max=20)` map cap; values `@NotBlank @Size(max=127)`). `label` stays canonical French fallback — domain `Tag` record always carries a `Map.copyOf(...)` (never null); the wire shape always emits `labelI18n: {}` when none. V17 adds `tag.label_i18n jsonb` (nullable) — adapter writes NULL for empty, reads NULL as `Map.of()`, persisted as `Map<String,String>` via `@JdbcTypeCode(SqlTypes.JSON)`. **ROADMAP correction**: spec said V15, but latest was V16 (tag taxonomy rework) so the new migration is V17. `RestaurantTagAttached` event gains `tagLabelI18n`; projector splits into two parallel String[] arrays `t.labelI18nLocales` + `t.labelI18nValues` on `(:Tag)` (Neo4j can't hold a Map natively). Cypher binding switched from `Map.of(...)` to `Map.ofEntries(...)` to absorb the 8-entry payload. Deferred: per-locale PATCH on tags, localized restaurant names, localized category headers (Paraglide handles them FE-side).
+- [ ] **I9.2 — `GET /api/v1/user/connections`** — paginated list of users the authenticated caller follows. Envelope `{ data: [{ user: PublicUserResponse, createdAt }], page }` (size default 20, max 100). Keyset on `(createdAt DESC, id)` — most recent follow first. New `ListMyConnectionsUseCase` + `UserConnectionRepositoryPort.findBySource(UserId, ConnectionCursor, int)` over M7.1's `user_connection`. Hydrates the embedded `PublicUserResponse` via I4.1's `LookupUsersUseCase` (batch). Cursor reuses M6.5's `{createdAt, id, v=1}` Instant+UUID shape — generic `CursorCodec<T>` still waits for a 4th unique cursor shape. No outbox, no projector.
+- [ ] **I9.3 — `DELETE /api/v1/user/connections/{targetId}`** — 204 on success, 204 on already-absent (idempotent — FE retries shouldn't 404). `UserConnectionRepositoryPort.delete(source, target) → boolean`. New `UnfollowUseCase` + service publishes `ConnectionRemoved` outbox event only when a row was actually deleted. `ConnectionProjector` switches on event type — existing `ConnectionCreated` keeps its MERGE; new `ConnectionRemoved` runs `MATCH (s:User {id})-[k:KNOWS]->(t:User {id}) DELETE k`. Self-target → 422 reusing `SelfConnectionException`.
+- [ ] **I9.4 — `isFollowedByMe` on `PublicUserResponse`** — `GET /api/v1/public/users/{userId}` (I4.2) plus the embedded user shape in I9.2 and I4.3 gain a nullable `isFollowedByMe: boolean`. Present + accurate when the request carries a valid JWT against someone else's profile; omitted (or `false`) when anonymous; omitted (or `false`) on self-lookup. New `UserConnectionRepositoryPort.existsBy(source, target)` for single lookups + batched `existsBySources(source, Collection<UserId>) → Set<UserId>` for I9.2/I4.3. Resolves `jwt.subject → UserId` via existing `UserRepositoryPort.findBySubject`. Saves the FE a per-profile round-trip.
+- [ ] **I9.5 — Spec sync** — `OpenApiGenerationIT` asserts `labelI18n`, `GET /api/v1/user/connections`, `DELETE /api/v1/user/connections/{targetId}`, and `isFollowedByMe` appear in the generated `docs/openapi.yaml`; `sync-openapi-to-frontend` copies it to `palais_divin-front/doc/openapi.yaml`.
+
+`MILESTONE I9` — `missing.md` third handoff closed.
+
+---
+
 ## Phase M10 — Observability & hardening
 
 - [ ] **M10.1 — JSON logging via `logstash-logback-encoder`** — `logback-spring.xml` with `traceId`/`spanId` MDC.
