@@ -3,6 +3,7 @@ package fr.lepgu.palaisdivin.backend.user.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -10,10 +11,13 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import fr.lepgu.palaisdivin.backend.shared.domain.ports.OutboxPublisher;
+import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;
+import fr.lepgu.palaisdivin.backend.user.domain.OrphanSubjectException;
 import fr.lepgu.palaisdivin.backend.user.domain.SelfConnectionException;
 import fr.lepgu.palaisdivin.backend.user.domain.UserNotFoundException;
 import fr.lepgu.palaisdivin.backend.user.domain.events.ConnectionCreated;
 import fr.lepgu.palaisdivin.backend.user.domain.model.Connection;
+import fr.lepgu.palaisdivin.backend.user.domain.model.ConnectionCursor;
 import fr.lepgu.palaisdivin.backend.user.domain.model.ConnectionId;
 import fr.lepgu.palaisdivin.backend.user.domain.model.ConnectionResult;
 import fr.lepgu.palaisdivin.backend.user.domain.model.User;
@@ -23,6 +27,7 @@ import fr.lepgu.palaisdivin.backend.user.domain.ports.UserRepositoryPort;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -125,6 +130,32 @@ class ConnectionServiceTest {
         .isInstanceOf(UserNotFoundException.class);
 
     verify(connections, never()).save(any());
+    verifyNoInteractions(outbox);
+  }
+
+  @Test
+  void listMine_resolvesSubjectThenDelegatesToPort() {
+    Connection c1 = new Connection(ConnectionId.newId(), sourceId, targetId, NOW.minusSeconds(60));
+    CursorPage<Connection> portResult = new CursorPage<>(List.of(c1), false);
+    ConnectionCursor cursor = new ConnectionCursor(NOW, ConnectionId.newId());
+    when(users.requireBySubject(SUBJECT)).thenReturn(sourceId);
+    when(connections.findBySource(sourceId, cursor, 20)).thenReturn(portResult);
+
+    CursorPage<Connection> result = service.listMine(SUBJECT, cursor, 20);
+
+    assertThat(result).isSameAs(portResult);
+    verify(connections).findBySource(sourceId, cursor, 20);
+    verifyNoInteractions(outbox);
+  }
+
+  @Test
+  void listMine_propagatesOrphanSubject() {
+    when(users.requireBySubject(SUBJECT)).thenThrow(new OrphanSubjectException(SUBJECT));
+
+    assertThatThrownBy(() -> service.listMine(SUBJECT, null, 20))
+        .isInstanceOf(OrphanSubjectException.class);
+
+    verify(connections, never()).findBySource(any(), any(), anyInt());
     verifyNoInteractions(outbox);
   }
 }

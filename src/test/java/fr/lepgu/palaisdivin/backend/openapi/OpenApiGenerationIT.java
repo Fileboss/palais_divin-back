@@ -66,6 +66,10 @@ class OpenApiGenerationIT {
     assertThat(yaml).contains("/api/v1/admin/tags/{tagId}");
     // I9.1: labelI18n on tag DTOs
     assertThat(yaml).contains("labelI18n");
+    // I9.2: GET /api/v1/user/connections with embedded user shape
+    assertThat(yaml).contains("/api/v1/user/connections");
+    assertThat(yaml).contains("MyConnectionsPageResponse");
+    assertThat(yaml).contains("MyConnectionResponse");
 
     String baseDir = System.getProperty("project.basedir", System.getProperty("user.dir"));
     Path output = Path.of(baseDir, "docs", "openapi.yaml");

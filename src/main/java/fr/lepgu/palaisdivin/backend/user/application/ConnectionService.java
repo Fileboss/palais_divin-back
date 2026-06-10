@@ -1,15 +1,18 @@
 package fr.lepgu.palaisdivin.backend.user.application;
 
 import fr.lepgu.palaisdivin.backend.shared.domain.ports.OutboxPublisher;
+import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;
 import fr.lepgu.palaisdivin.backend.user.domain.SelfConnectionException;
 import fr.lepgu.palaisdivin.backend.user.domain.UserNotFoundException;
 import fr.lepgu.palaisdivin.backend.user.domain.events.ConnectionCreated;
 import fr.lepgu.palaisdivin.backend.user.domain.model.Connection;
+import fr.lepgu.palaisdivin.backend.user.domain.model.ConnectionCursor;
 import fr.lepgu.palaisdivin.backend.user.domain.model.ConnectionId;
 import fr.lepgu.palaisdivin.backend.user.domain.model.ConnectionResult;
 import fr.lepgu.palaisdivin.backend.user.domain.model.UserId;
 import fr.lepgu.palaisdivin.backend.user.domain.ports.ConnectionRepositoryPort;
 import fr.lepgu.palaisdivin.backend.user.domain.ports.CreateConnectionUseCase;
+import fr.lepgu.palaisdivin.backend.user.domain.ports.ListMyConnectionsUseCase;
 import fr.lepgu.palaisdivin.backend.user.domain.ports.UserRepositoryPort;
 import java.time.Clock;
 import java.util.Optional;
@@ -18,7 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Transactional
-public class ConnectionService implements CreateConnectionUseCase {
+public class ConnectionService implements CreateConnectionUseCase, ListMyConnectionsUseCase {
 
   private static final String AGGREGATE_TYPE = "Connection";
 
@@ -70,5 +73,12 @@ public class ConnectionService implements CreateConnectionUseCase {
             saved.createdAt()));
 
     return new ConnectionResult(saved, true);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public CursorPage<Connection> listMine(String subject, ConnectionCursor cursor, int size) {
+    UserId sourceId = users.requireBySubject(subject);
+    return connections.findBySource(sourceId, cursor, size);
   }
 }

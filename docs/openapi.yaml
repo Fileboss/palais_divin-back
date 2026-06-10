@@ -117,7 +117,7 @@ paths:
       - ping-controller
   /api/v1/public/restaurants:
     get:
-      operationId: list_4
+      operationId: list_5
       parameters:
       - in: query
         name: cursor
@@ -225,7 +225,7 @@ paths:
       - public-restaurant-rest-controller
   /api/v1/public/restaurants/{restaurantId}/photos:
     get:
-      operationId: list_6
+      operationId: list_7
       parameters:
       - in: path
         name: restaurantId
@@ -258,7 +258,7 @@ paths:
       - public-photo-rest-controller
   /api/v1/public/restaurants/{restaurantId}/reviews:
     get:
-      operationId: list_5
+      operationId: list_6
       parameters:
       - in: path
         name: restaurantId
@@ -342,7 +342,7 @@ paths:
       - signup-rest-controller
   /api/v1/public/tag-implications:
     get:
-      operationId: list_3
+      operationId: list_4
       responses:
         "200":
           content:
@@ -354,7 +354,7 @@ paths:
       - public-tag-implication-rest-controller
   /api/v1/public/tags:
     get:
-      operationId: list_2
+      operationId: list_3
       parameters:
       - in: query
         name: category
@@ -397,7 +397,7 @@ paths:
       - public-user-rest-controller
   /api/v1/public/users/{userId}/reviews:
     get:
-      operationId: list_1
+      operationId: list_2
       parameters:
       - in: path
         name: userId
@@ -428,6 +428,33 @@ paths:
           description: OK
       tags:
       - public-user-reviews-rest-controller
+  /api/v1/user/connections:
+    get:
+      operationId: list_1
+      parameters:
+      - in: query
+        name: cursor
+        required: false
+        schema:
+          type: string
+      - in: query
+        name: size
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 20
+          maximum: 100
+          minimum: 1
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MyConnectionsPageResponse"
+          description: OK
+      tags:
+      - connection-rest-controller
   /api/v1/user/connections/{targetId}:
     post:
       operationId: connect
@@ -934,6 +961,23 @@ components:
           format: uuid
         signupUrl:
           type: string
+    MyConnectionResponse:
+      type: object
+      properties:
+        createdAt:
+          type: string
+          format: date-time
+        user:
+          $ref: "#/components/schemas/PublicUserResponse"
+    MyConnectionsPageResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/MyConnectionResponse"
+        page:
+          $ref: "#/components/schemas/PageMeta"
     PageMeta:
       type: object
       properties:

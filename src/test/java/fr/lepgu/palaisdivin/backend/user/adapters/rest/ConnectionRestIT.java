@@ -12,6 +12,8 @@ import fr.lepgu.palaisdivin.backend.user.domain.model.UserId;
 import fr.lepgu.palaisdivin.backend.user.domain.ports.UserRepositoryPort;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -160,6 +162,150 @@ class ConnectionRestIT extends AbstractIntegrationTest {
         RestClient.create("http://localhost:" + port)
             .post()
             .uri("/api/v1/user/connections/{targetId}", targetUserId.value())
+            .retrieve()
+            .onStatus(s -> s.is4xxClientError(), (req, res) -> {})
+            .toEntity(String.class);
+
+    assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    assertThat(resp.getBody()).contains("/problems/unauthorized");
+  }
+
+  @Test
+  void getReturnsMyConnectionsNewestFirstWithEmbeddedUser() {
+    User secondTarget =
+        users.save(
+            new User(
+                UserId.newId(),
+                "third-subject",
+                "third@example.test",
+                "Third User",
+                Instant.now()));
+
+    authedClient()
+        .post()
+        .uri("/api/v1/user/connections/{targetId}", targetUserId.value())
+        .retrieve()
+        .toBodilessEntity();
+    // Ordering enforcement: insert with explicit newer timestamp so the test is deterministic
+    // regardless of clock skew between the POST above and the JdbcClient below.
+    jdbcClient
+        .sql(
+            "INSERT INTO user_connection (id, source_user_id, target_user_id, created_at)"
+                + " VALUES (?, ?, ?, ?)")
+        .params(
+            UUID.randomUUID(),
+            sourceUserId.value(),
+            secondTarget.id().value(),
+            OffsetDateTime.ofInstant(Instant.now().plusSeconds(60), ZoneOffset.UTC))
+        .update();
+
+    ResponseEntity<MyConnectionsPageResponse> resp =
+        authedClient()
+            .get()
+            .uri("/api/v1/user/connections")
+            .retrieve()
+            .toEntity(MyConnectionsPageResponse.class);
+
+    assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
+    MyConnectionsPageResponse body = resp.getBody();
+    assertThat(body).isNotNull();
+    assertThat(body.data()).hasSize(2);
+    assertThat(body.data().get(0).user().id()).isEqualTo(secondTarget.id().value());
+    assertThat(body.data().get(0).user().displayName()).isEqualTo("Third User");
+    assertThat(body.data().get(1).user().id()).isEqualTo(targetUserId.value());
+    assertThat(body.page().size()).isEqualTo(20);
+    assertThat(body.page().hasNext()).isFalse();
+    assertThat(body.page().nextCursor()).isNull();
+  }
+
+  @Test
+  void getEmptyWhenNoneFollowed() {
+    ResponseEntity<MyConnectionsPageResponse> resp =
+        authedClient()
+            .get()
+            .uri("/api/v1/user/connections")
+            .retrieve()
+            .toEntity(MyConnectionsPageResponse.class);
+
+    assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
+    MyConnectionsPageResponse body = resp.getBody();
+    assertThat(body).isNotNull();
+    assertThat(body.data()).isEmpty();
+    assertThat(body.page().hasNext()).isFalse();
+    assertThat(body.page().nextCursor()).isNull();
+  }
+
+  @Test
+  void getCursorWalkAcrossPages() {
+    User secondTarget =
+        users.save(
+            new User(
+                UserId.newId(),
+                "second-target",
+                "second@example.test",
+                "Second User",
+                Instant.now()));
+    OffsetDateTime base = OffsetDateTime.now(ZoneOffset.UTC);
+    jdbcClient
+        .sql(
+            "INSERT INTO user_connection (id, source_user_id, target_user_id, created_at)"
+                + " VALUES (?, ?, ?, ?)")
+        .params(UUID.randomUUID(), sourceUserId.value(), targetUserId.value(), base)
+        .update();
+    jdbcClient
+        .sql(
+            "INSERT INTO user_connection (id, source_user_id, target_user_id, created_at)"
+                + " VALUES (?, ?, ?, ?)")
+        .params(
+            UUID.randomUUID(),
+            sourceUserId.value(),
+            secondTarget.id().value(),
+            base.plusSeconds(60))
+        .update();
+
+    MyConnectionsPageResponse p1 =
+        authedClient()
+            .get()
+            .uri("/api/v1/user/connections?size=1")
+            .retrieve()
+            .body(MyConnectionsPageResponse.class);
+    assertThat(p1.data()).hasSize(1);
+    assertThat(p1.data().getFirst().user().id()).isEqualTo(secondTarget.id().value());
+    assertThat(p1.page().hasNext()).isTrue();
+    assertThat(p1.page().nextCursor()).isNotBlank();
+
+    MyConnectionsPageResponse p2 =
+        authedClient()
+            .get()
+            .uri("/api/v1/user/connections?size=1&cursor=" + p1.page().nextCursor())
+            .retrieve()
+            .body(MyConnectionsPageResponse.class);
+    assertThat(p2.data()).hasSize(1);
+    assertThat(p2.data().getFirst().user().id()).isEqualTo(targetUserId.value());
+    assertThat(p2.page().hasNext()).isFalse();
+    assertThat(p2.page().nextCursor()).isNull();
+  }
+
+  @Test
+  void getRejectsBadCursor400() {
+    ResponseEntity<String> resp =
+        authedClient()
+            .get()
+            .uri("/api/v1/user/connections?cursor=not!base64!!")
+            .retrieve()
+            .onStatus(s -> s.is4xxClientError(), (req, res) -> {})
+            .toEntity(String.class);
+
+    assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(resp.getBody()).contains("/problems/invalid-cursor");
+  }
+
+  @Test
+  void getAnonymous401() {
+    ResponseEntity<String> resp =
+        RestClient.create("http://localhost:" + port)
+            .get()
+            .uri("/api/v1/user/connections")
             .retrieve()
             .onStatus(s -> s.is4xxClientError(), (req, res) -> {})
             .toEntity(String.class);
