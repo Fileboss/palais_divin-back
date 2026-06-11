@@ -6,6 +6,7 @@ import fr.lepgu.palaisdivin.backend.tag.domain.model.Tag;
 import fr.lepgu.palaisdivin.backend.tag.domain.model.TagCategory;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public record RestaurantResponse(
@@ -55,9 +56,10 @@ public record RestaurantResponse(
         thumbnail == null ? null : ThumbnailSummary.from(thumbnail));
   }
 
-  public record TagSummary(TagCategory category, String slug, String label) {
+  public record TagSummary(
+      TagCategory category, String slug, String label, Map<String, String> labelI18n) {
     public static TagSummary from(Tag t) {
-      return new TagSummary(t.category(), t.slug(), t.label());
+      return new TagSummary(t.category(), t.slug(), t.label(), t.labelI18n());
     }
   }
 

@@ -41,7 +41,7 @@ class RestaurantResponseTest {
             TagCategory.SPECIALTY,
             "natural-wine",
             "Natural wine",
-            Map.of(),
+            Map.of("en", "Natural wine", "es", "Vino natural"),
             CREATED_AT);
     Tag b = new Tag(TagId.newId(), TagCategory.REGIME, "vegan", "Vegan", Map.of(), CREATED_AT);
 
@@ -51,10 +51,14 @@ class RestaurantResponseTest {
         .extracting(
             RestaurantResponse.TagSummary::category,
             RestaurantResponse.TagSummary::slug,
-            RestaurantResponse.TagSummary::label)
+            RestaurantResponse.TagSummary::label,
+            RestaurantResponse.TagSummary::labelI18n)
         .containsExactly(
             org.assertj.core.groups.Tuple.tuple(
-                TagCategory.SPECIALTY, "natural-wine", "Natural wine"),
-            org.assertj.core.groups.Tuple.tuple(TagCategory.REGIME, "vegan", "Vegan"));
+                TagCategory.SPECIALTY,
+                "natural-wine",
+                "Natural wine",
+                Map.of("en", "Natural wine", "es", "Vino natural")),
+            org.assertj.core.groups.Tuple.tuple(TagCategory.REGIME, "vegan", "Vegan", Map.of()));
   }
 }

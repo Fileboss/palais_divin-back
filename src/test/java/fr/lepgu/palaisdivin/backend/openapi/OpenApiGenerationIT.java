@@ -66,12 +66,18 @@ class OpenApiGenerationIT {
     assertThat(yaml).contains("/api/v1/admin/tags/{tagId}");
     // I9.1: labelI18n on tag DTOs
     assertThat(yaml).contains("labelI18n");
+    // I9.1 follow-up: labelI18n on the embedded TagSummary shape (RestaurantResponse.tags)
+    assertThat(yaml).containsPattern("(?s)TagSummary:.*?labelI18n:");
     // I9.2: GET /api/v1/user/connections with embedded user shape
     assertThat(yaml).contains("/api/v1/user/connections");
     assertThat(yaml).contains("MyConnectionsPageResponse");
     assertThat(yaml).contains("MyConnectionResponse");
     // I9.3: DELETE /api/v1/user/connections/{targetId}
     assertThat(yaml).containsPattern("(?s)/api/v1/user/connections/\\{targetId\\}:.*?delete:");
+    // I9.4: isFollowedByMe on PublicUserResponse
+    assertThat(yaml).contains("isFollowedByMe");
+    // I9.2: explicit GET verb on the connections list endpoint (symmetric with the I9.3 DELETE pin)
+    assertThat(yaml).containsPattern("(?s)/api/v1/user/connections:.*?get:");
 
     String baseDir = System.getProperty("project.basedir", System.getProperty("user.dir"));
     Path output = Path.of(baseDir, "docs", "openapi.yaml");

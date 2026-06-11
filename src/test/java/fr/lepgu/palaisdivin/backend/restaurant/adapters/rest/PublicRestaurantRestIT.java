@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -106,6 +107,8 @@ class PublicRestaurantRestIT extends AbstractIntegrationTest {
     String regimeSlug = "pub-regime-" + suffix;
     String foodLabel = "Food " + suffix;
     String regimeLabel = "Regime " + suffix;
+    Map<String, String> foodLabelI18n =
+        Map.of("en", "Food " + suffix + " EN", "es", "Food " + suffix + " ES");
 
     RestClient authed = authedClient();
     RestaurantResponse created =
@@ -130,7 +133,7 @@ class PublicRestaurantRestIT extends AbstractIntegrationTest {
             .post()
             .uri("/api/v1/admin/tags")
             .contentType(MediaType.APPLICATION_JSON)
-            .body(new TagPayload("SPECIALTY", foodSlug, foodLabel))
+            .body(new TagPayload("SPECIALTY", foodSlug, foodLabel, foodLabelI18n))
             .retrieve()
             .body(TagResponseDto.class)
             .id();
@@ -139,7 +142,7 @@ class PublicRestaurantRestIT extends AbstractIntegrationTest {
             .post()
             .uri("/api/v1/admin/tags")
             .contentType(MediaType.APPLICATION_JSON)
-            .body(new TagPayload("REGIME", regimeSlug, regimeLabel))
+            .body(new TagPayload("REGIME", regimeSlug, regimeLabel, Map.of()))
             .retrieve()
             .body(TagResponseDto.class)
             .id();
@@ -168,13 +171,17 @@ class PublicRestaurantRestIT extends AbstractIntegrationTest {
         .extracting(
             RestaurantResponse.TagSummary::category,
             RestaurantResponse.TagSummary::slug,
-            RestaurantResponse.TagSummary::label)
+            RestaurantResponse.TagSummary::label,
+            RestaurantResponse.TagSummary::labelI18n)
         .containsExactlyInAnyOrder(
-            org.assertj.core.groups.Tuple.tuple(TagCategory.SPECIALTY, foodSlug, foodLabel),
-            org.assertj.core.groups.Tuple.tuple(TagCategory.REGIME, regimeSlug, regimeLabel));
+            org.assertj.core.groups.Tuple.tuple(
+                TagCategory.SPECIALTY, foodSlug, foodLabel, foodLabelI18n),
+            org.assertj.core.groups.Tuple.tuple(
+                TagCategory.REGIME, regimeSlug, regimeLabel, Map.of()));
   }
 
-  private record TagPayload(String category, String slug, String label) {}
+  private record TagPayload(
+      String category, String slug, String label, Map<String, String> labelI18n) {}
 
   private record TagResponseDto(UUID id) {}
 
@@ -225,7 +232,7 @@ class PublicRestaurantRestIT extends AbstractIntegrationTest {
             .post()
             .uri("/api/v1/admin/tags")
             .contentType(MediaType.APPLICATION_JSON)
-            .body(new TagPayload("SPECIALTY", burgerSlug, "Burger"))
+            .body(new TagPayload("SPECIALTY", burgerSlug, "Burger", Map.of()))
             .retrieve()
             .body(TagResponseDto.class)
             .id();
@@ -280,7 +287,7 @@ class PublicRestaurantRestIT extends AbstractIntegrationTest {
             .post()
             .uri("/api/v1/admin/tags")
             .contentType(MediaType.APPLICATION_JSON)
-            .body(new TagPayload("SPECIALTY", burgerSlug, "Burger"))
+            .body(new TagPayload("SPECIALTY", burgerSlug, "Burger", Map.of()))
             .retrieve()
             .body(TagResponseDto.class)
             .id();
@@ -289,7 +296,7 @@ class PublicRestaurantRestIT extends AbstractIntegrationTest {
             .post()
             .uri("/api/v1/admin/tags")
             .contentType(MediaType.APPLICATION_JSON)
-            .body(new TagPayload("REGIME", veganSlug, "Vegan"))
+            .body(new TagPayload("REGIME", veganSlug, "Vegan", Map.of()))
             .retrieve()
             .body(TagResponseDto.class)
             .id();
@@ -355,6 +362,7 @@ class PublicRestaurantRestIT extends AbstractIntegrationTest {
     String suffix = UUID.randomUUID().toString().substring(0, 8);
     String foodSlug = "li-food-" + suffix;
     String regimeSlug = "li-regime-" + suffix;
+    Map<String, String> foodLabelI18n = Map.of("en", "Food", "es", "Comida");
 
     RestClient authed = authedClient();
     UUID r =
@@ -371,7 +379,7 @@ class PublicRestaurantRestIT extends AbstractIntegrationTest {
             .post()
             .uri("/api/v1/admin/tags")
             .contentType(MediaType.APPLICATION_JSON)
-            .body(new TagPayload("SPECIALTY", foodSlug, "Food"))
+            .body(new TagPayload("SPECIALTY", foodSlug, "Food", foodLabelI18n))
             .retrieve()
             .body(TagResponseDto.class)
             .id();
@@ -380,7 +388,7 @@ class PublicRestaurantRestIT extends AbstractIntegrationTest {
             .post()
             .uri("/api/v1/admin/tags")
             .contentType(MediaType.APPLICATION_JSON)
-            .body(new TagPayload("REGIME", regimeSlug, "Regime"))
+            .body(new TagPayload("REGIME", regimeSlug, "Regime", Map.of()))
             .retrieve()
             .body(TagResponseDto.class)
             .id();
@@ -409,10 +417,13 @@ class PublicRestaurantRestIT extends AbstractIntegrationTest {
         .extracting(
             RestaurantResponse.TagSummary::category,
             RestaurantResponse.TagSummary::slug,
-            RestaurantResponse.TagSummary::label)
+            RestaurantResponse.TagSummary::label,
+            RestaurantResponse.TagSummary::labelI18n)
         .containsExactlyInAnyOrder(
-            org.assertj.core.groups.Tuple.tuple(TagCategory.SPECIALTY, foodSlug, "Food"),
-            org.assertj.core.groups.Tuple.tuple(TagCategory.REGIME, regimeSlug, "Regime"));
+            org.assertj.core.groups.Tuple.tuple(
+                TagCategory.SPECIALTY, foodSlug, "Food", foodLabelI18n),
+            org.assertj.core.groups.Tuple.tuple(
+                TagCategory.REGIME, regimeSlug, "Regime", Map.of()));
   }
 
   @Test
@@ -527,7 +538,7 @@ class PublicRestaurantRestIT extends AbstractIntegrationTest {
             .post()
             .uri("/api/v1/admin/tags")
             .contentType(MediaType.APPLICATION_JSON)
-            .body(new TagPayload("SPECIALTY", burgerSlug, "Burger"))
+            .body(new TagPayload("SPECIALTY", burgerSlug, "Burger", Map.of()))
             .retrieve()
             .body(TagResponseDto.class)
             .id();

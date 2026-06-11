@@ -1337,6 +1337,10 @@ components:
           - SERVICE_AND_PLACE
         label:
           type: string
+        labelI18n:
+          type: object
+          additionalProperties:
+            type: string
         slug:
           type: string
     ThumbnailSummary:
