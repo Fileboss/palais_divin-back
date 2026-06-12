@@ -103,6 +103,37 @@ paths:
           description: OK
       tags:
       - admin-tag-rest-controller
+  /api/v1/public/geocode:
+    get:
+      operationId: search
+      parameters:
+      - in: query
+        name: q
+        required: true
+        schema:
+          type: string
+          maxLength: 200
+          minLength: 2
+      - in: query
+        name: limit
+        required: false
+        schema:
+          type: integer
+          format: int32
+          default: 5
+          maximum: 10
+          minimum: 1
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GeocodeMatch"
+          description: OK
+      tags:
+      - public-geocode-rest-controller
   /api/v1/public/ping:
     get:
       operationId: ping
@@ -811,6 +842,29 @@ paths:
           description: OK
       tags:
       - restaurant-tag-rest-controller
+  /api/v1/user/reviews:
+    get:
+      operationId: listMine
+      parameters:
+      - in: query
+        name: restaurantIds
+        required: true
+        schema:
+          type: array
+          items:
+            type: string
+            format: uuid
+          maxItems: 100
+          minItems: 0
+      responses:
+        "200":
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/MyReviewsBatchResponse"
+          description: OK
+      tags:
+      - user-reviews-rest-controller
 components:
   schemas:
     AuthorReviewResponse:
@@ -964,6 +1018,17 @@ components:
       - category
       - label
       - slug
+    GeocodeMatch:
+      type: object
+      properties:
+        label:
+          type: string
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
     InvitationResponse:
       type: object
       properties:
@@ -992,6 +1057,13 @@ components:
             $ref: "#/components/schemas/MyConnectionResponse"
         page:
           $ref: "#/components/schemas/PageMeta"
+    MyReviewsBatchResponse:
+      type: object
+      properties:
+        reviews:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/ReviewResponse"
     PageMeta:
       type: object
       properties:
@@ -1099,12 +1171,8 @@ components:
         id:
           type: string
           format: uuid
-        latitude:
-          type: number
-          format: double
-        longitude:
-          type: number
-          format: double
+        location:
+          $ref: "#/components/schemas/CoordinatesDto"
         name:
           type: string
         recommenderCount:

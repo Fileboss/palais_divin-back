@@ -7,7 +7,12 @@ import fr.lepgu.palaisdivin.backend.review.domain.model.ReviewId;
 import fr.lepgu.palaisdivin.backend.review.domain.ports.ReviewRepositoryPort;
 import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;
 import fr.lepgu.palaisdivin.backend.user.domain.model.UserId;
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Repository;
@@ -35,6 +40,22 @@ public class ReviewPostgresAdapter implements ReviewRepositoryPort {
   public Optional<Review> findByRestaurantAndAuthor(RestaurantId restaurantId, UserId authorId) {
     return jpa.findByRestaurantIdAndAuthorId(restaurantId.value(), authorId.value())
         .map(ReviewPostgresAdapter::toDomain);
+  }
+
+  @Override
+  public Map<RestaurantId, Review> findByAuthorAndRestaurants(
+      UserId authorId, Collection<RestaurantId> restaurantIds) {
+    if (restaurantIds.isEmpty()) {
+      return Map.of();
+    }
+    List<UUID> raw = restaurantIds.stream().map(RestaurantId::value).toList();
+    List<ReviewEntity> rows = jpa.findByAuthorIdAndRestaurantIdIn(authorId.value(), raw);
+    Map<RestaurantId, Review> result = new LinkedHashMap<>(rows.size());
+    for (ReviewEntity e : rows) {
+      Review r = toDomain(e);
+      result.put(r.restaurantId(), r);
+    }
+    return Map.copyOf(result);
   }
 
   @Override

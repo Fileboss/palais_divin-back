@@ -251,6 +251,18 @@ Goal: close the third `palais_divin-front/doc/missing.md` handoff. Tag labels ar
 
 ---
 
+## Intermediate phase I10 — frontend unblocks
+
+Three frontend-blocking gaps from `palais_divin-front/doc/missing.md`.
+
+- [x] **I10.1 — `GET /api/v1/user/reviews?restaurantIds=…`** — batched my-reviews lookup; collapses home SSR's 20 round-trips per page into one. Response is a dictionary `{ reviews: { restaurantId → ReviewResponse | null } }` (NOT a list envelope — fixed cardinality, no cursor). New `GetMyReviewsBatchUseCase` + `ReviewRepositoryPort.findByAuthorAndRestaurants(authorId, ids)` (mirrors `PhotoPostgresAdapter.findOldestByRestaurantIds` — derived `findByAuthorIdAndRestaurantIdIn`, Map return). Cap of 100 ids per request; missing ids appear as explicit `null` values (`@JsonInclude(ALWAYS)` on the Map so Jackson doesn't strip them). Request order preserved via `LinkedHashMap`.
+- [x] **I10.2 — `GET /api/v1/public/geocode?q=&limit=`** — server-side geocode proxy so the FE `LocationPicker` stops calling Nominatim directly from the browser. Reuses the M2.8 `BanApiClient` (BAN's `/search?q=` is free-form, already cached/timed). New `GeocoderPort.search(q, limit) → List<GeocodeMatch>`; separate cache key prefix `search:N:` so single-result and multi-result entries don't collide. Empty BAN result → `[]` (picker renders "no matches" — only the single-result `geocode(...)` path throws `UnresolvableAddressException`). New `GeocodeFailedException` wraps `RestClientException` → 502 `/problems/geocode-failed`. Per-IP rate-limiting deferred to upstream (Caddy) — see post-launch backlog. BAN's fuzzy-query quality is lower than Nominatim; revisit provider before public launch if needed.
+- [x] **I10.3 — `RecommendationResponse.location: CoordinatesDto`** — replaced flat `latitude`/`longitude` with `location: CoordinatesDto` so the FE has one renderer for `RestaurantResponse` + `RecommendationResponse`. Domain `Recommendation` stays flat (refactor to `Coordinates` VO not load-bearing, would just add churn); the adapter mapper wraps at the wire boundary. Cross-component adapter import (`user/adapters/rest/RecommendationResponse` → `restaurant/adapters/rest/CoordinatesDto`) follows the existing `MissingAnchorException` precedent.
+
+`MILESTONE I10` — `missing.md` fourth handoff closed.
+
+---
+
 ## Phase M10 — Observability & hardening
 
 - [ ] **M10.1 — JSON logging via `logstash-logback-encoder`** — `logback-spring.xml` with `traceId`/`spanId` MDC.

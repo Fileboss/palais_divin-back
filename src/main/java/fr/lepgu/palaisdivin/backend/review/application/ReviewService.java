@@ -13,6 +13,7 @@ import fr.lepgu.palaisdivin.backend.review.domain.ports.CountRestaurantReviewsUs
 import fr.lepgu.palaisdivin.backend.review.domain.ports.CreateReviewUseCase;
 import fr.lepgu.palaisdivin.backend.review.domain.ports.FindReviewByAuthorUseCase;
 import fr.lepgu.palaisdivin.backend.review.domain.ports.GetMyReviewUseCase;
+import fr.lepgu.palaisdivin.backend.review.domain.ports.GetMyReviewsBatchUseCase;
 import fr.lepgu.palaisdivin.backend.review.domain.ports.ListReviewsUseCase;
 import fr.lepgu.palaisdivin.backend.review.domain.ports.ReviewRepositoryPort;
 import fr.lepgu.palaisdivin.backend.review.domain.ports.UpdateReviewUseCase;
@@ -23,6 +24,9 @@ import fr.lepgu.palaisdivin.backend.user.domain.model.UserId;
 import fr.lepgu.palaisdivin.backend.user.domain.ports.UserRepositoryPort;
 import java.time.Clock;
 import java.time.Duration;
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -34,6 +38,7 @@ public class ReviewService
     implements CreateReviewUseCase,
         FindReviewByAuthorUseCase,
         GetMyReviewUseCase,
+        GetMyReviewsBatchUseCase,
         ListReviewsUseCase,
         UpdateReviewUseCase,
         CountRestaurantReviewsUseCase {
@@ -145,6 +150,19 @@ public class ReviewService
     return reviews
         .findByRestaurantAndAuthor(restaurantId, authorId)
         .orElseThrow(() -> new ReviewNotFoundException(restaurantId, authorId));
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public Map<RestaurantId, Optional<Review>> getMyReviewsBatch(
+      String authorSubject, Collection<RestaurantId> restaurantIds) {
+    UserId authorId = users.requireBySubject(authorSubject);
+    Map<RestaurantId, Review> found = reviews.findByAuthorAndRestaurants(authorId, restaurantIds);
+    Map<RestaurantId, Optional<Review>> result = new LinkedHashMap<>(restaurantIds.size());
+    for (RestaurantId id : restaurantIds) {
+      result.put(id, Optional.ofNullable(found.get(id)));
+    }
+    return result;
   }
 
   @Override

@@ -1,6 +1,8 @@
 package fr.lepgu.palaisdivin.backend.review.adapters.postgres;
 
 import java.time.Instant;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Pageable;
@@ -12,6 +14,8 @@ import org.springframework.data.repository.query.Param;
 interface ReviewJpaRepository extends JpaRepository<ReviewEntity, UUID> {
 
   Optional<ReviewEntity> findByRestaurantIdAndAuthorId(UUID restaurantId, UUID authorId);
+
+  List<ReviewEntity> findByAuthorIdAndRestaurantIdIn(UUID authorId, Collection<UUID> restaurantIds);
 
   long countByRestaurantId(UUID restaurantId);
 

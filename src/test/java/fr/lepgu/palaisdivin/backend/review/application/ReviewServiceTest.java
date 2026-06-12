@@ -32,6 +32,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -241,6 +242,41 @@ class ReviewServiceTest {
 
     assertThatThrownBy(() -> service.getMyReview(SUBJECT, restaurantId))
         .isInstanceOf(ReviewNotFoundException.class);
+  }
+
+  @Test
+  void getMyReviewsBatch_returnsOneEntryPerRequestedId_withEmptyForUnreviewed() {
+    RestaurantId r1 = RestaurantId.newId();
+    RestaurantId r2 = RestaurantId.newId();
+    RestaurantId r3 = RestaurantId.newId();
+    Review review1 = new Review(ReviewId.newId(), r1, authorId, 4, "Good", NOW.minusSeconds(120));
+    Review review3 = new Review(ReviewId.newId(), r3, authorId, 5, "Great", NOW.minusSeconds(60));
+    when(users.requireBySubject(SUBJECT)).thenReturn(authorId);
+    when(reviews.findByAuthorAndRestaurants(authorId, List.of(r1, r2, r3)))
+        .thenReturn(Map.of(r1, review1, r3, review3));
+
+    Map<RestaurantId, Optional<Review>> result =
+        service.getMyReviewsBatch(SUBJECT, List.of(r1, r2, r3));
+
+    assertThat(result).containsOnlyKeys(r1, r2, r3);
+    assertThat(result.get(r1)).contains(review1);
+    assertThat(result.get(r2)).isEmpty();
+    assertThat(result.get(r3)).contains(review3);
+    verifyNoInteractions(restaurants, idempotency, outbox);
+  }
+
+  @Test
+  void getMyReviewsBatch_preservesRequestOrder() {
+    RestaurantId r1 = RestaurantId.newId();
+    RestaurantId r2 = RestaurantId.newId();
+    RestaurantId r3 = RestaurantId.newId();
+    when(users.requireBySubject(SUBJECT)).thenReturn(authorId);
+    when(reviews.findByAuthorAndRestaurants(authorId, List.of(r2, r1, r3))).thenReturn(Map.of());
+
+    Map<RestaurantId, Optional<Review>> result =
+        service.getMyReviewsBatch(SUBJECT, List.of(r2, r1, r3));
+
+    assertThat(result.keySet()).containsExactly(r2, r1, r3);
   }
 
   @Test

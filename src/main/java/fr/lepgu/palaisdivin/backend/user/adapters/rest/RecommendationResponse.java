@@ -1,5 +1,6 @@
 package fr.lepgu.palaisdivin.backend.user.adapters.rest;
 
+import fr.lepgu.palaisdivin.backend.restaurant.adapters.rest.CoordinatesDto;
 import fr.lepgu.palaisdivin.backend.user.domain.model.Recommendation;
 import java.util.UUID;
 
@@ -7,8 +8,7 @@ public record RecommendationResponse(
     UUID id,
     String name,
     String address,
-    double latitude,
-    double longitude,
+    CoordinatesDto location,
     double affinity,
     int recommenderCount,
     Double avgRating,
@@ -19,8 +19,7 @@ public record RecommendationResponse(
         r.restaurantId().value(),
         r.name(),
         r.address(),
-        r.latitude(),
-        r.longitude(),
+        new CoordinatesDto(r.latitude(), r.longitude()),
         r.affinity(),
         r.recommenderCount(),
         r.avgRating(),

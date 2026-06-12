@@ -5,6 +5,7 @@ import fr.lepgu.palaisdivin.backend.photo.domain.PhotoNotFoundException;
 import fr.lepgu.palaisdivin.backend.photo.domain.PhotoStorageException;
 import fr.lepgu.palaisdivin.backend.restaurant.adapters.rest.AffinityRequiresAuthException;
 import fr.lepgu.palaisdivin.backend.restaurant.adapters.rest.MissingAnchorException;
+import fr.lepgu.palaisdivin.backend.restaurant.domain.GeocodeFailedException;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.RestaurantNotFoundException;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.UnresolvableAddressException;
 import fr.lepgu.palaisdivin.backend.review.domain.ReviewNotFoundException;
@@ -159,6 +160,17 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     pd.setProperty("address", ex.address());
     addTraceId(pd);
     return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(pd);
+  }
+
+  @ExceptionHandler(GeocodeFailedException.class)
+  ResponseEntity<ProblemDetail> handleGeocodeFailed(GeocodeFailedException ex) {
+    log.warn("Geocoding upstream failure", ex);
+    ProblemDetail pd = ProblemDetail.forStatus(HttpStatus.BAD_GATEWAY);
+    pd.setType(PROBLEM_BASE.resolve("geocode-failed"));
+    pd.setTitle("Geocoding service unavailable");
+    pd.setDetail("Geocoding provider request failed.");
+    addTraceId(pd);
+    return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(pd);
   }
 
   @ExceptionHandler(AuthenticationException.class)

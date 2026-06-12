@@ -16,6 +16,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -222,6 +223,43 @@ class ReviewPostgresAdapterIT {
             adapter.findByRestaurantAndAuthor(
                 new RestaurantId(UUID.randomUUID()), new UserId(UUID.randomUUID())))
         .isEmpty();
+  }
+
+  @Test
+  void findByAuthorAndRestaurants_returnsOnlyAuthoredEntries() {
+    UUID r2Uuid = UUID.randomUUID();
+    UUID r3Uuid = UUID.randomUUID();
+    em.createNativeQuery(
+            "INSERT INTO restaurant (id, name, location, created_at)"
+                + " VALUES (?, ?, ST_GeographyFromText('SRID=4326;POINT(2.35 48.85)'), now())")
+        .setParameter(1, r2Uuid)
+        .setParameter(2, "R2")
+        .executeUpdate();
+    em.createNativeQuery(
+            "INSERT INTO restaurant (id, name, location, created_at)"
+                + " VALUES (?, ?, ST_GeographyFromText('SRID=4326;POINT(2.35 48.85)'), now())")
+        .setParameter(1, r3Uuid)
+        .setParameter(2, "R3")
+        .executeUpdate();
+    RestaurantId r1 = RESTAURANT_ID;
+    RestaurantId r2 = new RestaurantId(r2Uuid);
+    RestaurantId r3 = new RestaurantId(r3Uuid);
+
+    adapter.save(new Review(ReviewId.newId(), r1, AUTHOR_ID, 4, "r1", FIXED_CREATED_AT));
+    adapter.save(new Review(ReviewId.newId(), r3, AUTHOR_ID, 5, "r3", FIXED_CREATED_AT));
+    adapter.save(new Review(ReviewId.newId(), r1, OTHER_AUTHOR_ID, 2, "other", FIXED_CREATED_AT));
+
+    Map<RestaurantId, Review> result =
+        adapter.findByAuthorAndRestaurants(AUTHOR_ID, List.of(r1, r2, r3));
+
+    assertThat(result).containsOnlyKeys(r1, r3);
+    assertThat(result.get(r1).rating()).isEqualTo(4);
+    assertThat(result.get(r3).rating()).isEqualTo(5);
+  }
+
+  @Test
+  void findByAuthorAndRestaurants_emptyInput_returnsEmptyMap() {
+    assertThat(adapter.findByAuthorAndRestaurants(AUTHOR_ID, List.of())).isEmpty();
   }
 
   @Test

@@ -84,8 +84,8 @@ class RecommendationRestControllerTest {
         .andExpect(jsonPath("$.data[0].name").value("Septime"))
         .andExpect(jsonPath("$.data[0].affinity").value(9.0))
         .andExpect(jsonPath("$.data[0].recommenderCount").value(2))
-        .andExpect(jsonPath("$.data[0].latitude").value(48.8))
-        .andExpect(jsonPath("$.data[0].longitude").value(2.3))
+        .andExpect(jsonPath("$.data[0].location.latitude").value(48.8))
+        .andExpect(jsonPath("$.data[0].location.longitude").value(2.3))
         .andExpect(jsonPath("$.page.size").value(20))
         .andExpect(jsonPath("$.page.hasNext").value(false))
         .andExpect(jsonPath("$.page.nextCursor").doesNotExist());
