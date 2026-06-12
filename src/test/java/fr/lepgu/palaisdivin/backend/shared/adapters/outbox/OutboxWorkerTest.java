@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -32,9 +33,15 @@ class OutboxWorkerTest {
 
   @Mock private OutboxEventJpaRepository repo;
 
+  private final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
+
   private OutboxWorker workerWith(List<Projector> projectors, int batchSize, int maxRetries) {
     return new OutboxWorker(
-        repo, projectors, new OutboxWorkerProperties(batchSize, maxRetries), FIXED_CLOCK);
+        repo,
+        projectors,
+        new OutboxWorkerProperties(batchSize, maxRetries),
+        FIXED_CLOCK,
+        meterRegistry);
   }
 
   private OutboxEventEntity pendingRestaurantRow(int currentRetryCount) {
@@ -67,6 +74,16 @@ class OutboxWorkerTest {
     assertThat(a.getProcessedAt()).isEqualTo(FIXED_NOW);
     assertThat(b.getStatus()).isEqualTo("PROCESSED");
     assertThat(c.getStatus()).isEqualTo("PROCESSED");
+    assertThat(
+            meterRegistry
+                .timer(
+                    "palaisdivin.outbox.projection",
+                    "aggregate_type",
+                    "Restaurant",
+                    "outcome",
+                    "success")
+                .count())
+        .isEqualTo(3);
   }
 
   @Test
@@ -100,6 +117,16 @@ class OutboxWorkerTest {
     assertThat(event.getRetryCount()).isEqualTo(1);
     assertThat(event.getLastError()).isEqualTo("boom");
     assertThat(event.getProcessedAt()).isNull();
+    assertThat(
+            meterRegistry
+                .timer(
+                    "palaisdivin.outbox.projection",
+                    "aggregate_type",
+                    "Restaurant",
+                    "outcome",
+                    "failure")
+                .count())
+        .isEqualTo(1);
   }
 
   @Test

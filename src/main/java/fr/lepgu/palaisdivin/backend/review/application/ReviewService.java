@@ -22,6 +22,8 @@ import fr.lepgu.palaisdivin.backend.shared.domain.ports.OutboxPublisher;
 import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;
 import fr.lepgu.palaisdivin.backend.user.domain.model.UserId;
 import fr.lepgu.palaisdivin.backend.user.domain.ports.UserRepositoryPort;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.Collection;
@@ -52,6 +54,7 @@ public class ReviewService
   private final IdempotencyKeyPort idempotency;
   private final OutboxPublisher outbox;
   private final Clock clock;
+  private final Counter ratingsCreated;
 
   public ReviewService(
       ReviewRepositoryPort reviews,
@@ -59,13 +62,18 @@ public class ReviewService
       RestaurantRepositoryPort restaurants,
       IdempotencyKeyPort idempotency,
       OutboxPublisher outbox,
-      Clock clock) {
+      Clock clock,
+      MeterRegistry meterRegistry) {
     this.reviews = reviews;
     this.users = users;
     this.restaurants = restaurants;
     this.idempotency = idempotency;
     this.outbox = outbox;
     this.clock = clock;
+    this.ratingsCreated =
+        Counter.builder("palaisdivin.review.created")
+            .description("Number of reviews created (excludes idempotency replays)")
+            .register(meterRegistry);
   }
 
   @Override
@@ -97,6 +105,7 @@ public class ReviewService
     Review review =
         new Review(ReviewId.newId(), restaurantId, authorId, rating, comment, clock.instant());
     Review saved = reviews.save(review);
+    ratingsCreated.increment();
 
     outbox.publish(
         AGGREGATE_TYPE,

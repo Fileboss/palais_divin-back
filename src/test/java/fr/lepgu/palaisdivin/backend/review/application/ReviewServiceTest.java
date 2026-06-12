@@ -27,6 +27,7 @@ import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;
 import fr.lepgu.palaisdivin.backend.user.domain.model.User;
 import fr.lepgu.palaisdivin.backend.user.domain.model.UserId;
 import fr.lepgu.palaisdivin.backend.user.domain.ports.UserRepositoryPort;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -54,6 +55,7 @@ class ReviewServiceTest {
   @Mock OutboxPublisher outbox;
 
   ReviewService service;
+  SimpleMeterRegistry meterRegistry;
 
   RestaurantId restaurantId;
   UserId authorId;
@@ -63,7 +65,9 @@ class ReviewServiceTest {
   @BeforeEach
   void setUp() {
     Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
-    service = new ReviewService(reviews, users, restaurants, idempotency, outbox, clock);
+    meterRegistry = new SimpleMeterRegistry();
+    service =
+        new ReviewService(reviews, users, restaurants, idempotency, outbox, clock, meterRegistry);
 
     restaurantId = RestaurantId.newId();
     authorId = UserId.newId();
@@ -103,6 +107,7 @@ class ReviewServiceTest {
     assertThat(published.rating()).isEqualTo(4);
     assertThat(published.comment()).isEqualTo("Great");
     assertThat(published.createdAt()).isEqualTo(NOW);
+    assertThat(meterRegistry.counter("palaisdivin.review.created").count()).isEqualTo(1.0);
   }
 
   @Test
@@ -122,6 +127,7 @@ class ReviewServiceTest {
     verify(restaurants, never()).findById(any());
     verify(idempotency, never()).record(any(), any(), any(), any());
     verifyNoInteractions(outbox);
+    assertThat(meterRegistry.counter("palaisdivin.review.created").count()).isZero();
   }
 
   @Test

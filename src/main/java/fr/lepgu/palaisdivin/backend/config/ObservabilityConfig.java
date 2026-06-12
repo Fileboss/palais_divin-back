@@ -20,7 +20,10 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 
 @Configuration
-@ConditionalOnProperty(name = "management.tracing.enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(
+    name = "management.tracing.enabled",
+    havingValue = "true",
+    matchIfMissing = true)
 @EnableConfigurationProperties(ObservabilityProperties.class)
 public class ObservabilityConfig {
 

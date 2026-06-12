@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import fr.lepgu.palaisdivin.backend.AbstractIntegrationTest;
 import fr.lepgu.palaisdivin.backend.SharedTestStubs.AlwaysFailingProjector;
 import fr.lepgu.palaisdivin.backend.SharedTestStubs.BlockingProjector;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Clock;
 import java.util.HashSet;
 import java.util.List;
@@ -30,6 +32,7 @@ class OutboxWorkerIT extends AbstractIntegrationTest {
   @Autowired AlwaysFailingProjector failingProjector;
   @Autowired JdbcClient jdbcClient;
   @Autowired PlatformTransactionManager txManager;
+  @Autowired MeterRegistry meterRegistry;
 
   @BeforeEach
   void cleanState() {
@@ -48,8 +51,8 @@ class OutboxWorkerIT extends AbstractIntegrationTest {
     insertPendingBlockingRows(10);
 
     List<Projector> projectors = List.of(blockingProjector, failingProjector);
-    OutboxWorker w1 = new OutboxWorker(repo, projectors, props, clock);
-    OutboxWorker w2 = new OutboxWorker(repo, projectors, props, clock);
+    OutboxWorker w1 = new OutboxWorker(repo, projectors, props, clock, new SimpleMeterRegistry());
+    OutboxWorker w2 = new OutboxWorker(repo, projectors, props, clock, new SimpleMeterRegistry());
     TransactionTemplate tx = new TransactionTemplate(txManager);
 
     CountDownLatch startGate = new CountDownLatch(1);
@@ -98,7 +101,12 @@ class OutboxWorkerIT extends AbstractIntegrationTest {
     insertPendingRow(aggregateId, "FailingAgg", "BoomEvent");
 
     OutboxWorker worker =
-        new OutboxWorker(repo, List.of(blockingProjector, failingProjector), props, clock);
+        new OutboxWorker(
+            repo,
+            List.of(blockingProjector, failingProjector),
+            props,
+            clock,
+            new SimpleMeterRegistry());
     TransactionTemplate tx = new TransactionTemplate(txManager);
 
     for (int i = 0; i < props.maxRetries(); i++) {
@@ -136,7 +144,12 @@ class OutboxWorkerIT extends AbstractIntegrationTest {
     insertPendingRow(aggregateId, "Unhandled", "Whatever");
 
     OutboxWorker worker =
-        new OutboxWorker(repo, List.of(blockingProjector, failingProjector), props, clock);
+        new OutboxWorker(
+            repo,
+            List.of(blockingProjector, failingProjector),
+            props,
+            clock,
+            new SimpleMeterRegistry());
     new TransactionTemplate(txManager).executeWithoutResult(s -> worker.drainBatch());
 
     String status =
@@ -154,6 +167,34 @@ class OutboxWorkerIT extends AbstractIntegrationTest {
 
     assertThat(status).isEqualTo("FAILED");
     assertThat(lastError).contains("No projector").contains("Unhandled");
+  }
+
+  @Test
+  void outboxLagGaugeReadsZeroWhenQueueEmptyAndPositiveWhenPendingRowExists() {
+    assertThat(meterRegistry.find("palaisdivin.outbox.lag").gauge().value()).isZero();
+
+    insertPendingRow(UUID.randomUUID(), "BlockingAgg", "BlockingEvent");
+
+    assertThat(meterRegistry.find("palaisdivin.outbox.lag").gauge().value())
+        .isGreaterThanOrEqualTo(0.0);
+  }
+
+  @Test
+  void outboxLagGaugeReportsAgeOfOldestPendingRow() throws Exception {
+    UUID id = UUID.randomUUID();
+    jdbcClient
+        .sql(
+            """
+            INSERT INTO outbox_event
+              (id, aggregate_type, aggregate_id, event_type, payload, status, retry_count, created_at)
+            VALUES (?, 'BlockingAgg', ?, 'BlockingEvent', '{}'::jsonb, 'PENDING', 0, now() - interval '5 seconds')
+            """)
+        .param(UUID.randomUUID())
+        .param(id)
+        .update();
+
+    double lag = meterRegistry.find("palaisdivin.outbox.lag").gauge().value();
+    assertThat(lag).isGreaterThanOrEqualTo(4.0);
   }
 
   private void runUnderTx(CountDownLatch gate, TransactionTemplate tx, OutboxWorker worker) {
