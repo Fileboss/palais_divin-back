@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
+    <!--
+        Template for false-positive triage. Copy and customise per finding.
+        Always include a notes block with the rationale and a review date.
+
+        <suppress>
+            <notes><![CDATA[
+                FP: <library> bundles <other-library> only for tests; CVE does not affect runtime.
+                Review by: YYYY-MM-DD
+            ]]></notes>
+            <packageUrl regex="true">^pkg:maven/io\.example/.*@.*$</packageUrl>
+            <cve>CVE-XXXX-YYYY</cve>
+        </suppress>
+    -->
+</suppressions>

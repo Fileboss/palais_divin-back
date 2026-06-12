@@ -23,6 +23,7 @@
 		<spotless.version>2.46.1</spotless.version>
 		<google-java-format.version>1.28.0</google-java-format.version>
 		<springdoc.version>3.0.3</springdoc.version>
+		<dependency-check.version>10.0.4</dependency-check.version>
 	</properties>
 
 	<dependencies>
@@ -339,6 +340,40 @@
 										      quiet="true"/>
 									</target>
 								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+		<!-- Scan CVE OWASP. Lancé par CI + sur demande locale.
+		     Hors du build par défaut (NVD download + scan ~30s à ~3min). -->
+		<profile>
+			<id>security-scan</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.owasp</groupId>
+						<artifactId>dependency-check-maven</artifactId>
+						<version>${dependency-check.version}</version>
+						<configuration>
+							<failBuildOnCVSS>7.0</failBuildOnCVSS>
+							<formats>
+								<format>HTML</format>
+								<format>JSON</format>
+								<format>SARIF</format>
+							</formats>
+							<suppressionFiles>
+								<suppressionFile>${project.basedir}/owasp-suppressions.xml</suppressionFile>
+							</suppressionFiles>
+							<nvdApiKey>${env.NVD_API_KEY}</nvdApiKey>
+						</configuration>
+						<executions>
+							<execution>
+								<goals>
+									<goal>check</goal>
+								</goals>
+								<phase>verify</phase>
 							</execution>
 						</executions>
 					</plugin>

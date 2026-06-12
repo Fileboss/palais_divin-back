@@ -1,0 +1,4 @@
+# Trivy ignore list. One CVE id per line. Always pair with a comment giving
+# the rationale and a review date. Triage in CI artifacts before silencing.
+#
+# CVE-XXXX-YYYY  # FP: not reachable from prod code path; review YYYY-MM-DD
