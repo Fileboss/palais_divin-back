@@ -46,3 +46,6 @@ logs/
 .env.*.local
 *.pem
 *.key
+
+### Local notepads ###
+human_todo.md
