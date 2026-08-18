@@ -102,7 +102,9 @@ public class OutboxWorker {
   @Transactional(readOnly = true)
   protected double oldestPendingAgeSeconds() {
     return repo.findOldestPendingCreatedAt()
-        .map(oldest -> Duration.between(oldest, Instant.now(clock)).toMillis() / 1000.0)
+        .map(
+            oldest ->
+                Math.max(0.0, Duration.between(oldest, Instant.now(clock)).toMillis() / 1000.0))
         .orElse(0.0);
   }
 
