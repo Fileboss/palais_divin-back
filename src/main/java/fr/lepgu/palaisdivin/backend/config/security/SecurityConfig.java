@@ -21,6 +21,11 @@ import org.springframework.web.servlet.HandlerExceptionResolver;
 @Configuration
 public class SecurityConfig {
 
+  // No CORS configuration, deliberately: palais_divin-front proxies every API call
+  // server-side (browser talks same-origin to its SvelteKit server, which forwards to
+  // this API with the caller's bearer token — see palais_divin-front/.env.example), so
+  // there is no cross-origin browser caller today. Add a CorsConfigurationSource here
+  // if one shows up (mobile app, public API docs site, etc.) — docs/deep-review-2026-08-18.md#dr4.
   @Bean
   SecurityFilterChain securityFilterChain(
       HttpSecurity http,
