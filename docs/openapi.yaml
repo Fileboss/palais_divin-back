@@ -1319,7 +1319,9 @@ components:
           minLength: 1
         password:
           type: string
-          minLength: 1
+          maxLength: 128
+          minLength: 8
+          pattern: "^(?=.*[A-Za-z])(?=.*\\d).+$"
         token:
           type: string
           minLength: 1
