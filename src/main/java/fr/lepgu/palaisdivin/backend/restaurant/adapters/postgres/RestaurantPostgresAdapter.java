@@ -32,7 +32,7 @@ public class RestaurantPostgresAdapter implements RestaurantRepositoryPort {
   private static final int SRID_WGS84 = 4326;
   private static final GeometryFactory GEOMETRY_FACTORY =
       new GeometryFactory(new PrecisionModel(), SRID_WGS84);
-  private static final String DIST_EXPR =
+  static final String DIST_EXPR =
       "ST_Distance(r.location, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography)";
 
   private final RestaurantJpaRepository jpa;
@@ -71,6 +71,7 @@ public class RestaurantPostgresAdapter implements RestaurantRepositoryPort {
   @Override
   public CursorPage<Restaurant> findAll(
       RestaurantCursor cursor, int size, RestaurantFilter filter, RestaurantSort sort) {
+    RestaurantSortStrategy strategy = RestaurantSortStrategy.forSort(sort);
     boolean distanceSort = sort == RestaurantSort.DISTANCE_ASC;
     StringBuilder sql = new StringBuilder();
     if (distanceSort) {
@@ -121,8 +122,10 @@ public class RestaurantPostgresAdapter implements RestaurantRepositoryPort {
     if (filter.hasDelivery()) {
       sql.append("and r.delivery = :delivery ");
     }
-    appendKeysetPredicate(sql, cursor, sort);
-    sql.append(orderByClause(sort));
+    if (cursor != null) {
+      sql.append(strategy.keysetPredicate(cursor));
+    }
+    sql.append(strategy.orderByClause());
 
     Query q =
         distanceSort
@@ -149,8 +152,10 @@ public class RestaurantPostgresAdapter implements RestaurantRepositoryPort {
     if (filter.hasDelivery()) {
       q.setParameter("delivery", filter.delivery());
     }
-    bindCursorParameters(q, cursor, sort);
-    bindAnchorParameters(q, filter, sort);
+    if (cursor != null) {
+      strategy.bindCursorParameters(q, cursor);
+    }
+    strategy.bindAnchorParameters(q, filter);
     q.setMaxResults(size + 1);
 
     List<Restaurant> hydrated;
@@ -166,88 +171,6 @@ public class RestaurantPostgresAdapter implements RestaurantRepositoryPort {
     boolean hasNext = hydrated.size() > size;
     List<Restaurant> page = hasNext ? hydrated.subList(0, size) : hydrated;
     return new CursorPage<>(page, hasNext);
-  }
-
-  private static void appendKeysetPredicate(
-      StringBuilder sql, RestaurantCursor cursor, RestaurantSort sort) {
-    if (cursor == null) {
-      return;
-    }
-    switch (sort) {
-      case CREATED_AT_DESC ->
-          sql.append("and (r.created_at < :ck or (r.created_at = :ck and r.id < :cid)) ");
-      case RATING_DESC -> {
-        RestaurantCursor.ByRating c = (RestaurantCursor.ByRating) cursor;
-        if (c.avgRating() == null) {
-          sql.append("and r.avg_rating is null and r.id < :cid ");
-        } else {
-          sql.append(
-              "and (r.avg_rating < :ck "
-                  + "or (r.avg_rating = :ck and r.id < :cid) "
-                  + "or r.avg_rating is null) ");
-        }
-      }
-      case NAME_ASC -> sql.append("and (r.name > :ck or (r.name = :ck and r.id > :cid)) ");
-      case DISTANCE_ASC ->
-          sql.append("and (" + DIST_EXPR + " > :ck or (" + DIST_EXPR + " = :ck and r.id > :cid)) ");
-      case AFFINITY_DESC ->
-          throw new IllegalStateException(
-              "AFFINITY_DESC paginates via the recommendation graph, not Postgres keyset");
-    }
-  }
-
-  private static void bindCursorParameters(Query q, RestaurantCursor cursor, RestaurantSort sort) {
-    if (cursor == null) {
-      return;
-    }
-    switch (sort) {
-      case CREATED_AT_DESC -> {
-        RestaurantCursor.ByCreatedAt c = (RestaurantCursor.ByCreatedAt) cursor;
-        q.setParameter("ck", c.createdAt());
-        q.setParameter("cid", c.id());
-      }
-      case RATING_DESC -> {
-        RestaurantCursor.ByRating c = (RestaurantCursor.ByRating) cursor;
-        if (c.avgRating() != null) {
-          q.setParameter("ck", c.avgRating());
-        }
-        q.setParameter("cid", c.id());
-      }
-      case NAME_ASC -> {
-        RestaurantCursor.ByName c = (RestaurantCursor.ByName) cursor;
-        q.setParameter("ck", c.name());
-        q.setParameter("cid", c.id());
-      }
-      case DISTANCE_ASC -> {
-        RestaurantCursor.ByDistance c = (RestaurantCursor.ByDistance) cursor;
-        q.setParameter("ck", c.distanceMetres());
-        q.setParameter("cid", c.id());
-      }
-      case AFFINITY_DESC ->
-          throw new IllegalStateException(
-              "AFFINITY_DESC paginates via the recommendation graph, not Postgres keyset");
-    }
-  }
-
-  private static void bindAnchorParameters(Query q, RestaurantFilter filter, RestaurantSort sort) {
-    if (sort != RestaurantSort.DISTANCE_ASC) {
-      return;
-    }
-    Coordinates anchor = filter.anchor();
-    q.setParameter("lng", anchor.longitude());
-    q.setParameter("lat", anchor.latitude());
-  }
-
-  private static String orderByClause(RestaurantSort sort) {
-    return switch (sort) {
-      case CREATED_AT_DESC -> "order by r.created_at desc, r.id desc";
-      case RATING_DESC -> "order by r.avg_rating desc nulls last, r.id desc";
-      case NAME_ASC -> "order by r.name asc, r.id asc";
-      case DISTANCE_ASC -> "order by " + DIST_EXPR + " asc, r.id asc";
-      case AFFINITY_DESC ->
-          throw new IllegalStateException(
-              "AFFINITY_DESC paginates via the recommendation graph, not Postgres keyset");
-    };
   }
 
   private static RestaurantEntity toEntity(Restaurant r) {
