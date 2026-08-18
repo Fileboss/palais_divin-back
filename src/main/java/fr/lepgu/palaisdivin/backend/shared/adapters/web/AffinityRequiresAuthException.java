@@ -1,4 +1,4 @@
-package fr.lepgu.palaisdivin.backend.restaurant.adapters.rest;
+package fr.lepgu.palaisdivin.backend.shared.adapters.web;
 
 public class AffinityRequiresAuthException extends RuntimeException {
   public AffinityRequiresAuthException() {

@@ -20,10 +20,9 @@ fr.lepgu.palaisdivin.backend
 └── config/                             # Security, Observability
 ```
 
-Hard rules (README §8). **ArchUnit-enforced today**: `domain/**` imports nothing from `org.springframework.*`, `jakarta.*`, `org.neo4j.*`, `io.minio.*` (JDK only), and `application/**` never imports `adapters/**` — see `ArchitectureRulesTest`. The rest are convention, not yet a build gate (tracked as ROADMAP I11.7):
+Hard rules (README §8). **ArchUnit-enforced today**: `domain/**` imports nothing from `org.springframework.*`, `jakarta.*`, `org.neo4j.*`, `io.minio.*` (JDK only); `application/**` never imports `adapters/**`; and `adapters/**` never imports another component's `adapters/**` (`shared/adapters/**` exempt — it's the shared kernel) — see `ArchitectureRulesTest`. The rest is convention, not yet a build gate:
 - Use-case **interfaces** in `domain/ports/` (flat — no `in/`/`out/`); **implementations** in `application/`.
 - No cross-component imports for writes (`restaurant` ↛ `review`) — go through the outbox. Sync read-only cross-component imports of another component's `domain/ports/*` are OK (precedent: M6.3 `ReviewService` reads `User` + `Restaurant` directly); cross-component `application/*` stays forbidden.
-- Adapters shouldn't reference each other (`shared/adapters/**` is exempt — it's the shared kernel). Already has 3 grandfathered exceptions (`RecommendationRestController`/`RecommendationResponse` → `restaurant/adapters/rest/*`, `GlobalExceptionHandler` → same) — don't add a fourth without a real reason.
 - **Ship with caller.** Don't add a port method, exception, DTO, or migration until something asks for it. Method names on ports show up only when their use case is being implemented. Generic abstractions (`CursorCodec<T>`, shared `PageMeta`) wait for the third caller, not the second.
 
 ## Data: dual store, eventually consistent

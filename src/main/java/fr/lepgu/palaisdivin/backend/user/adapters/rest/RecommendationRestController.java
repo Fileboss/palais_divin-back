@@ -1,8 +1,8 @@
 package fr.lepgu.palaisdivin.backend.user.adapters.rest;
 
-import fr.lepgu.palaisdivin.backend.restaurant.adapters.rest.MissingAnchorException;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Coordinates;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.RestaurantFilter;
+import fr.lepgu.palaisdivin.backend.shared.adapters.web.MissingAnchorException;
 import fr.lepgu.palaisdivin.backend.shared.adapters.web.PageMeta;
 import fr.lepgu.palaisdivin.backend.shared.adapters.web.TagGroupParser;
 import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;

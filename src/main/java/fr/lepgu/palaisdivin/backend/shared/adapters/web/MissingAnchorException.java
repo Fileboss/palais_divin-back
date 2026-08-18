@@ -1,4 +1,4 @@
-package fr.lepgu.palaisdivin.backend.restaurant.adapters.rest;
+package fr.lepgu.palaisdivin.backend.shared.adapters.web;
 
 public class MissingAnchorException extends RuntimeException {
   public MissingAnchorException() {

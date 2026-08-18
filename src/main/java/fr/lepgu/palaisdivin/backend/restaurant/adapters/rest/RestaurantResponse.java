@@ -2,6 +2,7 @@ package fr.lepgu.palaisdivin.backend.restaurant.adapters.rest;
 
 import fr.lepgu.palaisdivin.backend.photo.domain.model.PhotoSummary;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.model.Restaurant;
+import fr.lepgu.palaisdivin.backend.shared.adapters.web.CoordinatesDto;
 import fr.lepgu.palaisdivin.backend.tag.domain.model.Tag;
 import fr.lepgu.palaisdivin.backend.tag.domain.model.TagCategory;
 import java.time.Instant;

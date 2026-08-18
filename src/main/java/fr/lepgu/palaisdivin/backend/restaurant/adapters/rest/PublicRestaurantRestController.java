@@ -13,6 +13,8 @@ import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.FindRestaurantUseCas
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.ListAffinityRankedRestaurantsUseCase;
 import fr.lepgu.palaisdivin.backend.restaurant.domain.ports.ListRestaurantsUseCase;
 import fr.lepgu.palaisdivin.backend.review.domain.ports.CountRestaurantReviewsUseCase;
+import fr.lepgu.palaisdivin.backend.shared.adapters.web.AffinityRequiresAuthException;
+import fr.lepgu.palaisdivin.backend.shared.adapters.web.MissingAnchorException;
 import fr.lepgu.palaisdivin.backend.shared.adapters.web.PageMeta;
 import fr.lepgu.palaisdivin.backend.shared.adapters.web.TagGroupParser;
 import fr.lepgu.palaisdivin.backend.shared.domain.valueobject.CursorPage;

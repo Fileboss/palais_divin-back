@@ -1,4 +1,4 @@
-package fr.lepgu.palaisdivin.backend.restaurant.adapters.rest;
+package fr.lepgu.palaisdivin.backend.shared.adapters.web;
 
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
