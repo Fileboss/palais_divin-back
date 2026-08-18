@@ -274,6 +274,23 @@ Three frontend-blocking gaps from `palais_divin-front/doc/missing.md`.
 
 ---
 
+## Intermediate phase I11 — Deep-review hardening
+
+Goal: close the actionable findings from the 2026-08-18 deep review (`docs/deep-review-2026-08-18.md`) before opening prod deployment in M11. Security/config fixes first, architecture-enforcement and complexity cleanup after. Each task cites its finding id (`#dr<n>`) — see the doc for evidence and rationale, kept out of ROADMAP to stay scannable.
+
+- [ ] **I11.1 — Password strength policy** (`docs/deep-review-2026-08-18.md#dr1`) — minimum-length/complexity constraint on `SignupRequest.password`; `passwordPolicy` added to `compose/keycloak/realm-palaisdivin.json` + test realm. Done when: a sub-policy password is rejected 400 before it reaches Keycloak, IT coverage asserts it.
+- [ ] **I11.2 — Neo4j client timeout** (`#dr2`) — configure `org.neo4j.driver.Config` connect/read timeout to match the Keycloak/MinIO 2s default (`CLAUDE.md` "Outbound calls" rule). Done when: an explicit timeout is set (bean or `spring.neo4j.*` properties), verified by a config/unit test.
+- [ ] **I11.3 — Keycloak brute-force protection** (`#dr3`) — `bruteForceProtected=true` with sane thresholds on the dev/test realm; note the prod-realm follow-up for `lepgu_infra`. Done when: realm JSON updated, IT boot still green.
+- [ ] **I11.4 — CORS ownership decision** (`#dr4`) — decide whether Spring or Caddy (`lepgu_infra`) owns CORS for `api.palais-divin.lepgu.fr` vs. the frontend origin; implement/document the answer before M11.4 ships. Done when: either a `CorsConfigurationSource` bean exists here, or `lepgu_infra`'s Caddyfile is confirmed to handle it and that's noted in this task.
+- [ ] **I11.5 — Request DTO length caps** (`#dr5`) — `@Size(max=…)` on `CreateRestaurantRequest.name`/`.address` and `SignupRequest.displayName`, matching the cap pattern already used on `CreateReviewRequest.comment` / tag labels. Done when: over-length input returns 400, IT coverage added.
+- [ ] **I11.6 — Audit exception-message leakage** (`#dr6`) — review `GlobalExceptionHandler.handleTypeMismatch`/`handleIllegalArgument` for any path where `ex.getMessage()` could carry internal details. Done when: audited, and either confirmed safe (comment) or messages sanitized.
+- [ ] **I11.7 — ArchUnit rule for adapter isolation** (`#dr7`) — add the missing rule (`adapters/**` must not depend on another component's `adapters/**`, `shared/adapters/**` exempted); resolve the 3 existing violations by fixing them or adding a documented allowlist. Done when: rule exists and `mvn clean test` is green either with zero violations or an explicit, commented allowlist.
+- [ ] **I11.8 — `RestaurantPostgresAdapter` sort-switch consolidation** (`#dr8`) — replace the 4 parallel statement-switches over `RestaurantSort` with one per-sort strategy so the compiler enforces completeness on the next sort addition. Done when: adding a dummy sort variant without updating every call site fails to compile instead of misbehaving silently at runtime.
+
+`MILESTONE I11` — deep-review findings closed before opening prod deployment.
+
+---
+
 ## Phase M11 — First production deployment
 
 Shared infra lives in **`lepgu_infra`** (the renamed `qui-est-ce_infra` repo, hosting Caddy + Postgres + Keycloak for all `*.lepgu.fr` apps).
@@ -291,7 +308,14 @@ Shared infra lives in **`lepgu_infra`** (the renamed `qui-est-ce_infra` repo, ho
 
 ## Post-launch backlog (unordered, pick when relevant)
 
+- **`GlobalExceptionHandler` boilerplate collapse** (`docs/deep-review-2026-08-18.md#dr9`) — 16+ near-identical `@ExceptionHandler` methods (377 lines); collapse into a small data-driven mapping once it grows further. Not urgent, noted so it isn't re-discovered from scratch.
 - **Resilience4j adoption** (circuit breakers + retry + bulkhead) — add if real evidence demands it: repeated outbound failure storms in production (Keycloak / MinIO / Neo4j), or scaling beyond a single backend instance where cascading-failure containment starts to matter. Native timeouts are already in place; this is the next layer up, not a missing baseline.
+- Blog posts handling
+- Custom lists system (my favourites, to test ...)
+- Private reviews, friend private reviews
+- Wrapped
+- Stories
+- Gamification ? Streak ?
 - GraalVM native image investigation (deferred per CLAUDE.md — JPA + Neo4j reflection cost).
 - Geo-search endpoint (`?near=lat,lon&radius=km`) using PostGIS `ST_DWithin`.
 - Bulk invitation CSV import for admins.
