@@ -9,6 +9,7 @@
   "editUsernameAllowed": false,
   "accessTokenLifespan": 3600,
   "passwordPolicy": "length(8)",
+  "bruteForceProtected": true,
   "roles": {
     "realm": [
       { "name": "USER", "description": "Standard user (RBAC level 2)" },
