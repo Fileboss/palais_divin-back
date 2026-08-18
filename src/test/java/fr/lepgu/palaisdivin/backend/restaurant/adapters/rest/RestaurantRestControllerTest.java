@@ -127,6 +127,50 @@ class RestaurantRestControllerTest {
   }
 
   @Test
+  void post_tooLongName_returns_400_problem_detail() throws Exception {
+    String tooLongName = "a".repeat(201);
+    mockMvc
+        .perform(
+            post("/api/v1/user/restaurants")
+                .with(userJwt())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "name": "%s",
+                      "address": "80 Rue de Charonne"
+                    }
+                    """
+                        .formatted(tooLongName)))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+        .andExpect(jsonPath("$.type").value("https://palaisdivin.lepgu.fr/problems/validation"))
+        .andExpect(jsonPath("$.errors[?(@.field == 'name')]").exists());
+  }
+
+  @Test
+  void post_tooLongAddress_returns_400_problem_detail() throws Exception {
+    String tooLongAddress = "a".repeat(501);
+    mockMvc
+        .perform(
+            post("/api/v1/user/restaurants")
+                .with(userJwt())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {
+                      "name": "Septime",
+                      "address": "%s"
+                    }
+                    """
+                        .formatted(tooLongAddress)))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+        .andExpect(jsonPath("$.type").value("https://palaisdivin.lepgu.fr/problems/validation"))
+        .andExpect(jsonPath("$.errors[?(@.field == 'address')]").exists());
+  }
+
+  @Test
   void post_unresolvableAddress_returns_422_problem_detail() throws Exception {
     when(createRestaurant.create(
             eq("Septime"), eq("nope nope nope"), anyBoolean(), anyBoolean(), anyBoolean()))

@@ -144,6 +144,18 @@ class SignupRestControllerTest {
   }
 
   @Test
+  void post_tooLongDisplayName_returns400_validationProblemDetail() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/public/signup")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body(new SignupRequest(TOKEN, EMAIL, "a".repeat(101), PASSWORD))))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+        .andExpect(jsonPath("$.type").value("https://palaisdivin.lepgu.fr/problems/validation"));
+  }
+
+  @Test
   void post_unknownToken_returns404_notFoundProblemDetail() throws Exception {
     when(signupUseCase.signup(
             ArgumentMatchers.anyString(),

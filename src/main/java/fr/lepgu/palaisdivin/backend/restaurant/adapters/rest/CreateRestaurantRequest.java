@@ -1,10 +1,11 @@
 package fr.lepgu.palaisdivin.backend.restaurant.adapters.rest;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 public record CreateRestaurantRequest(
-    @NotBlank String name,
-    @NotBlank String address,
+    @NotBlank @Size(max = 200) String name,
+    @NotBlank @Size(max = 500) String address,
     Boolean dineIn,
     Boolean takeOut,
     Boolean delivery) {

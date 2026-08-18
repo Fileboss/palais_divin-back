@@ -104,6 +104,28 @@ class RestaurantRestIT extends AbstractIntegrationTest {
   }
 
   @Test
+  void postTooLongName_returns400_validationProblemDetail() {
+    RestClient client = authedClient();
+    CreateRestaurantRequest req =
+        new CreateRestaurantRequest("a".repeat(201), "80 Rue de Charonne");
+
+    ResponseEntity<String> resp =
+        client
+            .post()
+            .uri("/api/v1/user/restaurants")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(req)
+            .retrieve()
+            .onStatus(s -> s.is4xxClientError(), (r, res) -> {})
+            .toEntity(String.class);
+
+    assertThat(resp.getStatusCode().value()).isEqualTo(400);
+    assertThat(resp.getHeaders().getContentType().toString())
+        .startsWith("application/problem+json");
+    assertThat(resp.getBody()).contains("/problems/validation");
+  }
+
+  @Test
   void listWalksAllPagesByCursor() {
     RestClient client = authedClient();
 

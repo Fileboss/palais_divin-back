@@ -953,14 +953,16 @@ components:
       properties:
         address:
           type: string
-          minLength: 1
+          maxLength: 500
+          minLength: 0
         delivery:
           type: boolean
         dineIn:
           type: boolean
         name:
           type: string
-          minLength: 1
+          maxLength: 200
+          minLength: 0
         takeOut:
           type: boolean
       required:
@@ -1312,7 +1314,8 @@ components:
       properties:
         displayName:
           type: string
-          minLength: 1
+          maxLength: 100
+          minLength: 0
         email:
           type: string
           format: email
