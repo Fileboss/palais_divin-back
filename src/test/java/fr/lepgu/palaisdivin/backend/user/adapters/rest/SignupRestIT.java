@@ -110,6 +110,32 @@ class SignupRestIT extends AbstractIntegrationTest {
   }
 
   @Test
+  void weakPassword_returns400_validationProblemDetail_beforeKeycloakCall() {
+    String token = mintInvitationAsAdmin();
+
+    ResponseEntity<String> resp =
+        anonClient()
+            .post()
+            .uri("/api/v1/public/signup")
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(
+                new SignupRequest(
+                    token,
+                    "weak-" + UUID.randomUUID() + "@example.test",
+                    "Weak Password",
+                    "short1"))
+            .retrieve()
+            .onStatus(s -> s.is4xxClientError(), (req, res) -> {})
+            .toEntity(String.class);
+
+    assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+    assertThat(resp.getBody()).contains("/problems/validation");
+    // Bean Validation rejects before SignupService/Keycloak run — invitation stays unconsumed.
+    assertThat(invitations.findByToken(new InvitationToken(token)).orElseThrow().isConsumed())
+        .isFalse();
+  }
+
+  @Test
   void unknownToken_returns404_problemDetail() {
     ResponseEntity<String> resp =
         anonClient()

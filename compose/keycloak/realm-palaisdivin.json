@@ -8,6 +8,7 @@
   "resetPasswordAllowed": false,
   "editUsernameAllowed": false,
   "accessTokenLifespan": 3600,
+  "passwordPolicy": "length(8) and digits(1)",
   "roles": {
     "realm": [
       { "name": "USER", "description": "Standard user (RBAC level 2)" },

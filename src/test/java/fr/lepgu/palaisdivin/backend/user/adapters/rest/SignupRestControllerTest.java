@@ -108,13 +108,39 @@ class SignupRestControllerTest {
   }
 
   @Test
-  void post_missingPassword_returns400() throws Exception {
+  void post_missingPassword_returns400_validationProblemDetail() throws Exception {
     mockMvc
         .perform(
             post("/api/v1/public/signup")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body(new SignupRequest(TOKEN, EMAIL, DISPLAY_NAME, ""))))
-        .andExpect(status().isBadRequest());
+        .andExpect(status().isBadRequest())
+        .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+        .andExpect(jsonPath("$.type").value("https://palaisdivin.lepgu.fr/problems/validation"));
+  }
+
+  @Test
+  void post_tooShortPassword_returns400_validationProblemDetail() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/public/signup")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body(new SignupRequest(TOKEN, EMAIL, DISPLAY_NAME, "Ab1"))))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+        .andExpect(jsonPath("$.type").value("https://palaisdivin.lepgu.fr/problems/validation"));
+  }
+
+  @Test
+  void post_passwordMissingDigit_returns400_validationProblemDetail() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/public/signup")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body(new SignupRequest(TOKEN, EMAIL, DISPLAY_NAME, "abcdefgh"))))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+        .andExpect(jsonPath("$.type").value("https://palaisdivin.lepgu.fr/problems/validation"));
   }
 
   @Test
