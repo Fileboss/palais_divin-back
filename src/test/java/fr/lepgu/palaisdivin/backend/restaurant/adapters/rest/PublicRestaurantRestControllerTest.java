@@ -309,7 +309,8 @@ class PublicRestaurantRestControllerTest {
         .perform(get("/api/v1/public/restaurants").param("sort", "NUKE"))
         .andExpect(status().isBadRequest())
         .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
-        .andExpect(jsonPath("$.type").value("https://palaisdivin.lepgu.fr/problems/bad-request"));
+        .andExpect(jsonPath("$.type").value("https://palaisdivin.lepgu.fr/problems/bad-request"))
+        .andExpect(jsonPath("$.detail").value("Invalid value 'NUKE' for parameter 'sort'."));
   }
 
   @Test

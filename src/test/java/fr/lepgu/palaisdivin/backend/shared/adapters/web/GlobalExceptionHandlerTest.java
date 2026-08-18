@@ -13,11 +13,17 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @WebMvcTest(controllers = GlobalExceptionHandlerTest.FailingController.class)
 @Import({SecurityConfig.class, GlobalExceptionHandlerTest.FailingController.class})
 class GlobalExceptionHandlerTest {
+
+  enum TestEnum {
+    A,
+    B
+  }
 
   @RestController
   static class FailingController {
@@ -34,6 +40,11 @@ class GlobalExceptionHandlerTest {
     @GetMapping("/api/v1/public/__test/orphan")
     String orphan() {
       throw new OrphanSubjectException("kc-sub-orphan");
+    }
+
+    @GetMapping("/api/v1/public/__test/type-mismatch")
+    String typeMismatch(@RequestParam TestEnum value) {
+      return "unreachable: " + value;
     }
   }
 
@@ -88,5 +99,21 @@ class GlobalExceptionHandlerTest {
                 .string(
                     org.hamcrest.Matchers.not(
                         org.hamcrest.Matchers.containsString("kc-sub-orphan"))));
+  }
+
+  @Test
+  void type_mismatch_returns_problem_detail_400_without_leaking_internal_type_name()
+      throws Exception {
+    mockMvc
+        .perform(get("/api/v1/public/__test/type-mismatch").param("value", "NUKE"))
+        .andExpect(status().isBadRequest())
+        .andExpect(content().contentTypeCompatibleWith("application/problem+json"))
+        .andExpect(jsonPath("$.type").value("https://palaisdivin.lepgu.fr/problems/bad-request"))
+        .andExpect(jsonPath("$.detail").value("Invalid value 'NUKE' for parameter 'value'."))
+        .andExpect(
+            content()
+                .string(
+                    org.hamcrest.Matchers.not(
+                        org.hamcrest.Matchers.containsString("fr.lepgu.palaisdivin"))));
   }
 }

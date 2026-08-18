@@ -38,6 +38,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
@@ -124,6 +125,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(pd);
   }
 
+  // Audited (docs/deep-review-2026-08-18.md#dr6): every throw new IllegalArgumentException(...)
+  // in src/main/java is either a static string or echoes the caller's own submitted value —
+  // safe to surface as-is. Re-audit if a new throw site could carry internal state.
   @ExceptionHandler(IllegalArgumentException.class)
   ResponseEntity<ProblemDetail> handleIllegalArgument(IllegalArgumentException ex) {
     ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
@@ -347,11 +351,23 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
   @Override
   protected ResponseEntity<Object> handleTypeMismatch(
       TypeMismatchException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
-    ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+    ProblemDetail pd =
+        ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, typeMismatchDetail(ex));
     pd.setType(PROBLEM_BASE.resolve("bad-request"));
     pd.setTitle("Bad request");
     addTraceId(pd);
     return new ResponseEntity<>(pd, headers, HttpStatus.BAD_REQUEST);
+  }
+
+  // ex.getMessage() on a raw TypeMismatchException embeds the target Java type's fully-qualified
+  // class name (e.g. an enum-typed @RequestParam mismatch leaks internal package layout to
+  // anonymous callers — see docs/deep-review-2026-08-18.md#dr6). Report only the parameter name
+  // and the caller's own submitted value, both already theirs, never the internal type name.
+  private static String typeMismatchDetail(TypeMismatchException ex) {
+    if (ex instanceof MethodArgumentTypeMismatchException matex) {
+      return "Invalid value '" + matex.getValue() + "' for parameter '" + matex.getName() + "'.";
+    }
+    return "Invalid request parameter value.";
   }
 
   @ExceptionHandler(Exception.class)
