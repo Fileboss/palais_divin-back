@@ -24,11 +24,14 @@ import fr.lepgu.palaisdivin.backend.review.domain.ports.CreateReviewUseCase;
 import fr.lepgu.palaisdivin.backend.review.domain.ports.GetMyReviewUseCase;
 import fr.lepgu.palaisdivin.backend.review.domain.ports.UpdateReviewUseCase;
 import fr.lepgu.palaisdivin.backend.shared.adapters.web.GlobalExceptionHandler;
+import fr.lepgu.palaisdivin.backend.user.domain.model.User;
 import fr.lepgu.palaisdivin.backend.user.domain.model.UserId;
+import fr.lepgu.palaisdivin.backend.user.domain.ports.FindUserUseCase;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import org.hamcrest.Matchers;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -54,7 +57,14 @@ class ReviewRestControllerTest {
   @MockitoBean CreateReviewUseCase createReview;
   @MockitoBean UpdateReviewUseCase updateReview;
   @MockitoBean GetMyReviewUseCase getMyReview;
+  @MockitoBean FindUserUseCase findUser;
   @MockitoBean JwtDecoder jwtDecoder;
+
+  @BeforeEach
+  void stubDisplayName() {
+    when(findUser.findById(any()))
+        .thenReturn(new User(UserId.newId(), SUBJECT, "e@x.test", "Test User", FIXED_CREATED_AT));
+  }
 
   private static RequestPostProcessor userJwt() {
     return jwt().jwt(j -> j.subject(SUBJECT)).authorities(new SimpleGrantedAuthority("ROLE_USER"));
@@ -106,7 +116,8 @@ class ReviewRestControllerTest {
         .andExpect(jsonPath("$.restaurantId").value(restaurantId.toString()))
         .andExpect(jsonPath("$.rating").value(4))
         .andExpect(jsonPath("$.comment").value("Great"))
-        .andExpect(jsonPath("$.createdAt").value(FIXED_CREATED_AT.toString()));
+        .andExpect(jsonPath("$.createdAt").value(FIXED_CREATED_AT.toString()))
+        .andExpect(jsonPath("$.authorDisplayName").value("Test User"));
   }
 
   @Test
@@ -220,7 +231,8 @@ class ReviewRestControllerTest {
         .andExpect(status().isOk())
         .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
         .andExpect(jsonPath("$.rating").value(3))
-        .andExpect(jsonPath("$.comment").value("Changed my mind"));
+        .andExpect(jsonPath("$.comment").value("Changed my mind"))
+        .andExpect(jsonPath("$.authorDisplayName").value("Test User"));
   }
 
   @Test
@@ -273,7 +285,8 @@ class ReviewRestControllerTest {
         .andExpect(jsonPath("$.restaurantId").value(restaurantId.toString()))
         .andExpect(jsonPath("$.rating").value(5))
         .andExpect(jsonPath("$.comment").value("Loved it"))
-        .andExpect(jsonPath("$.createdAt").value(FIXED_CREATED_AT.toString()));
+        .andExpect(jsonPath("$.createdAt").value(FIXED_CREATED_AT.toString()))
+        .andExpect(jsonPath("$.authorDisplayName").value("Test User"));
   }
 
   @Test

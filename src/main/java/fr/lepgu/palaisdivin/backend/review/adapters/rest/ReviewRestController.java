@@ -5,6 +5,7 @@ import fr.lepgu.palaisdivin.backend.review.domain.model.Review;
 import fr.lepgu.palaisdivin.backend.review.domain.ports.CreateReviewUseCase;
 import fr.lepgu.palaisdivin.backend.review.domain.ports.GetMyReviewUseCase;
 import fr.lepgu.palaisdivin.backend.review.domain.ports.UpdateReviewUseCase;
+import fr.lepgu.palaisdivin.backend.user.domain.ports.FindUserUseCase;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.Optional;
@@ -29,14 +30,17 @@ class ReviewRestController {
   private final CreateReviewUseCase createReview;
   private final UpdateReviewUseCase updateReview;
   private final GetMyReviewUseCase getMyReviewUseCase;
+  private final FindUserUseCase findUser;
 
   ReviewRestController(
       CreateReviewUseCase createReview,
       UpdateReviewUseCase updateReview,
-      GetMyReviewUseCase getMyReviewUseCase) {
+      GetMyReviewUseCase getMyReviewUseCase,
+      FindUserUseCase findUser) {
     this.createReview = createReview;
     this.updateReview = updateReview;
     this.getMyReviewUseCase = getMyReviewUseCase;
+    this.findUser = findUser;
   }
 
   @GetMapping
@@ -44,7 +48,8 @@ class ReviewRestController {
       @PathVariable UUID restaurantId, @AuthenticationPrincipal Jwt jwt) {
     Review review =
         getMyReviewUseCase.getMyReview(jwt.getSubject(), new RestaurantId(restaurantId));
-    return ResponseEntity.ok(ReviewResponse.from(review));
+    return ResponseEntity.ok(
+        ReviewResponse.from(review, findUser.findById(review.authorId()).displayName()));
   }
 
   @PostMapping
@@ -65,7 +70,8 @@ class ReviewRestController {
             .path("/{id}")
             .buildAndExpand(created.id().value())
             .toUri();
-    return ResponseEntity.created(location).body(ReviewResponse.from(created));
+    return ResponseEntity.created(location)
+        .body(ReviewResponse.from(created, findUser.findById(created.authorId()).displayName()));
   }
 
   @PutMapping
@@ -76,6 +82,7 @@ class ReviewRestController {
     Review updated =
         updateReview.update(
             jwt.getSubject(), new RestaurantId(restaurantId), req.rating(), req.comment());
-    return ResponseEntity.ok(ReviewResponse.from(updated));
+    return ResponseEntity.ok(
+        ReviewResponse.from(updated, findUser.findById(updated.authorId()).displayName()));
   }
 }
