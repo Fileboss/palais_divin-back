@@ -1,0 +1,17 @@
+.git
+.github
+.idea
+.claude
+.vscode
+target
+docs
+compose
+*.log
+.DS_Store
+.env
+.env.*
+human_todo.md
+README.md
+ROADMAP.md
+CLAUDE.md
+HELP.md
