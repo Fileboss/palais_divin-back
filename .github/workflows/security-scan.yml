@@ -47,14 +47,37 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Run Trivy
-        uses: aquasecurity/trivy-action@0.24.0
+      # Two passes on purpose. `format: sarif` writes to a file, so a failing
+      # run shows nothing but "exit code 1" in the log — this first pass prints
+      # the findings table to stdout and is the one that gates the build.
+      #
+      # Tags on this action are v-prefixed. `@0.24.0` (no v) never existed and
+      # fails the run before Trivy is even installed.
+      - name: Run Trivy (gating, table output)
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
           scan-ref: '.'
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           exit-code: '1'
+          format: table
+          skip-dirs: target,node_modules
+
+      # SARIF for the uploaded artifact. `limit-severities-for-sarif` is
+      # mandatory here: without it the action runs `unset TRIVY_SEVERITY` and
+      # reports every severity. `exit-code: 0` because the step above already
+      # gated; `if: always()` so the report still gets produced when it failed.
+      - name: Run Trivy (SARIF report)
+        if: always()
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: '.'
+          severity: HIGH,CRITICAL
+          limit-severities-for-sarif: true
+          ignore-unfixed: true
+          exit-code: '0'
           format: sarif
           output: trivy.sarif
           skip-dirs: target,node_modules

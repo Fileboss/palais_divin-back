@@ -16,7 +16,12 @@
 
 	<properties>
 		<java.version>25</java.version>
-		<minio.version>8.5.17</minio.version>
+		<minio.version>8.6.0</minio.version>
+		<okhttp.version>5.2.1</okhttp.version>
+		<!-- Overrides the Spring Boot BOM: CVE-2026-42198 (client-side DoS via a
+		     malicious SCRAM-SHA-256 exchange) and CVE-2026-54291 (SCRAM-SHA-256-PLUS
+		     downgrade defeating MITM protection). Drop once the BOM catches up. -->
+		<postgresql.version>42.7.12</postgresql.version>
 		<logstash-encoder.version>8.0</logstash-encoder.version>
 		<archunit.version>1.4.2</archunit.version>
 		<testcontainers-keycloak.version>3.6.0</testcontainers-keycloak.version>
@@ -95,6 +100,26 @@
 			<groupId>io.minio</groupId>
 			<artifactId>minio</artifactId>
 			<version>${minio.version}</version>
+		</dependency>
+		<!-- minio 8.6.0 depends on okhttp 5, which is published as a Kotlin
+		     Multiplatform module: `com.squareup.okhttp3:okhttp` is a ~760-byte
+		     metadata stub with no classes, and only Gradle follows the .module
+		     metadata to the real `okhttp-jvm` artifact. Maven does not, so the
+		     JVM jar has to be requested by name — without it neither MinioConfig
+		     nor minio's own code can find okhttp3 at compile or run time.
+
+		     Pinned to the highest version anything here asks for (minio wants
+		     5.1.0, opentelemetry-exporter-sender-okhttp wants 5.2.1) so the
+		     direct dependency does not silently downgrade the other consumer.
+
+		     This also collapses a pre-existing split classpath: minio 8.5.17
+		     pulled okhttp 4.12.0 while OTel pulled okhttp-jvm 5.2.1, putting two
+		     major versions of the same `okhttp3` package side by side and
+		     letting jar order decide which won. Now there is exactly one. -->
+		<dependency>
+			<groupId>com.squareup.okhttp3</groupId>
+			<artifactId>okhttp-jvm</artifactId>
+			<version>${okhttp.version}</version>
 		</dependency>
 
 		<!-- Ops & observabilité -->
