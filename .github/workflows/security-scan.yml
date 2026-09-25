@@ -48,7 +48,9 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Run Trivy
-        uses: aquasecurity/trivy-action@0.24.0
+        # Tags on this action are v-prefixed. `@0.24.0` (no v) never existed and
+        # fails the run before Trivy is even installed.
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
           scan-ref: '.'
